@@ -32,8 +32,8 @@ make -j$(nproc) LLAMA_AVX2=OFF LLAMA_AVX=OFF LLAMA_F16C=OFF LLAMA_FMA=OFF
 wget https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf
 
 # Install hermes-agent
-git clone https://github.com/Matt0080828/new_agent.git
-cd new_agent
+git clone https://github.com/matttest0080-prog/hermes-agent-iot.git
+cd hermes-agent-iot
 pip install -e .
 
 # Configure
