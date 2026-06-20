@@ -33,16 +33,6 @@ from cron.jobs import (
 )
 
 
-def _notify_provider_jobs_changed_safe() -> None:
-    """Tell the active cron scheduler provider the job set changed (no-op for
-    the built-in). Best-effort — never lets a provider error break the tool."""
-    try:
-        from cron.scheduler import _notify_provider_jobs_changed
-        _notify_provider_jobs_changed()
-    except Exception:
-        pass
-
-
 # ---------------------------------------------------------------------------
 # Cron prompt scanning
 # ---------------------------------------------------------------------------
@@ -559,7 +549,6 @@ def cronjob(
                 workdir=_normalize_optional_job_value(workdir),
                 no_agent=_no_agent,
             )
-            _notify_provider_jobs_changed_safe()
             return json.dumps(
                 {
                     "success": True,
@@ -615,7 +604,6 @@ def cronjob(
             removed = remove_job(job_id)
             if not removed:
                 return tool_error(f"Failed to remove job '{job_id}'", success=False)
-            _notify_provider_jobs_changed_safe()
             return json.dumps(
                 {
                     "success": True,
@@ -631,12 +619,10 @@ def cronjob(
 
         if normalized == "pause":
             updated = pause_job(job_id, reason=reason)
-            _notify_provider_jobs_changed_safe()
             return json.dumps({"success": True, "job": _format_job(updated)}, indent=2)
 
         if normalized == "resume":
             updated = resume_job(job_id)
-            _notify_provider_jobs_changed_safe()
             return json.dumps({"success": True, "job": _format_job(updated)}, indent=2)
 
         if normalized in {"run", "run_now", "trigger"}:
@@ -725,7 +711,6 @@ def cronjob(
             if not updates:
                 return tool_error("No updates provided.", success=False)
             updated = update_job(job_id, updates)
-            _notify_provider_jobs_changed_safe()
             return json.dumps({"success": True, "job": _format_job(updated)}, indent=2)
 
         return tool_error(f"Unknown cron action '{action}'", success=False)

@@ -39,6 +39,21 @@ is_termux() {
     [ -n "${TERMUX_VERSION:-}" ] || [[ "${PREFIX:-}" == *"com.termux/files/usr"* ]]
 }
 
+is_raspberry_pi2() {
+    # Detect Raspberry Pi 2 (ARMv7 32-bit)
+    # Check /proc/cpuinfo for Hardware line and /proc/model for revision
+    if grep -q "Raspberry Pi 2" /proc/cpuinfo 2>/dev/null; then
+        return 0
+    fi
+    # Fallback: check ARMv7 + 1GB RAM
+    if [ "$(uname -m)" == "armv7l" ] && [ -f /proc/meminfo ]; then
+        local mem_kb=$(grep MemTotal /proc/meminfo | awk '{print $2}')
+        local mem_mb=$((mem_kb / 1024))
+        [ "$mem_mb" -le 1024 ] && [ "$mem_mb" -ge 900 ] && return 0
+    fi
+    return 1
+}
+
 get_command_link_dir() {
     if is_termux && [ -n "${PREFIX:-}" ]; then
         echo "$PREFIX/bin"
@@ -176,6 +191,19 @@ fi
 if is_termux; then
     "$PYTHON_PATH" -m venv venv
     echo -e "${GREEN}✓${NC} venv created with stdlib venv"
+elif is_raspberry_pi2; then
+    # Pi2: use Python 3.10 (32-bit compatible) with stdlib venv
+    PYTHON_VERSION="3.10"
+    if command -v python3.10 >/dev/null 2>&1; then
+        PYTHON_PATH=$(command -v python3.10)
+    elif command -v python3 >/dev/null 2>&1; then
+        PYTHON_PATH=$(command -v python3)
+    else
+        echo -e "${RED}✗${NC} Python 3.10+ required for Pi2"
+        exit 1
+    fi
+    "$PYTHON_PATH" -m venv venv
+    echo -e "${GREEN}✓${NC} venv created (Python 3.10 for Pi2 ARMv7)"
 else
     $UV_CMD venv venv --python "$PYTHON_VERSION"
     echo -e "${GREEN}✓${NC} venv created (Python $PYTHON_VERSION)"
@@ -194,6 +222,7 @@ if is_termux; then
     export ANDROID_API_LEVEL="$(getprop ro.build.version.sdk 2>/dev/null || printf '%s' "${ANDROID_API_LEVEL:-}")"
     echo -e "${CYAN}→${NC} Termux detected — installing the tested Android bundle"
     "$SETUP_PYTHON" -m pip install --upgrade pip setuptools wheel
+    "$SETUP_PYTHON" -m pip install httpx
     if [ -f "constraints-termux.txt" ]; then
         "$SETUP_PYTHON" -m pip install -e ".[termux]" -c constraints-termux.txt || {
             echo -e "${YELLOW}⚠${NC} Termux bundle install failed, falling back to base install..."
@@ -203,6 +232,28 @@ if is_termux; then
         "$SETUP_PYTHON" -m pip install -e ".[termux]" || "$SETUP_PYTHON" -m pip install -e "."
     fi
     echo -e "${GREEN}✓${NC} Dependencies installed"
+elif is_raspberry_pi2; then
+    # Pi2: install base deps only (no extras to avoid uvloop/ffmpeg issues)
+    echo -e "${CYAN}→${NC} Raspberry Pi 2 detected — installing minimal CLI bundle"
+    echo -e "${CYAN}→${NC} (Skipping extras: web, cli, tty for ARMv7 compatibility)"
+    "$SETUP_PYTHON" -m pip install --upgrade pip setuptools wheel
+    "$SETUP_PYTHON" -m pip install httpx
+    # Install hermes-agent core deps (from pyproject.toml dependencies)
+    "$SETUP_PYTHON" -m pip install openai==2.24.0 certifi==2026.5.20 python-dotenv==1.2.2 fire==0.7.1 \
+        httpx==0.28.1 rich==14.3.3 tenacity==9.1.4 pyyaml==6.0.3 ruamel.yaml==0.18.17 \
+        requests==2.33.0 jinja2==3.1.6 pydantic==2.13.4 prompt_toolkit==3.0.52 croniter==6.0.0 \
+        psutil==7.2.2 ptyprocess pyjwt[crypto]==2.13.0 packaging==26.0 || {
+        echo -e "${RED}✗${NC} Core dependency installation failed"
+        exit 1
+    }
+    # Install RAG deps with SQLite backend (no scipy needed)
+    # honcho-ai has built-in RAG, no external dependencies needed
+    "$SETUP_PYTHON" -m pip install honcho-ai pypdf beautifulsoup4 || {
+        echo -e "${RED}✗${NC} Pi2 dependency installation failed"
+        exit 1
+    }
+    echo -e "${CYAN}→${NC} Installing RAG dependencies (SQLite backend for Pi2)..."
+    echo -e "${GREEN}✓${NC} Dependencies installed (Pi2 minimal + RAG)"
 else
     # Prefer uv sync with lockfile (hash-verified installs) when available,
     # fall back to pip install for compatibility or when lockfile is stale.
@@ -216,7 +267,7 @@ else
     _ALL_EXTRAS=(
         modal daytona messaging matrix cron cli dev tts-premium slack
         pty honcho mcp homeassistant sms acp voice dingtalk feishu google
-        bedrock web youtube
+        bedrock youtube
     )
     _SAFE_EXTRAS=()
     for _e in "${_ALL_EXTRAS[@]}"; do
@@ -232,6 +283,7 @@ else
             || $UV_CMD pip install -e "$_SAFE_SPEC" \
             || $UV_CMD pip install -e "."
     }
+    $UV_CMD pip install httpx
 
     if [ -f "uv.lock" ]; then
         # Hash-verified install (preferred). The lockfile records SHA256

@@ -197,30 +197,6 @@ class GatewayStreamConsumer:
         # this response and route through edit-based for graceful degradation.
         self._draft_failures = 0
 
-    def _metadata_for_send(
-        self,
-        *,
-        final: bool = False,
-        expect_edits: bool = False,
-    ) -> dict | None:
-        """Return per-send metadata for stream-created messages.
-
-        Mattermost treats notify-worthy sends as user-visible final content
-        when deciding whether a broken thread root may fall back flat.  Preview
-        and progress sends keep their original metadata and remain thread-strict.
-
-        ``expect_edits`` preserves the upstream Telegram streaming contract:
-        preview messages that may be edited later must stay on the editable
-        legacy send path, while fresh/fallback final sends can still use richer
-        final-message delivery.
-        """
-        meta = dict(self.metadata) if self.metadata else {}
-        if expect_edits:
-            meta["expect_edits"] = True
-        if final:
-            meta["notify"] = True
-        return meta or None
-
     @property
     def already_sent(self) -> bool:
         """True if at least one message was sent or edited during the run."""
@@ -537,11 +513,7 @@ class GatewayStreamConsumer:
                         chunks_delivered = False
                         reply_to = self._message_id or self._initial_reply_to_id
                         for chunk in chunks:
-                            new_id = await self._send_new_chunk(
-                                chunk,
-                                reply_to,
-                                final=got_done,
-                            )
+                            new_id = await self._send_new_chunk(chunk, reply_to)
                             if new_id is not None and new_id != reply_to:
                                 chunks_delivered = True
                         self._accumulated = ""
@@ -777,13 +749,7 @@ class GatewayStreamConsumer:
         # Strip trailing whitespace/newlines but preserve leading content
         return cleaned.rstrip()
 
-    async def _send_new_chunk(
-        self,
-        text: str,
-        reply_to_id: Optional[str],
-        *,
-        final: bool = False,
-    ) -> Optional[str]:
+    async def _send_new_chunk(self, text: str, reply_to_id: Optional[str]) -> Optional[str]:
         """Send a new message chunk, optionally threaded to a previous message.
 
         Returns the message_id so callers can thread subsequent chunks.
@@ -792,11 +758,15 @@ class GatewayStreamConsumer:
         if not text.strip():
             return reply_to_id
         try:
+            meta = dict(self.metadata) if self.metadata else {}
+            # This chunk becomes the next edit target — adapters that support
+            # rich final sends (Telegram) must keep it on the editable path.
+            meta["expect_edits"] = True
             result = await self.adapter.send(
                 chat_id=self.chat_id,
                 content=text,
                 reply_to=reply_to_id,
-                metadata=self._metadata_for_send(final=final, expect_edits=True),
+                metadata=meta,
             )
             if result.success and result.message_id:
                 self._message_id = str(result.message_id)
@@ -915,7 +885,7 @@ class GatewayStreamConsumer:
                 result = await self.adapter.send(
                     chat_id=self.chat_id,
                     content=chunk,
-                    metadata=self._metadata_for_send(final=True),
+                    metadata=self.metadata,
                 )
                 if result.success:
                     break
@@ -1272,7 +1242,7 @@ class GatewayStreamConsumer:
             result = await self.adapter.send(
                 chat_id=self.chat_id,
                 content=text,
-                metadata=self._metadata_for_send(final=True),
+                metadata=self.metadata,
             )
         except Exception as e:
             logger.debug("Fresh-final send failed, falling back to edit: %s", e)
@@ -1562,10 +1532,7 @@ class GatewayStreamConsumer:
                     chat_id=self.chat_id,
                     content=text,
                     reply_to=self._initial_reply_to_id,
-                    metadata=self._metadata_for_send(
-                        final=finalize,
-                        expect_edits=True,
-                    ),
+                    metadata={**(self.metadata or {}), "expect_edits": True},
                 )
                 if result.success:
                     if result.message_id:

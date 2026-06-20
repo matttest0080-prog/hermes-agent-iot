@@ -201,6 +201,14 @@ the competing PRs into plugins against that interface.
 
 ## Development Environment
 
+### Raspberry Pi 2 (ARMv7 32-bit)
+
+For ARMv7 32-bit targets (e.g., Raspberry Pi 2), use `llama.cpp` compiled with NEON support and disable AVX/AVX2 flags. See `README_PI2.md` for full instructions.
+
+```bash
+make LLAMA_AVX2=OFF LLAMA_AVX=OFF LLAMA_F16C=OFF LLAMA_FMA=OFF
+```
+
 ```bash
 # Prefer .venv; fall back to venv if that's what your checkout has.
 source .venv/bin/activate   # or: source venv/bin/activate
