@@ -93,13 +93,27 @@ if [ ! -f "$REPO_DIR/.env" ]; then
 fi
 
 # ---- 建立 hermes 指令捷徑 ----
+echo "==> [Pi2] 檢查舊版 hermes 指令"
 LINK_TARGET="$HOME/.local/bin/hermes"
 mkdir -p "$HOME/.local/bin"
+
+# Remove existing files and broken symlinks before writing the wrapper.
+# A broken symlink makes -e/-f false but redirection still follows it and fails.
+if [ -e "$LINK_TARGET" ] || [ -L "$LINK_TARGET" ]; then
+  echo "發現舊版 hermes：$LINK_TARGET"
+  if [ -L "$LINK_TARGET" ]; then
+    echo "移除符號連結：$LINK_TARGET"
+  else
+    echo "移除檔案：$LINK_TARGET"
+  fi
+  rm -f "$LINK_TARGET"
+fi
+
 if [ -f "$REPO_DIR/cli.py" ]; then
   cat > "$LINK_TARGET" <<EOF
 #!/bin/bash
 source "$VENV_DIR/bin/activate"
-python "$REPO_DIR/cli.py" "\$@"
+"$VENV_DIR/bin/python" "$REPO_DIR/cli.py" "\$@"
 EOF
   chmod +x "$LINK_TARGET"
   echo "==> 'hermes' 指令已安裝到 $LINK_TARGET"

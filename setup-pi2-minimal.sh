@@ -88,23 +88,28 @@ fi
 
 # ---- 檢查並清除舊版 hermes ----
 echo "==> [Pi2] 檢查舊版 hermes 指令"
-if [ -f "$HOME/.local/bin/hermes" ]; then
-  echo "發現舊版 hermes：$HOME/.local/bin/hermes"
-  if [ -L "$HOME/.local/bin/hermes" ]; then
-    echo "移除符號連結：$HOME/.local/bin/hermes"
-    rm -f "$HOME/.local/bin/hermes"
+LINK_TARGET="$HOME/.local/bin/hermes"
+install -d "$HOME/.local/bin"
+
+# Use -e OR -L: a broken symlink makes -e/-f false but still breaks
+# redirection ("No such file or directory") because the shell follows it.
+if [ -e "$LINK_TARGET" ] || [ -L "$LINK_TARGET" ]; then
+  echo "發現舊版 hermes：$LINK_TARGET"
+  if [ -L "$LINK_TARGET" ]; then
+    echo "移除符號連結：$LINK_TARGET"
   else
-    echo "移除檔案：$HOME/.local/bin/hermes"
-    rm -f "$HOME/.local/bin/hermes"
+    echo "移除檔案：$LINK_TARGET"
   fi
+  rm -f "$LINK_TARGET"
 fi
 
 # ---- 建立 hermes 指令捷徑 ----
-LINK_TARGET="$HOME/.local/bin/hermes"
-install -d "$HOME/.local/bin"
 if [ -f "$REPO_DIR/cli.py" ]; then
-  printf '#!/bin/bash\nsource "%s/bin/activate"\npython "%s/cli.py" "$@"\n' \
-    "$VENV_DIR" "$REPO_DIR" > "$LINK_TARGET"
+  cat > "$LINK_TARGET" <<EOF
+#!/bin/bash
+source "$VENV_DIR/bin/activate"
+"$VENV_DIR/bin/python" "$REPO_DIR/cli.py" "\$@"
+EOF
   chmod +x "$LINK_TARGET"
   echo "==> 'hermes' 指令已安裝到 $LINK_TARGET"
 else
