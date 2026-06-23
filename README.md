@@ -64,7 +64,7 @@ pip install --upgrade pip
 Use a shallow clone so Raspberry Pi 2 does not download the full upstream Git history.
 
 ```bash
-git clone --depth 1 https://github.com/Matt0080828/hermes-agent-iot.git
+git clone --depth 1 https://github.com/matttest0080-prog/hermes-agent-iot.git
 cd hermes-agent-iot
 bash setup-pi2-minimal.sh
 ```
@@ -72,7 +72,7 @@ bash setup-pi2-minimal.sh
 **Option B: Source archive + auto-setup (smallest download, no Git history)**
 
 ```bash
-wget -O hermes-agent-iot.tar.gz https://github.com/Matt0080828/hermes-agent-iot/archive/refs/heads/main.tar.gz
+wget -O hermes-agent-iot.tar.gz https://github.com/matttest0080-prog/hermes-agent-iot/archive/refs/heads/main.tar.gz
 tar -xzf hermes-agent-iot.tar.gz
 cd hermes-agent-iot-main
 bash setup-pi2-minimal.sh
@@ -81,7 +81,7 @@ bash setup-pi2-minimal.sh
 **Option C: Manual setup**
 
 ```bash
-git clone --depth 1 https://github.com/Matt0080828/hermes-agent-iot.git
+git clone --depth 1 https://github.com/matttest0080-prog/hermes-agent-iot.git
 cd hermes-agent-iot
 python3 -m venv ~/.hermes-venv
 source ~/.hermes-venv/bin/activate
@@ -318,7 +318,7 @@ huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF \
 
 ## Repository
 
-- **GitHub**: https://github.com/Matt0080828/hermes-agent-iot
+- **GitHub**: https://github.com/matttest0080-prog/hermes-agent-iot
 - **Tags**: `v11.1-pi2` (latest)
 
 ## Sync Strategy

@@ -169,8 +169,8 @@ EOF
 #### 6. Install Hermes Agent
 
 ```bash
-git clone https://github.com/Matt0080828/new_agent.git
-cd new_agent
+git clone https://github.com/matttest0080-prog/hermes-agent-iot.git
+cd hermes-agent-iot
 pip install -e .
 ```
 
@@ -305,7 +305,7 @@ cd ~/llama.cpp
 #!/bin/bash
 # Start Hermes Agent
 
-cd ~/new_agent
+cd ~/hermes-agent-iot
 source ~/.hermes-venv/bin/activate
 hermes
 ```
@@ -351,7 +351,7 @@ Expected output:
 
 **Version**: v0.2-pi2  \
 **Author**: Matt0080828  \
-**Repository**: https://github.com/Matt0080828/new_agent
+**Repository**: https://github.com/matttest0080-prog/hermes-agent-iot
 
 ---
 
@@ -374,7 +374,7 @@ sudo apt install -y python3 python3-pip python3-venv build-essential git wget
 
 # Step 2: Clone hermes-agent (shallow)
 echo "Step 2: Cloning hermes-agent (shallow)..."
-git clone --depth=1 https://github.com/Matt0080828/new_agent.git ~/new_agent
+git clone --depth=1 https://github.com/matttest0080-prog/hermes-agent-iot.git ~/hermes-agent-iot
 
 # Step 3: Create virtual environment
 echo "Step 3: Creating virtual environment..."
@@ -383,7 +383,7 @@ source ~/.hermes-venv/bin/activate
 
 # Step 4: Install hermes-agent
 echo "Step 4: Installing hermes-agent..."
-cd ~/new_agent
+cd ~/hermes-agent-iot
 pip install -e .
 
 # Step 5: Install RAG dependencies
@@ -427,7 +427,7 @@ echo "Next steps:"
 echo "1. Build llama.cpp: cd ~/ && git clone https://github.com/ggerganov/llama.cpp.git && cd llama.cpp && make -j\$(nproc) LLAMA_AVX2=OFF LLAMA_AVX=OFF"
 echo "2. Download model: huggingface-cli download Qwen/Qwen2.5-7B-Instruct-GGUF qwen2.5-7b-instruct-q4_k_m.gguf --local-dir ~"
 echo "3. Start server: cd ~/llama.cpp && ./server -m ~/qwen2.5-7b-instruct-q4_k_m.gguf -c 2048 --port 8080"
-echo "4. Run hermes: cd ~/new_agent && source ~/.hermes-venv/bin/activate && hermes"
+echo "4. Run hermes: cd ~/hermes-agent-iot && source ~/.hermes-venv/bin/activate && hermes"
 ```
 
 ### Memory optimization settings (1GB RAM)
