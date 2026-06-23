@@ -57,20 +57,23 @@ source ~/.hermes-venv/bin/activate
 pip install --upgrade pip
 ```
 
-### Step 3: Install Hermes Agent
+### Step 3: Install Hermes Agent (Pi2 Minimal)
 
 ```bash
-git clone https://github.com/matttest0080-prog/hermes-agent-iot.git
+git clone https://github.com/Matt0080828/hermes-agent-iot.git
 cd hermes-agent-iot
-./setup-hermes.sh
+bash setup-pi2.sh
 ```
 
 ### Step 4: Install RAG Dependencies (Pi2 Optimized)
 
-**Note**: For Raspberry Pi 2 (1GB RAM), use SQLite backend for `sqlite-vec` to avoid gRPC dependency.
+**Note**: For Raspberry Pi 2 (1GB RAM), RAG dependencies are already installed in `setup-pi2.sh`.
+Skip this step unless you need to manually install.
 
 ```bash
-pip install honcho-ai sentence-transformers pypdf beautifulsoup4
+# Already included in setup-pi2.sh: honcho, chromadb, sentence-transformers, pypdf, beautifulsoup4
+# If manual install needed:
+pip install honcho-ai chromadb sentence-transformers pypdf beautifulsoup4
 ```
 
 ### Step 5: Configure Hermes
@@ -81,31 +84,76 @@ mkdir -p ~/.hermes
 
 # Create config file
 cat > ~/.hermes/config.yaml << 'EOF'
+# Hermes Agent config for Raspberry Pi 2 (ARMv7 32-bit, 1GB RAM)
+# Based on hermes-agent 0.17.0
+
 models:
-  - name: "custom:qwen2.5-7b"
-    base_url: "http://localhost:8080/v1"
-    api_key: "not-used"
+  default: "custom:qwen2.5-7b"
+  provider: custom
+  base_url: "http://localhost:8080/v1"
 
 providers:
-  - name: "custom"
-    provider: "openai_compatible"
+  custom:
     base_url: "http://localhost:8080/v1"
     api_key: "not-used"
+    models:
+      - "qwen2.5-7b"
+
+fallback_providers: []
+
+toolsets:
+  - hermes-cli
+
+agent:
+  max_turns: 150
 
 memory:
   memory_enabled: true
   user_profile_enabled: true
   memory_char_limit: 2200
   user_char_limit: 1375
-  provider: "honcho"
+  provider: honcho
   nudge_interval: 10
   flush_min_turns: 6
 
-tools:
-  - memory
-  - skills
-  - terminal
-  - session_search
+display:
+  compact: false
+  personality: concise
+
+terminal:
+  backend: local
+  timeout: 180
+
+web:
+  backend: ""
+  search_backend: ""
+  extract_backend: ""
+
+browser:
+  inactivity_timeout: 120
+
+compression:
+  enabled: true
+  threshold: 0.5
+
+kanban:
+  dispatch_in_gateway: true
+
+prompt_caching:
+  cache_ttl: 5m
+
+openrouter:
+  response_cache: true
+
+display:
+  personality: concise
+  skin: default
+
+logging:
+  level: INFO
+
+sync_config:
+  hermes_agent_version: "0.17.0"
 EOF
 ```
 
@@ -126,14 +174,15 @@ EOF
 
 2. **On Raspberry Pi 2 (client)**:
    - Find the x86_64 machine IP (e.g., `192.168.1.100`)
-   - Update config.yaml:
+   - Update `~/.hermes/config.yaml`:
    ```yaml
    models:
-     - name: "custom:qwen2.5-7b"
-       base_url: "http://192.168.1.100:1234/v1"
+     default: "custom:qwen2.5-7b"
+     provider: custom
+     base_url: "http://192.168.1.100:1234/v1"
 
    providers:
-     - name: "custom"
+     custom:
        base_url: "http://192.168.1.100:1234/v1"
    ```
 
@@ -229,11 +278,12 @@ huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF \
 | `v0.8-pi2` | Add explicit httpx install in setup script |
 | `v0.9-pi2` | Add Nous Research origin attribution |
 | `v10.0-pi2` | Add SYNC_STRATEGY.md for hermes-agent 0.17.0 sync process |
+| `v11.0-pi2` | Remove Docker deps, add setup-pi2.sh, Pi2 minimal config |
 
 ## Repository
 
-- **GitHub**: https://github.com/matttest0080-prog/hermes-agent-iot
-- **Tags**: `v10.0-pi2` (latest) |
+- **GitHub**: https://github.com/Matt0080828/hermes-agent-iot
+- **Tags**: `v11.0-pi2` (latest) |
 
 ## Sync Strategy
 
