@@ -97,6 +97,8 @@ python "$REPO_DIR/cli.py" "\$@"
 EOF
   chmod +x "$LINK_TARGET"
   echo "==> 'hermes' 指令已安裝到 $LINK_TARGET"
+else
+  echo "警告：找不到 cli.py，跳過 hermes 指令建立"
 fi
 
 echo ""
