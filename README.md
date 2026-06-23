@@ -59,24 +59,37 @@ pip install --upgrade pip
 
 ### Step 3: Install Hermes Agent (Pi2 Optimized)
 
-**Option A: Auto-setup (Recommended)**
+**Option A: Shallow clone + auto-setup (Recommended for Pi2)**
+
+Use a shallow clone so Raspberry Pi 2 does not download the full upstream Git history.
 
 ```bash
-git clone https://github.com/Matt0080828/hermes-agent-iot.git
+git clone --depth 1 https://github.com/Matt0080828/hermes-agent-iot.git
 cd hermes-agent-iot
 bash setup-pi2-minimal.sh
 ```
 
-**Option B: Manual setup**
+**Option B: Source archive + auto-setup (smallest download, no Git history)**
 
 ```bash
-git clone https://github.com/Matt0080828/hermes-agent-iot.git
+wget -O hermes-agent-iot.tar.gz https://github.com/Matt0080828/hermes-agent-iot/archive/refs/heads/main.tar.gz
+tar -xzf hermes-agent-iot.tar.gz
+cd hermes-agent-iot-main
+bash setup-pi2-minimal.sh
+```
+
+**Option C: Manual setup**
+
+```bash
+git clone --depth 1 https://github.com/Matt0080828/hermes-agent-iot.git
 cd hermes-agent-iot
 python3 -m venv ~/.hermes-venv
 source ~/.hermes-venv/bin/activate
 pip install --upgrade pip
 pip install openai==2.24.0 certifi python-dotenv fire "httpx[socks]" rich tenacity pyyaml ruamel.yaml requests jinja2 pydantic prompt_toolkit croniter packaging Markdown "PyJWT[crypto]" "urllib3>=2.7.0,<3" psutil websockets pathspec ptyprocess
 ```
+
+Pi2 note: this repository intentionally does not track `uv.lock`, `package-lock.json`, or `flake.lock`; those lock files are large and are not needed for the minimal Pi2 install path.
 
 ### Step 4: Install RAG Dependencies (Pi2 Optimized)
 
