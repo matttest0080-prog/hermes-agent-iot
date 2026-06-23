@@ -86,6 +86,19 @@ if [ ! -f "$REPO_DIR/.env" ]; then
   fi
 fi
 
+# ---- 檢查並清除舊版 hermes ----
+echo "==> [Pi2] 檢查舊版 hermes 指令"
+if [ -f "$HOME/.local/bin/hermes" ]; then
+  echo "發現舊版 hermes：$HOME/.local/bin/hermes"
+  if [ -L "$HOME/.local/bin/hermes" ]; then
+    echo "移除符號連結：$HOME/.local/bin/hermes"
+    rm -f "$HOME/.local/bin/hermes"
+  else
+    echo "移除檔案：$HOME/.local/bin/hermes"
+    rm -f "$HOME/.local/bin/hermes"
+  fi
+fi
+
 # ---- 建立 hermes 指令捷徑 ----
 LINK_TARGET="$HOME/.local/bin/hermes"
 install -d "$HOME/.local/bin"
