@@ -1,41 +1,41 @@
 # Hermes Agent on Raspberry Pi 2 (ARMv7 32-bit)
-## 安裝與操作手冊
+## Installation and Operation Manual
 
 ---
 
-## 目錄
-1. [硬體與系統需求](#硬體與系統需求)
-2. [安裝步驟](#安裝步驟)
-3. [使用 lm-studio (推薦)](#使用-lm-studio-推薦)
-4. [使用 llama.cpp (進階)](#使用-llamacpp-進階)
-5. [常見問題](#常見問題)
+## Table of Contents
+1. [Hardware and System Requirements](#hardware-and-system-requirements)
+2. [Installation Steps](#installation-steps)
+3. [Using lm-studio (Recommended)](#using-lm-studio-recommended)
+4. [Using llama.cpp (Advanced)](#using-llamacpp-advanced)
+5. [FAQ](#faq)
 
 ---
 
-## 硬體與系統需求
+## Hardware and System Requirements
 
-| 項目 | 規格 |
-|------|------|
-| 裝置 | Raspberry Pi 2 Model B |
+| Item | Specification |
+|------|---------------|
+| Device | Raspberry Pi 2 Model B |
 | CPU | ARMv7 900MHz (4 cores) |
 | RAM | 1GB LPDDR2 |
-| 存儲 | microSD 卡 (至少 8GB) |
+| Storage | microSD card (at least 8GB) |
 | OS | Raspberry Pi OS Lite (32-bit) |
 
-**注意：** Raspberry Pi 2 為 32-bit ARM 架構，不支援 64-bit 軟體。
+**Note:** Raspberry Pi 2 uses a 32-bit ARM architecture and does not support 64-bit software.
 
 ---
 
-## 安裝步驟
+## Installation Steps
 
-### 1. 更新系統
+### 1. Update the system
 
 ```bash
 sudo apt update && sudo apt upgrade -y
 sudo apt install -y python3 python3-pip python3-venv build-essential git wget
 ```
 
-### 2. 建立虛擬環境
+### 2. Create a virtual environment
 
 ```bash
 python3 -m venv ~/.hermes-venv
@@ -43,7 +43,7 @@ source ~/.hermes-venv/bin/activate
 pip install --upgrade pip
 ```
 
-### 3. 安裝 Hermes Agent 依賴
+### 3. Install Hermes Agent dependencies
 
 ```bash
 pip install honcho-ai sentence-transformers pypdf beautifulsoup4
@@ -51,56 +51,56 @@ pip install honcho-ai sentence-transformers pypdf beautifulsoup4
 
 ---
 
-## 使用 lm-studio (推薦)
+## Using lm-studio (Recommended)
 
-### 優點
-- ✅ 圖形化介面，易於操作
-- ✅ 無需編譯 llama.cpp
-- ✅ 支援模型熱切換
-- ✅ 內建模型下載功能
+### Advantages
+- ✅ Graphical interface, easy to operate
+- ✅ No need to compile llama.cpp
+- ✅ Supports hot-swapping models
+- ✅ Built-in model download support
 
-### 缺點
-- ⚠️ 需要圖形界面（桌面環境）
+### Disadvantages
+- ⚠️ Requires a graphical interface (desktop environment)
 
-### 安裝 lm-studio
+### Install lm-studio
 
 ```bash
-# 下載 lm-studio for Linux
+# Download lm-studio for Linux
 wget https://github.com/lmstudio-ai/lmstudio/releases/download/v0.4.0/lmstudio_0.4.0_amd64.deb
 sudo dpkg -i lmstudio_0.4.0_amd64.deb
 ```
 
-**注意：** Raspberry Pi 2 為 ARMv7，需編譯 lm-studio 或使用 Web 版本。
+**Note:** Raspberry Pi 2 is ARMv7, so lm-studio must be compiled for ARM or used through a web version.
 
-### 替代方案：使用 Web API (推薦)
+### Alternative: Use a Web API (Recommended)
 
-#### 1. 安裝 llama.cpp Web Server (ARMv7)
+#### 1. Install the llama.cpp Web Server (ARMv7)
 
 ```bash
 # Clone llama.cpp
 git clone https://github.com/ggerganov/llama.cpp.git
 cd llama.cpp
 
-# 編譯 (禁用 AVX/AVX2，啟用 NEON)
+# Compile (disable AVX/AVX2, enable NEON)
 make clean
 make -j$(nproc) LLAMA_AVX2=OFF LLAMA_AVX=OFF LLAMA_F16C=OFF LLAMA_FMA=OFF server
 
 cd ..
 ```
 
-#### 2. 下載 Qwen2.5-7B GGUF 模型
+#### 2. Download the Qwen2.5-7B GGUF model
 
 ```bash
-# 使用 huggingface-cli 下載
+# Install huggingface-cli
 pip install huggingface_hub
 
-# 下載模型（q4_k_m 量化版，約 4.6GB）
+# Download the model (q4_k_m quantized version, about 4.6GB)
 huggingface-cli download Qwen/Qwen2.5-7B-Instruct-GGUF \
     qwen2.5-7b-instruct-q4_k_m.gguf \
     --local-dir ~
 ```
 
-#### 3. 啟動 llama.cpp 服務
+#### 3. Start the llama.cpp service
 
 ```bash
 cd ~/llama.cpp
@@ -111,17 +111,17 @@ cd ~/llama.cpp
     --n_gpu_layers 0
 ```
 
-**參數說明：**
-- `-c 2048`: context size (樹莓派 2 RAM 限制)
-- `--n_gpu_layers 0`: 不使用 GPU (樹莓派 2 無 CUDA)
+**Parameter notes:**
+- `-c 2048`: context size (limited by Raspberry Pi 2 RAM)
+- `--n_gpu_layers 0`: do not use GPU (Raspberry Pi 2 has no CUDA)
 
-#### 4. 測試 API
+#### 4. Test the API
 
 ```bash
 curl http://localhost:8080/v1/models
 ```
 
-應返回：
+Expected response:
 ```json
 {
   "data": [
@@ -133,10 +133,10 @@ curl http://localhost:8080/v1/models
 }
 ```
 
-#### 5. 配置 Hermes Agent
+#### 5. Configure Hermes Agent
 
 ```bash
-# 建立設定檔
+# Create the config file
 cat > ~/.hermes/config.yaml << 'EOF'
 models:
   - name: "custom:qwen2.5-7b"
@@ -166,7 +166,7 @@ tools:
 EOF
 ```
 
-#### 6. 安裝 Hermes Agent
+#### 6. Install Hermes Agent
 
 ```bash
 git clone https://github.com/Matt0080828/new_agent.git
@@ -174,7 +174,7 @@ cd new_agent
 pip install -e .
 ```
 
-#### 7. 啟動 Hermes Agent
+#### 7. Start Hermes Agent
 
 ```bash
 source ~/.hermes-venv/bin/activate
@@ -183,46 +183,46 @@ hermes
 
 ---
 
-## 使用 llama.cpp (進階)
+## Using llama.cpp (Advanced)
 
-### 優點
-- ✅ 純命令列，無圖形界面需求
-- ✅ 更佳的資源控制
-- ✅ 支援 GPU 加速 (Raspberry Pi 2 無效)
+### Advantages
+- ✅ Pure command line, no graphical interface required
+- ✅ Better resource control
+- ✅ Supports GPU acceleration (not useful on Raspberry Pi 2)
 
-### 缺點
-- ⚠️ 需要編譯 (耗時約 15-30 分鐘)
-- ⚠️ 需要手動管理模型
+### Disadvantages
+- ⚠️ Requires compilation (about 15-30 minutes)
+- ⚠️ Requires manual model management
 
-### 安裝步驟
+### Installation Steps
 
-#### 1. 編譯 llama.cpp
+#### 1. Compile llama.cpp
 
 ```bash
 git clone https://github.com/ggerganov/llama.cpp.git
 cd llama.cpp
 
-# 編譯 (ARMv7 32-bit)
+# Compile (ARMv7 32-bit)
 make clean
 make -j$(nproc) LLAMA_AVX2=OFF LLAMA_AVX=OFF LLAMA_F16C=OFF LLAMA_FMA=OFF
 
-# 測試編譯
+# Test the build
 ./llama-cli --version
 ```
 
-#### 2. 下載模型
+#### 2. Download the model
 
 ```bash
-# 使用 huggingface-cli
+# Use huggingface-cli
 pip install huggingface_hub
 
-# 下載 Qwen2.5-7B (q4_k_m 量化)
+# Download Qwen2.5-7B (q4_k_m quantized)
 huggingface-cli download Qwen/Qwen2.5-7B-Instruct-GGUF \
     qwen2.5-7b-instruct-q4_k_m.gguf \
     --local-dir ~
 ```
 
-#### 3. 啟動 Server
+#### 3. Start the server
 
 ```bash
 cd ~/llama.cpp
@@ -232,7 +232,7 @@ cd ~/llama.cpp
     -np 1
 ```
 
-#### 4. 測試
+#### 4. Test
 
 ```bash
 curl http://localhost:8080/v1/chat/completions \
@@ -246,51 +246,51 @@ curl http://localhost:8080/v1/chat/completions \
 
 ---
 
-## 常見問題
+## FAQ
 
-### Q1: 編譯 llama.cpp 時記憶體不足？
+### Q1: Not enough memory when compiling llama.cpp?
 
-**解決方案：** 使用更少的核心
+**Solution:** Use fewer cores.
 ```bash
-make -j2 LLAMA_AVX2=OFF LLAMA_AVX=OFF  # 僅使用 2 個核心
+make -j2 LLAMA_AVX2=OFF LLAMA_AVX=OFF  # Use only 2 cores
 ```
 
-### Q2: 模型載入失敗？
+### Q2: Model loading failed?
 
-**原因：** GGUF 模型過大 (4.6GB)，超出 RAM
-**解決方案：**
-- 使用更小的模型 (如 `qwen2.5-1.5B`)
-- 使用 `--n_ctx` 參數減少 context size
+**Reason:** The GGUF model is too large (4.6GB) and exceeds available RAM.
+**Solution:**
+- Use a smaller model, such as `qwen2.5-1.5B`
+- Use the `--n_ctx` parameter to reduce context size
 
 ```bash
 ./server -m ~/qwen2.5-1.5b-instruct-q4_k_m.gguf -c 1024 --port 8080
 ```
 
-### Q3: hermes 启动时显示 no module named .honcho-ai.？
+### Q3: Hermes shows `no module named honcho-ai` on startup?
 
-**解決方案：**
+**Solution:**
 ```bash
 source ~/.hermes-venv/bin/activate
 pip install honcho-ai sentence-transformers pypdf beautifulsoup4
 ```
 
-### Q4: 如何設定記憶體限制？
+### Q4: How do I configure memory limits?
 
-在 `~/.hermes/config.yaml` 中調整：
+Adjust `~/.hermes/config.yaml`:
 ```yaml
 memory:
-  memory_char_limit: 1500   # 減少記憶體使用
+  memory_char_limit: 1500   # Reduce memory usage
   user_char_limit: 800
 ```
 
 ---
 
-## 快速啟動腳本
+## Quick Start Scripts
 
 ### start_lm_server.sh
 ```bash
 #!/bin/bash
-# 啟動 llama.cpp 服務
+# Start the llama.cpp service
 
 cd ~/llama.cpp
 ./server -m ~/qwen2.5-7b-instruct-q4_k_m.gguf \
@@ -303,34 +303,34 @@ cd ~/llama.cpp
 ### start_hermes.sh
 ```bash
 #!/bin/bash
-# 啟動 Hermes Agent
+# Start Hermes Agent
 
 cd ~/new_agent
 source ~/.hermes-venv/bin/activate
 hermes
 ```
 
-### 使用方式
+### Usage
 ```bash
-# Terminal 1 - 啟動模型服務
+# Terminal 1 - start the model service
 chmod +x start_lm_server.sh
 ./start_lm_server.sh
 
-# Terminal 2 - 啟動 Hermes
+# Terminal 2 - start Hermes
 chmod +x start_hermes.sh
 ./start_hermes.sh
 ```
 
 ---
 
-## 驗證測試
+## Verification Test
 
-在 Hermes CLI 中輸入：
+In the Hermes CLI, enter:
 ```
 /hermes tools list
 ```
 
-應顯示：
+Expected output:
 ```
 ✓ enabled  memory          💾 Memory
 ✓ enabled  skills          🛠 Skills
@@ -340,24 +340,24 @@ chmod +x start_hermes.sh
 
 ---
 
-## 注意事項
+## Notes
 
-1. **樹莓派 2 為 32-bit ARM**，請確保所有軟體均支援 ARMv7
-2. **記憶體有限** (1GB)，避免同時運行多個模型
-3. **使用量化模型** (q4_k_m, q5_k_m) 減少記憶體使用
-4. **使用虛擬環境** 避免系統 Python 衝突
+1. **Raspberry Pi 2 is 32-bit ARM**, so make sure all software supports ARMv7.
+2. **Memory is limited** (1GB), so avoid running multiple models at the same time.
+3. **Use quantized models** (q4_k_m, q5_k_m) to reduce memory usage.
+4. **Use a virtual environment** to avoid conflicts with the system Python.
 
 ---
 
-**版本**: v0.2-pi2  \
-**作者**: Matt0080828  \
+**Version**: v0.2-pi2  \
+**Author**: Matt0080828  \
 **Repository**: https://github.com/Matt0080828/new_agent
 
 ---
 
-## 快速遷移腳本 (New Machine)
+## Quick Migration Script (New Machine)
 
-### 一键迁移到新 Raspberry Pi 2
+### One-click migration to a new Raspberry Pi 2
 
 ```bash
 #!/bin/bash
@@ -430,24 +430,24 @@ echo "3. Start server: cd ~/llama.cpp && ./server -m ~/qwen2.5-7b-instruct-q4_k_
 echo "4. Run hermes: cd ~/new_agent && source ~/.hermes-venv/bin/activate && hermes"
 ```
 
-### 記憶體優化設定 (1GB RAM)
+### Memory optimization settings (1GB RAM)
 
-若系統記憶體不足，調整 `~/.hermes/config.yaml`：
+If system memory is insufficient, adjust `~/.hermes/config.yaml`:
 
 ```yaml
 memory:
-  memory_char_limit: 1000   # 減少記憶體使用
+  memory_char_limit: 1000   # Reduce memory usage
   user_char_limit: 500
 ```
 
-### 使用更小模型 (512MB RAM)
+### Use a smaller model (512MB RAM)
 
 ```bash
-# 下載更小的模型
+# Download a smaller model
 huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF \
     qwen2.5-1.5b-instruct-q4_k_m.gguf \
     --local-dir ~
 
-# 啟動服務
+# Start the service
 ./server -m ~/qwen2.5-1.5b-instruct-q4_k_m.gguf -c 1024 --port 8080
 ```

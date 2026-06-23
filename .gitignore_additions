@@ -1,37 +1,37 @@
 # ============================================================
-# 以下內容加入到 hermes-agent-iot/.gitignore 的末尾
-# (Pi2 / IoT 優化：移除不必要的大型鎖定檔)
+# Add the following entries to the end of hermes-agent-iot/.gitignore
+# (Pi2 / IoT optimization: remove unnecessary large lock files)
 # ============================================================
 
-# UV / pip lock files (在 Pi2 上用 pip 直接裝，不需要 uv.lock)
+# UV / pip lock files (Pi2 installs directly with pip; uv.lock is not needed)
 uv.lock
 
-# Node.js lock file (Pi2 通常不跑 Node，lock 可在需要時 npm install 產生)
+# Node.js lock files (Pi2 usually does not run Node; npm can regenerate locks when needed)
 package-lock.json
 yarn.lock
 
-# Nix 環境 (Pi2 不使用 Nix)
+# Nix environment (Pi2 does not use Nix)
 flake.lock
 
-# Docker (Pi2 1GB RAM 無法跑 Docker)
+# Docker (Pi2 has 1GB RAM and cannot run Docker comfortably)
 Dockerfile
 docker-compose.yml
 docker-compose*.yml
 
-# llama.cpp 編譯產物 (clone 後在本機 make)
+# llama.cpp build artifacts (built locally after clone)
 llama.cpp/
 *.o
 *.a
 
-# HuggingFace 模型快取 (太大，透過 setup script 下載)
+# HuggingFace model cache (large; download via setup scripts)
 models/
 *.gguf
 *.bin
 *.safetensors
 .cache/huggingface/
 
-# RAG 改用 honcho-ai（雲端），不再需要本機 chromadb/向量庫
-# 以下為保留項目，避免舊資料意外被 commit
+# RAG uses honcho-ai (cloud), so local chromadb/vector stores are no longer needed
+# Keep these entries to avoid accidentally committing old local data
 .chromadb/
 chroma.sqlite3
 ~/work/work_RAG/

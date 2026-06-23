@@ -1,8 +1,8 @@
 #!/bin/bash
 # ============================================================
 # setup-pi2-minimal.sh
-# Raspberry Pi 2B (ARMv7, 1GB RAM) 最小化安裝腳本
-# 用法：bash setup-pi2-minimal.sh
+# Minimal install script for Raspberry Pi 2B (ARMv7, 1GB RAM)
+# Usage: bash setup-pi2-minimal.sh
 # ============================================================
 
 set -e
@@ -11,14 +11,14 @@ PYTHON=python3
 VENV_DIR="$HOME/.hermes-venv"
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-echo "==> [Pi2] 建立虛擬環境 ($VENV_DIR)"
+echo "==> [Pi2] Creating virtual environment ($VENV_DIR)"
 $PYTHON -m venv "$VENV_DIR"
 source "$VENV_DIR/bin/activate"
 
-echo "==> [Pi2] 升級 pip"
+echo "==> [Pi2] Upgrading pip"
 pip install --upgrade pip
 
-echo "==> [Pi2] 安裝核心依賴（不含選用套件）"
+echo "==> [Pi2] Installing core dependencies (optional packages excluded)"
 pip install \
   openai==2.24.0 \
   certifi \
@@ -44,25 +44,25 @@ pip install \
   ptyprocess
 
 echo ""
-echo "==> [Pi2] 核心安裝完成。"
+echo "==> [Pi2] Core installation completed."
 echo ""
-echo "選用套件（需要時才安裝）："
+echo "Optional packages (install only when needed):"
 echo ""
-echo "  # RAG 功能（雲端記憶體，honcho-ai 取代 chromadb，Pi2 省去本機向量庫）"
+echo "  # RAG support (cloud memory; honcho-ai replaces chromadb to avoid local vector storage on Pi2)"
 echo "  pip install honcho-ai pypdf beautifulsoup4"
-echo "  # 需在 .env 填入 HONCHO_API_KEY"
-echo "  # honcho-ai 官網申請：https://honcho.dev"
+echo "  # Set HONCHO_API_KEY in .env"
+echo "  # Request a honcho-ai key at: https://honcho.dev"
 echo ""
 echo "  # Anthropic Claude API"
 echo "  pip install anthropic"
 echo ""
-echo "  # MCP 工具"
+echo "  # MCP tools"
 echo "  pip install mcp starlette"
 echo ""
-echo "  # 語音輸入（需要 libportaudio，Pi2 建議先跳過）"
+echo "  # Voice input (requires libportaudio; recommended to skip on Pi2)"
 echo "  sudo apt install portaudio19-dev -y"
 echo "  pip install sounddevice numpy"
-echo "  # faster-whisper 在 ARMv7 需從源碼編譯，不建議"
+echo "  # faster-whisper requires source compilation on ARMv7; not recommended"
 echo ""
 echo "  # Telegram Bot"
 echo "  pip install 'python-telegram-bot[webhooks]'"
@@ -73,37 +73,37 @@ echo ""
 echo "  # Web API (FastAPI)"
 echo "  pip install fastapi 'uvicorn[standard]'"
 echo ""
-echo "  # Google API 整合"
+echo "  # Google API integrations"
 echo "  pip install google-api-python-client google-auth-oauthlib"
 echo ""
 
-# ---- 設定 .env ----
+# ---- Configure .env ----
 if [ ! -f "$REPO_DIR/.env" ]; then
   if [ -f "$REPO_DIR/.env.example" ]; then
     cp "$REPO_DIR/.env.example" "$REPO_DIR/.env"
     chmod 600 "$REPO_DIR/.env"
-    echo "==> .env 已從 .env.example 建立，請填入 API 金鑰"
+    echo "==> Created .env from .env.example; please fill in API keys"
   fi
 fi
 
-# ---- 檢查並清除舊版 hermes ----
-echo "==> [Pi2] 檢查舊版 hermes 指令"
+# ---- Check and remove old hermes command ----
+echo "==> [Pi2] Checking old hermes command"
 LINK_TARGET="$HOME/.local/bin/hermes"
 install -d "$HOME/.local/bin"
 
 # Use -e OR -L: a broken symlink makes -e/-f false but still breaks
 # redirection ("No such file or directory") because the shell follows it.
 if [ -e "$LINK_TARGET" ] || [ -L "$LINK_TARGET" ]; then
-  echo "發現舊版 hermes：$LINK_TARGET"
+  echo "Found old hermes command: $LINK_TARGET"
   if [ -L "$LINK_TARGET" ]; then
-    echo "移除符號連結：$LINK_TARGET"
+    echo "Removing symlink: $LINK_TARGET"
   else
-    echo "移除檔案：$LINK_TARGET"
+    echo "Removing file: $LINK_TARGET"
   fi
   rm -f "$LINK_TARGET"
 fi
 
-# ---- 建立 hermes 指令捷徑 ----
+# ---- Create hermes command wrapper ----
 if [ -f "$REPO_DIR/cli.py" ]; then
   cat > "$LINK_TARGET" <<EOF
 #!/bin/bash
@@ -111,13 +111,13 @@ source "$VENV_DIR/bin/activate"
 "$VENV_DIR/bin/python" "$REPO_DIR/cli.py" "\$@"
 EOF
   chmod +x "$LINK_TARGET"
-  echo "==> 'hermes' 指令已安裝到 $LINK_TARGET"
+  echo "==> Installed 'hermes' command at $LINK_TARGET"
 else
-  echo "警告：找不到 cli.py，跳過 hermes 指令建立"
+  echo "Warning: cli.py not found; skipping hermes command creation"
 fi
 
 echo ""
-echo "==> 修復 plugins.browser import 問題（Pi2 不需要雲端瀏覽器）"
+echo "==> Fixing plugins.browser import issue (Pi2 does not need cloud browsers)"
 if [ -f "$REPO_DIR/fix-browser-import.sh" ]; then
   bash "$REPO_DIR/fix-browser-import.sh"
 elif [ -f "$REPO_DIR/tools/browser_tool.py" ]; then
@@ -147,9 +147,9 @@ if old in content and 'try:\n    from plugins.browser' not in content:
         content = content.replace(old_imp, new_imp)
     with open("tools/browser_tool.py", "w", encoding="utf-8") as f:
         f.write(content)
-    print("browser_tool.py 已修復")
+    print("browser_tool.py has been fixed")
 PYEOF
 fi
 
 echo ""
-echo "==> 完成！執行 'source ~/.bashrc && hermes' 開始使用"
+echo "==> Done! Run 'source ~/.bashrc && hermes' to start"

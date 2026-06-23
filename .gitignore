@@ -138,44 +138,44 @@ RELEASE_v*.md
 apps/desktop/demo/
 
 # ============================================================
-# Pi2 / IoT 優化（以下由 setup-pi2.sh 管理）
+# Pi2 / IoT optimization (managed by setup-pi2.sh)
 # ============================================================
 
-# UV / pip lock files (在 Pi2 上用 pip 直接裝，不需要 uv.lock)
+# UV / pip lock files (Pi2 installs directly with pip; uv.lock is not needed)
 uv.lock
 
-# Node.js lock file (Pi2 通常不跑 Node)
+# Node.js lock files (Pi2 usually does not run Node)
 package-lock.json
 yarn.lock
 
-# Nix 環境 (Pi2 不使用 Nix)
+# Nix environment (Pi2 does not use Nix)
 flake.lock
 
-# Docker (Pi2 1GB RAM 無法跑 Docker)
+# Docker (Pi2 has 1GB RAM and cannot run Docker comfortably)
 Dockerfile
 docker-compose.yml
 docker-compose*.yml
 
-# llama.cpp 編譯產物 (clone 後在本機 make)
+# llama.cpp build artifacts (built locally after clone)
 llama.cpp/
 *.o
 *.a
 
-# HuggingFace 模型快取 (太大，透過 setup script 下載)
+# HuggingFace model cache (large; download via setup scripts)
 models/
 *.gguf
 *.bin
 *.safetensors
 .cache/huggingface/
 
-# ChromaDB / RAG 資料庫 (runtime 產生)
+# ChromaDB / RAG databases (generated at runtime)
 .chromadb/
 chroma.sqlite3
 
-# sentence-transformers 模型快取 (第一次 RAG 時自動下載)
+# sentence-transformers model cache (downloaded automatically on first RAG use)
 sentence_transformers/
 
-# Herms Agent 本機設定 (不在 repo 中管理)
+# Hermes Agent local settings (not managed in this repo)
  hermes-venv/
  hermes-agent-iot/.hermes/
 
