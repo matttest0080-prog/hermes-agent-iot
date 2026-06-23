@@ -8,13 +8,8 @@
 set -e
 
 # Auto-detect Python version (Pi2 might not have 3.10)
-PYTHON="python3.10"
-if ! command -v $PYTHON &>/dev/null; then
-  PYTHON="python3.11"
-fi
-if ! command -v $PYTHON &>/dev/null; then
-  PYTHON="python3"
-fi
+# Use python3 without version suffix to ensure compatibility
+PYTHON="python3"
 
 # Verify Python version
 PYTHON_VERSION=$($PYTHON --version 2>&1 | cut -d' ' -f2)
