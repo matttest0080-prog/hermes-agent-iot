@@ -7,7 +7,19 @@
 
 set -e
 
-PYTHON=python3.10
+# Auto-detect Python version (Pi2 might not have 3.10)
+PYTHON="python3.10"
+if ! command -v $PYTHON &>/dev/null; then
+  PYTHON="python3.11"
+fi
+if ! command -v $PYTHON &>/dev/null; then
+  PYTHON="python3"
+fi
+
+# Verify Python version
+PYTHON_VERSION=$($PYTHON --version 2>&1 | cut -d' ' -f2)
+echo "==> Using Python: $PYTHON_VERSION"
+
 VENV_DIR="$HOME/hermes-venv"
 REPO_DIR="$(cd "$(dirname "$0")" && pwd)"
 
