@@ -1,0 +1,140 @@
+# Hermes Agent IoT / Pi2 Edition
+
+<p align="center">
+  <img src="assets/hermes-icon-white.svg" alt="Hermes Agent" width="100">
+</p>
+
+This repository is a Raspberry Pi 2 / IoT install profile for the original Hermes Agent project.
+
+Original source baseline on this machine:
+
+```text
+/media/matt/E/hermes-agent
+```
+
+Upstream project:
+
+```text
+https://github.com/NousResearch/hermes-agent
+```
+
+## Positioning
+
+This is intended to be a native-compatible Pi2 profile, not a rewritten mini-agent.
+
+The goal is:
+
+- keep Hermes Agent's native architecture and package layout
+- keep CLI, tools, skills, memory, session search, cron, delegation, MCP, ACP, gateway, plugins, and provider adapters available
+- make the default Pi2 install avoid heavy dependencies and heavy default tool surfaces
+- let users re-enable features later through standard Hermes commands
+
+## Quick install
+
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip build-essential git
+
+git clone --depth 1 https://github.com/matttest0080-prog/hermes-agent-iot.git
+cd hermes-agent-iot
+bash setup-pi2-minimal.sh --profile core
+
+source ~/.hermes-venv/bin/activate
+hermes setup model
+hermes
+```
+
+Hermes requires Python `>=3.11,<3.14`.
+
+## Install profiles
+
+```bash
+bash setup-pi2-minimal.sh --profile core
+bash setup-pi2-minimal.sh --profile native
+bash setup-pi2-minimal.sh --profile rag
+```
+
+- `core`: smallest practical CLI profile. Heavy browser/media/platform toolsets are disabled by default.
+- `native`: broader native profile with MCP/ACP/Home Assistant/SMS extras installed, still default-off for heavy tool surfaces.
+- `rag`: native profile plus lightweight document/RAG helpers. Remote embeddings/cloud memory are recommended on Pi2.
+
+## What changed for Pi2
+
+The Pi2 installer now uses Hermes' native Python package metadata:
+
+```bash
+python -m pip install -e ".[cli,pty]"
+```
+
+or a broader extras set depending on profile. It does not hand-maintain a separate dependency list and does not patch source files during install.
+
+The installer writes a Pi2 config template only when `~/.hermes/config.yaml` does not already exist:
+
+```text
+templates/config.pi2-core.yaml
+templates/config.pi2-native.yaml
+templates/config.pi2-rag.yaml
+```
+
+## Default-off heavy features
+
+The Pi2 config disables these toolsets by default where appropriate:
+
+- browser
+- image/video generation
+- TTS/STT-style voice features
+- computer_use
+- messaging platform tools
+- Discord/Feishu/Yuanbao/Spotify/Home Assistant depending on profile
+- experimental heavy reasoning/toolsets
+
+The code remains present. Re-enable later with:
+
+```bash
+hermes tools
+hermes tools enable browser
+hermes tools enable image_gen
+```
+
+and install any required extras when prompted.
+
+## Memory and RAG
+
+Default Pi2 posture:
+
+- use built-in Hermes memory and session search
+- avoid `torch`, `sentence-transformers`, and `chromadb` by default
+- prefer remote embeddings or cloud memory providers for semantic RAG
+
+For optional RAG helpers:
+
+```bash
+bash setup-pi2-minimal.sh --profile rag
+```
+
+See `README_PI2.md` for details.
+
+## Local model note
+
+Pi2 can use a local or LAN OpenAI-compatible server such as `llama.cpp`, but a 7B model directly on a Raspberry Pi 2 is usually too slow and memory constrained. A practical setup is often:
+
+- Pi2 runs Hermes Agent CLI/profile
+- another machine or remote provider runs the LLM endpoint
+- Hermes connects through OpenAI-compatible API config
+
+## Verification
+
+```bash
+source ~/.hermes-venv/bin/activate
+hermes --help
+python -m py_compile cli.py run_agent.py model_tools.py toolsets.py
+python - <<'PY'
+from toolsets import resolve_toolset
+print('hermes-cli tools:', len(resolve_toolset('hermes-cli')))
+print('file tools:', resolve_toolset('file'))
+PY
+```
+
+## License
+
+Hermes Agent is MIT licensed. See `LICENSE`.

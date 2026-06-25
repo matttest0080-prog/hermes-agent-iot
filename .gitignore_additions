@@ -1,0 +1,38 @@
+# ============================================================
+# Add the following entries to the end of hermes-agent-iot/.gitignore
+# (Pi2 / IoT optimization: remove unnecessary large lock files)
+# ============================================================
+
+# UV / pip lock files (Pi2 installs directly with pip; uv.lock is not needed)
+uv.lock
+
+# Node.js lock files (Pi2 usually does not run Node; npm can regenerate locks when needed)
+package-lock.json
+yarn.lock
+
+# Nix environment (Pi2 does not use Nix)
+flake.lock
+
+# Docker (Pi2 has 1GB RAM and cannot run Docker comfortably)
+Dockerfile
+docker-compose.yml
+docker-compose*.yml
+
+# llama.cpp build artifacts (built locally after clone)
+llama.cpp/
+*.o
+*.a
+
+# HuggingFace model cache (large; download via setup scripts)
+models/
+*.gguf
+*.bin
+*.safetensors
+.cache/huggingface/
+
+# RAG uses honcho-ai (cloud), so local chromadb/vector stores are no longer needed
+# Keep these entries to avoid accidentally committing old local data
+.chromadb/
+chroma.sqlite3
+~/work/work_RAG/
+sentence_transformers/
