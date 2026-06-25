@@ -46,8 +46,10 @@ pip install --upgrade pip
 ### 3. Install Hermes Agent dependencies
 
 ```bash
-pip install honcho-ai sentence-transformers pypdf beautifulsoup4
+pip install honcho-ai pypdf beautifulsoup4
 ```
+
+Do not install `torch`, `sentence-transformers`, or `chromadb` on Raspberry Pi 2 by default. Pi2 is ARMv7 with 1GB RAM; those packages are large, often require source builds, and are too slow/heavy for local semantic RAG. Use Hermes built-in memory/session search locally, and use remote embeddings, cloud memory, or a vector database on another machine when semantic RAG is needed.
 
 ---
 
@@ -271,8 +273,10 @@ make -j2 LLAMA_AVX2=OFF LLAMA_AVX=OFF  # Use only 2 cores
 **Solution:**
 ```bash
 source ~/.hermes-venv/bin/activate
-pip install honcho-ai sentence-transformers pypdf beautifulsoup4
+pip install honcho-ai pypdf beautifulsoup4
 ```
+
+Do not fix this by installing `sentence-transformers`, `torch`, or `chromadb` locally on Pi2. Prefer remote embeddings/cloud memory or another machine for vector search.
 
 ### Q4: How do I configure memory limits?
 
@@ -386,9 +390,11 @@ echo "Step 4: Installing hermes-agent..."
 cd ~/hermes-agent-iot
 pip install -e .
 
-# Step 5: Install RAG dependencies
-echo "Step 5: Installing RAG dependencies..."
-pip install honcho-ai sentence-transformers pypdf beautifulsoup4
+# Step 5: Install lightweight memory/document helpers only
+echo "Step 5: Installing lightweight memory/document helpers..."
+pip install honcho-ai pypdf beautifulsoup4
+echo "Skipping local torch, sentence-transformers, and chromadb on Pi2."
+echo "Use remote embeddings/cloud memory or a vector DB on another machine for semantic RAG."
 
 # Step 6: Setup config
 echo "Step 6: Creating config..."
