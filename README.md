@@ -128,6 +128,14 @@ Default Pi2 posture:
 - avoid `torch`, `sentence-transformers`, and `chromadb` by default
 - prefer remote embeddings or cloud memory providers for semantic RAG
 
+For multiple Pi2 devices, use each Pi2 as a lightweight Hermes client and share memory/RAG through a central LAN/cloud service:
+
+```text
+Pi2 nodes -> HTTP API -> shared memory/RAG server -> SQLite/Postgres + optional Qdrant/pgvector
+```
+
+The central server should handle embeddings, vector indexing, backups, deduplication, and cross-device scope metadata such as `device_id`, `room`, and `global|device|user`. Avoid having multiple Pi2 nodes write directly to one SQLite database over NFS/Samba.
+
 For optional RAG helpers:
 
 ```bash
