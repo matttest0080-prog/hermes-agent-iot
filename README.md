@@ -50,6 +50,7 @@ The Pi2 Lite profile avoids eager install/use of heavy features:
 
 - browser automation runtime
 - local Chromium/Playwright-style stacks
+- uvloop / `uvicorn[standard]`; dashboard/API use uvicorn's native Python asyncio mode
 - image/video generation backends
 - voice/STT dependencies such as faster-whisper
 - TTS premium providers
@@ -99,6 +100,12 @@ python -m pip install -e ".[cli,pty]"
 ```
 
 or a broader extras set depending on profile. It does not hand-maintain a separate dependency list and does not patch source files during install.
+
+Pi2 Lite intentionally uses uvicorn's native Python asyncio mode. Do not install `uvicorn[standard]` on Raspberry Pi 2; it pulls `uvloop`, which is not reliable on ARMv7/Pi2. If you need the web API/dashboard dependencies manually, use:
+
+```bash
+pip install fastapi uvicorn python-multipart
+```
 
 The installer writes a Pi2 config template only when `~/.hermes/config.yaml` does not already exist:
 

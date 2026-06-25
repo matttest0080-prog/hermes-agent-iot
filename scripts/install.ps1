@@ -1845,7 +1845,7 @@ except Exception:
             if ($LASTEXITCODE -eq 0) {
                 Write-Success "[web] extra installed; `hermes dashboard` should now work."
             } else {
-                Write-Warn "Could not install [web] extra. Run manually: uv pip install --python `"$pythonExe`" `"fastapi>=0.104,<1`" `"uvicorn[standard]>=0.24,<1`""
+                Write-Warn "Could not install [web] extra. Run manually: uv pip install --python `"$pythonExe`" `"fastapi>=0.104,<1`" `"uvicorn>=0.24,<1`""
             }
         }
     }
