@@ -1,79 +1,164 @@
-# Hermes Agent on Raspberry Pi 2 (ARMv7 32-bit)
+# Hermes Agent IoT / Raspberry Pi 2 profile
 
-This fork adds support for Raspberry Pi 2 (32-bit ARM).
+This repository is a Pi2/IoT-oriented flavor of the original Hermes Agent source at:
 
-## Key Changes
+`/media/matt/E/hermes-agent`
 
-- **llama.cpp**: Compiled with NEON support, disabled AVX/AVX2
-- **sqlite-vec**: SQLite vector extension for RAG
-- **RAG**: Uses `all-MiniLM-L6-v2` (ARM-optimized)
-- **Model**: Qwen2.5-7B (GGUF q4_k_m, ~4.6GB)
+Goal: preserve native Hermes Agent architecture and feature compatibility while making the default Raspberry Pi 2 install small enough to be practical on ARMv7 / 1GB RAM.
 
-## Installation on Raspberry Pi 2
+This is not a separate mini-agent. The Python package path, CLI entrypoint, tools, plugins, gateway, memory, cron, MCP, ACP, and provider architecture stay intact. The Pi2 profile only changes default installation choices and default enabled tool surface.
+
+## What is preserved
+
+Kept as native Hermes functionality:
+
+- `hermes` CLI entrypoint from `pyproject.toml`
+- core agent loop and provider routing
+- tools system and toolsets
+- skills system
+- persistent memory and session search
+- cron scheduler
+- delegation/subagents
+- MCP and ACP code paths
+- gateway and platform adapters
+- plugins and memory provider plugins
+- OpenAI-compatible endpoints, including local `llama.cpp` servers
+
+## What is slimmed
+
+The Pi2 profile avoids eager install/use of heavy features:
+
+- browser automation runtime
+- local Chromium/Playwright-style stacks
+- image/video generation backends
+- voice/STT dependencies such as faster-whisper
+- TTS premium providers
+- torch / sentence-transformers / chromadb by default
+- dashboard/web UI extras unless explicitly requested
+- messaging platform extras unless explicitly requested
+
+The code remains present. Heavy features can be re-enabled later with `hermes tools` and the relevant Python extras.
+
+## Install profiles
+
+Use the native-compatible installer:
 
 ```bash
-# Install dependencies
-sudo apt update && sudo apt install -y python3 python3-pip python3-venv build-essential git wget
+bash setup-pi2-minimal.sh --profile core
+bash setup-pi2-minimal.sh --profile native
+bash setup-pi2-minimal.sh --profile rag
+```
 
-# Create venv
-python3 -m venv ~/.hermes-venv
-source ~/.hermes-venv/bin/activate
+Profiles:
 
-# Install deps
-pip install --upgrade pip
-pip install honcho-ai sentence-transformers pypdf beautifulsoup4
+- `core`: smallest practical Hermes CLI profile. Installs package through `pip install -e .[cli,pty]`, writes a config that disables heavy toolsets by default.
+- `native`: core plus MCP/ACP/Home Assistant/SMS extras. Still disables browser/media/messaging tool surfaces by default.
+- `rag`: native plus lightweight document helpers and Honcho optional dependency. Remote embeddings are recommended; local torch stacks are not installed by default.
 
-# Build llama.cpp for ARMv7
-git clone https://github.com/ggerganov/llama.cpp.git
-cd llama.cpp
-make -j$(nproc) LLAMA_AVX2=OFF LLAMA_AVX=OFF LLAMA_F16C=OFF LLAMA_FMA=OFF
+## Recommended Pi2 install
 
-# Download Qwen2.5-7B GGUF
-wget https://huggingface.co/Qwen/Qwen2.5-7B-Instruct-GGUF/resolve/main/qwen2.5-7b-instruct-q4_k_m.gguf
+```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip build-essential git
 
-# Install hermes-agent
-git clone https://github.com/matttest0080-prog/hermes-agent-iot.git
+git clone --depth 1 https://github.com/matttest0080-prog/hermes-agent-iot.git
 cd hermes-agent-iot
-./setup-hermes.sh
+bash setup-pi2-minimal.sh --profile core
 
-# Configure
-hermes setup
+source ~/.hermes-venv/bin/activate
+hermes setup model
+hermes
 ```
 
-## Configuration (`~/.hermes/config.yaml`)
+Hermes requires Python `>=3.11,<3.14`. If your Raspberry Pi OS image ships older Python, install Python 3.11+ first.
 
-```yaml
-models:
-  - name: "custom:qwen2.5-7b"
-    base_url: "http://localhost:8080/v1"
-    api_key: "not-used"
+## Local llama.cpp / OpenAI-compatible model
 
-providers:
-  - name: "custom"
-    provider: "openai_compatible"
-    base_url: "http://localhost:8080/v1"
-    api_key: "not-used"
-
-memory:
-  provider: "honcho"  # SQLite backend, lightweight
-```
-
-## Start Server & Agent
+Pi2 can connect to a local or LAN OpenAI-compatible endpoint. For example, if `llama.cpp` server is running at `http://localhost:8080/v1`, configure Hermes through:
 
 ```bash
-# Terminal 1: Start llama.cpp server
-cd llama.cpp && ./server -m qwen2.5-7b-instruct-q4_k_m.gguf -c 2048 --port 8080
-
-# Terminal 2: Run hermes-agent
-cd hermes-agent-iot && hermes
+hermes setup model
 ```
 
-## Memory
+or edit `~/.hermes/config.yaml` using the normal Hermes config commands.
 
-Store: `~/work/work_RAG/.chromadb/chroma.sqlite3` (SQLite)
+Important: a 7B model on Raspberry Pi 2 is usually impractical because of RAM and speed. Prefer:
 
-## RAG
+- a remote/OpenRouter/OpenAI-compatible provider, or
+- a much smaller quantized model, or
+- a stronger LAN machine running `llama.cpp` with Pi2 acting as the Hermes client.
+
+## Memory and RAG posture
+
+Default Pi2 memory:
+
+- built-in Hermes memory
+- session search
+- SQLite/FTS-style lightweight local state
+
+Optional RAG:
 
 ```bash
-pip install chromadb sentence-transformers pypdf beautifulsoup4
+bash setup-pi2-minimal.sh --profile rag
 ```
+
+The RAG profile intentionally avoids installing `torch`, `sentence-transformers`, and `chromadb` by default. For Pi2, prefer remote embeddings or cloud memory providers. If you explicitly want local embeddings, install them manually and expect high RAM/compile cost.
+
+## Config templates
+
+Installer templates live in:
+
+```text
+templates/config.pi2-core.yaml
+templates/config.pi2-native.yaml
+templates/config.pi2-rag.yaml
+```
+
+The installer copies one to `~/.hermes/config.yaml` only if that file does not already exist. Existing configs are not overwritten.
+
+## Re-enabling features later
+
+Use native Hermes controls:
+
+```bash
+hermes tools
+hermes tools list
+hermes tools enable browser
+hermes tools enable image_gen
+hermes config edit
+```
+
+Then install any missing extra dependencies shown by the feature/tool.
+
+## Verification
+
+After installation:
+
+```bash
+source ~/.hermes-venv/bin/activate
+hermes --help
+python -m py_compile cli.py run_agent.py model_tools.py toolsets.py
+python - <<'PY'
+from toolsets import resolve_toolset
+print('hermes-cli tools:', len(resolve_toolset('hermes-cli')))
+print('file tools:', resolve_toolset('file'))
+PY
+```
+
+## Design rule
+
+Allowed Pi2 slimming:
+
+- default-off toolsets
+- optional extras
+- lazy imports/lazy install
+- profile-specific config
+- documentation of heavy paths
+
+Avoided:
+
+- deleting core modules
+- patching source during install
+- removing toolset definitions
+- forking config schema
+- hard-coding Pi2-only behavior into generic runtime paths

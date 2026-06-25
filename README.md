@@ -1,342 +1,140 @@
-# Hermes Agent on Raspberry Pi 2 (ARMv7 32-bit)
+# Hermes Agent IoT / Pi2 Edition
 
 <p align="center">
   <img src="assets/hermes-icon-white.svg" alt="Hermes Agent" width="100">
 </p>
 
-## Overview
+This repository is a Raspberry Pi 2 / IoT install profile for the original Hermes Agent project.
 
-This is a minimal CLI version of **Hermes Agent** optimized for **Raspberry Pi 2** (ARMv7 32-bit, 1GB RAM).
+Original source baseline on this machine:
 
-This fork is based on [Hermes Agent by Nous Research](https://github.com/NousResearch/hermes-agent),
-modified to run on constrained ARMv7 hardware with only 1GB RAM.
-
-**Key Features:**
-- ✅ CLI-only interface (no TUI/web UI)
-- ✅ Optimized for 1GB RAM
-- ✅ Works with local LLM via lm-studio or llama.cpp
-- ✅ Memory & RAG support (sqlite-vec + sentence-transformers)
-
-## Original Hermes Agent
-
-Hermes Agent is an open-source AI agent by **Nous Research** that:
-
-- Creates skills from experience
-- Improves them during use
-- Runs across CLI, TUI, web dashboard, and Electron app
-- Maintains conversation caching for efficiency
-
-**Repository**: https://github.com/NousResearch/hermes-agent
-
-**License**: MIT
-
-## Hardware Requirements
-
-| Component | Requirement |
-|-----------|-------------|
-| Device | Raspberry Pi 2 Model B |
-| CPU | ARMv7 900MHz (4 cores) |
-| RAM | 1GB LPDDR2 (minimum) |
-| Storage | microSD card (≥8GB) |
-| OS | Raspberry Pi OS Lite (32-bit) |
-
-## Quick Install
-
-### Step 1: Update System
-
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3 python3-pip python3-venv build-essential git wget
+```text
+/media/matt/E/hermes-agent
 ```
 
-### Step 2: Create Virtual Environment
+Upstream project:
 
-```bash
-python3 -m venv ~/.hermes-venv
-source ~/.hermes-venv/bin/activate
-pip install --upgrade pip
+```text
+https://github.com/NousResearch/hermes-agent
 ```
 
-### Step 3: Install Hermes Agent (Pi2 Optimized)
+## Positioning
 
-**Option A: Shallow clone + auto-setup (Recommended for Pi2)**
+This is intended to be a native-compatible Pi2 profile, not a rewritten mini-agent.
 
-Use a shallow clone so Raspberry Pi 2 does not download the full upstream Git history.
+The goal is:
+
+- keep Hermes Agent's native architecture and package layout
+- keep CLI, tools, skills, memory, session search, cron, delegation, MCP, ACP, gateway, plugins, and provider adapters available
+- make the default Pi2 install avoid heavy dependencies and heavy default tool surfaces
+- let users re-enable features later through standard Hermes commands
+
+## Quick install
 
 ```bash
+sudo apt update
+sudo apt install -y python3 python3-venv python3-pip build-essential git
+
 git clone --depth 1 https://github.com/matttest0080-prog/hermes-agent-iot.git
 cd hermes-agent-iot
-bash setup-pi2-minimal.sh
-```
+bash setup-pi2-minimal.sh --profile core
 
-**Option B: Source archive + auto-setup (smallest download, no Git history)**
-
-```bash
-wget -O hermes-agent-iot.tar.gz https://github.com/matttest0080-prog/hermes-agent-iot/archive/refs/heads/main.tar.gz
-tar -xzf hermes-agent-iot.tar.gz
-cd hermes-agent-iot-main
-bash setup-pi2-minimal.sh
-```
-
-**Option C: Manual setup**
-
-```bash
-git clone --depth 1 https://github.com/matttest0080-prog/hermes-agent-iot.git
-cd hermes-agent-iot
-python3 -m venv ~/.hermes-venv
 source ~/.hermes-venv/bin/activate
-pip install --upgrade pip
-pip install openai==2.24.0 certifi python-dotenv fire "httpx[socks]" rich tenacity pyyaml ruamel.yaml requests jinja2 pydantic prompt_toolkit croniter packaging Markdown "PyJWT[crypto]" "urllib3>=2.7.0,<3" psutil websockets pathspec ptyprocess
-```
-
-Pi2 note: this repository intentionally does not track `uv.lock`, `package-lock.json`, or `flake.lock`; those lock files are large and are not needed for the minimal Pi2 install path.
-
-### Step 4: Install RAG Dependencies (Pi2 Optimized)
-
-**Note**: For Raspberry Pi 2 (1GB RAM), RAG now uses **honcho-ai** (cloud-based memory) instead of local chromadb/sentence-transformers to save RAM.
-
-```bash
-# Install honcho-ai RAG (cloud memory)
-pip install honcho-ai pypdf beautifulsoup4
-
-# Configure in .env:
-# HONCHO_API_KEY=your_api_key_here
-# Get free API key: https://honcho.dev
-```
-
-**Optional tools**:
-- `pip install anthropic` — Anthropic Claude API
-- `pip install mcp starlette` — MCP tools
-- `pip install 'python-telegram-bot[webhooks]'` — Telegram Bot
-- `pip install slack-bolt slack-sdk aiohttp` — Slack Bot
-- `pip install fastapi 'uvicorn[standard]'` — Web API (FastAPI)
-
-### Step 5: Configure Hermes
-
-```bash
-# Create config directory
-mkdir -p ~/.hermes
-
-# Create config file
-cat > ~/.hermes/config.yaml << 'EOF'
-# Hermes Agent config for Raspberry Pi 2 (ARMv7 32-bit, 1GB RAM)
-# Based on hermes-agent 0.17.0
-
-models:
-  default: "custom:qwen2.5-7b"
-  provider: custom
-  base_url: "http://localhost:8080/v1"
-
-providers:
-  custom:
-    base_url: "http://localhost:8080/v1"
-    api_key: "not-used"
-    models:
-      - "qwen2.5-7b"
-
-fallback_providers: []
-
-toolsets:
-  - hermes-cli
-
-agent:
-  max_turns: 150
-
-memory:
-  memory_enabled: true
-  user_profile_enabled: true
-  memory_char_limit: 2200
-  user_char_limit: 1375
-  provider: honcho
-  nudge_interval: 10
-  flush_min_turns: 6
-
-display:
-  compact: false
-  personality: concise
-
-terminal:
-  backend: local
-  timeout: 180
-
-web:
-  backend: ""
-  search_backend: ""
-  extract_backend: ""
-
-browser:
-  inactivity_timeout: 120
-
-compression:
-  enabled: true
-  threshold: 0.5
-
-kanban:
-  dispatch_in_gateway: true
-
-prompt_caching:
-  cache_ttl: 5m
-
-openrouter:
-  response_cache: true
-
-display:
-  personality: concise
-  skin: default
-
-logging:
-  level: INFO
-
-sync_config:
-  hermes_agent_version: "0.17.0"
-EOF
-```
-
-## Model Setup Options
-
-### Option A: lm-studio (Recommended for Pi2)
-
-**Architecture**: Run lm-studio on a powerful machine (x86_64), connect to it from Pi2.
-
-**Setup**:
-
-1. **On x86_64 machine (hosting model)**:
-   ```bash
-   # Download lm-studio for Linux (or Windows/Mac)
-   # Launch lm-studio → Load model → Start Server
-   # Default port: 1234
-   ```
-
-2. **On Raspberry Pi 2 (client)**:
-   - Find the x86_64 machine IP (e.g., `192.168.1.100`)
-   - Update `~/.hermes/config.yaml`:
-   ```yaml
-   models:
-     default: "custom:qwen2.5-7b"
-     provider: custom
-     base_url: "http://192.168.1.100:1234/v1"
-
-   providers:
-     custom:
-       base_url: "http://192.168.1.100:1234/v1"
-   ```
-
-### Option B: llama.cpp (Advanced - for x86_64 only)
-
-**Note**: llama.cpp compilation on Pi2 is extremely slow (~1-2 hours). Recommended to run on x86_64 and connect remotely.
-
-1. **Compile llama.cpp** (on x86_64 machine):
-   ```bash
-   git clone https://github.com/ggerganov/llama.cpp.git
-   cd llama.cpp
-   make clean
-   make -j$(nproc) LLAMA_AVX2=OFF LLAMA_AVX=OFF LLAMA_F16C=OFF LLAMA_FMA=OFF
-   ```
-
-2. **Download Qwen2.5-7B GGUF model**
-   ```bash
-   pip install huggingface_hub
-   huggingface-cli download Qwen/Qwen2.5-7B-Instruct-GGUF \
-       qwen2.5-7b-instruct-q4_k_m.gguf \
-       --local-dir ~
-   ```
-
-3. **Start server**
-   ```bash
-   cd ~/llama.cpp
-   ./server -m ~/qwen2.5-7b-instruct-q4_k_m.gguf \
-       -c 2048 \
-       --port 8080 \
-       -np 1 \
-       --n_gpu_layers 0
-   ```
-
-## Usage
-
-```bash
-# Activate virtual environment
-source ~/.hermes-venv/bin/activate
-
-# Change to Hermes directory
-cd ~/hermes-agent-iot
-
-# Start Hermes
+hermes setup model
 hermes
 ```
 
-In Hermes CLI:
-```
-/hermes tools list
-```
+Hermes requires Python `>=3.11,<3.14`.
 
-Expected output:
-```
-✓ enabled  memory          💾 Memory
-✓ enabled  skills          🛠 Skills
-✓ enabled  terminal        🖥 Terminal
-✓ enabled  session_search  🔍 Session Search
-```
+## Install profiles
 
-## Memory Optimization
-
-If you encounter memory issues (1GB RAM):
-
-```yaml
-# ~/.hermes/config.yaml
-memory:
-  memory_char_limit: 1000   # Reduced from 2200
-  user_char_limit: 500      # Reduced from 1375
-```
-
-Or use smaller model:
 ```bash
-# Download Qwen2.5-1.5B (smaller, ~2GB RAM)
-huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF \
-    qwen2.5-1.5b-instruct-q4_k_m.gguf \
-    --local-dir ~
-
-# Start server with smaller context
-./server -m ~/qwen2.5-1.5b-instruct-q4_k_m.gguf -c 1024 --port 8080
+bash setup-pi2-minimal.sh --profile core
+bash setup-pi2-minimal.sh --profile native
+bash setup-pi2-minimal.sh --profile rag
 ```
 
-## Tags
+- `core`: smallest practical CLI profile. Heavy browser/media/platform toolsets are disabled by default.
+- `native`: broader native profile with MCP/ACP/Home Assistant/SMS extras installed, still default-off for heavy tool surfaces.
+- `rag`: native profile plus lightweight document/RAG helpers. Remote embeddings/cloud memory are recommended on Pi2.
 
-| Tag | Description |
-|-----|-------------|
-| `v0.1-pi2` | Initial Pi2 support |
-| `v0.2-pi2` | Added installation manual |
-| `v0.3-pi2` | Added quick migration script |
-| `v0.4-pi2` | Minimal CLI only (35MB) |
-| `v0.5-pi2` | RAG SQLite backend + uvloop fix |
-| `v0.6-pi2` | Remove uvloop/fastapi, use asyncio |
-| `v0.7-pi2` | Replace chromadb with honcho-ai for RAG (cloud memory) |
-| `v0.8-pi2` | Add explicit httpx install in setup script |
-| `v0.9-pi2` | Add Nous Research origin attribution |
-| `v10.0-pi2` | Add SYNC_STRATEGY.md for hermes-agent 0.17.0 sync process |
-| `v11.0-pi2` | Remove Docker deps, add setup-pi2.sh, Pi2 minimal config |
-| `v11.1-pi2` | Update to honcho-ai RAG, fix browser import errors |
+## What changed for Pi2
 
-## Repository
+The Pi2 installer now uses Hermes' native Python package metadata:
 
-- **GitHub**: https://github.com/matttest0080-prog/hermes-agent-iot
-- **Tags**: `v11.1-pi2` (latest)
+```bash
+python -m pip install -e ".[cli,pty]"
+```
 
-## Sync Strategy
+or a broader extras set depending on profile. It does not hand-maintain a separate dependency list and does not patch source files during install.
 
-This repository is maintained as a **minimal CLI version** for Raspberry Pi 2 (ARMv7 32-bit, 1GB RAM).
+The installer writes a Pi2 config template only when `~/.hermes/config.yaml` does not already exist:
 
-For updates from the main Hermes Agent repository:
-- See [`SYNC_STRATEGY.md`](./SYNC_STRATEGY.md) for the full merge process
-- Latest sync target: `hermes-agent 0.17.0`
+```text
+templates/config.pi2-core.yaml
+templates/config.pi2-native.yaml
+templates/config.pi2-rag.yaml
+```
 
-## Notes
+## Default-off heavy features
 
-- Raspberry Pi 2 is **32-bit ARM**, ensure all software supports ARMv7
-- This is a **CLI-only** version (no TUI/web UI)
-- Memory usage: ~500-800MB depending on model size
-- Use quantized models (q4_k_m, q5_k_m) to reduce RAM usage
+The Pi2 config disables these toolsets by default where appropriate:
 
----
+- browser
+- image/video generation
+- TTS/STT-style voice features
+- computer_use
+- messaging platform tools
+- Discord/Feishu/Yuanbao/Spotify/Home Assistant depending on profile
+- experimental heavy reasoning/toolsets
 
-**Author**: Matt0080828  
-**Based on**: [Hermes Agent by Nous Research](https://github.com/NousResearch/hermes-agent)
+The code remains present. Re-enable later with:
+
+```bash
+hermes tools
+hermes tools enable browser
+hermes tools enable image_gen
+```
+
+and install any required extras when prompted.
+
+## Memory and RAG
+
+Default Pi2 posture:
+
+- use built-in Hermes memory and session search
+- avoid `torch`, `sentence-transformers`, and `chromadb` by default
+- prefer remote embeddings or cloud memory providers for semantic RAG
+
+For optional RAG helpers:
+
+```bash
+bash setup-pi2-minimal.sh --profile rag
+```
+
+See `README_PI2.md` for details.
+
+## Local model note
+
+Pi2 can use a local or LAN OpenAI-compatible server such as `llama.cpp`, but a 7B model directly on a Raspberry Pi 2 is usually too slow and memory constrained. A practical setup is often:
+
+- Pi2 runs Hermes Agent CLI/profile
+- another machine or remote provider runs the LLM endpoint
+- Hermes connects through OpenAI-compatible API config
+
+## Verification
+
+```bash
+source ~/.hermes-venv/bin/activate
+hermes --help
+python -m py_compile cli.py run_agent.py model_tools.py toolsets.py
+python - <<'PY'
+from toolsets import resolve_toolset
+print('hermes-cli tools:', len(resolve_toolset('hermes-cli')))
+print('file tools:', resolve_toolset('file'))
+PY
+```
+
+## License
+
+Hermes Agent is MIT licensed. See `LICENSE`.
