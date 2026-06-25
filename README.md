@@ -4,18 +4,32 @@
   <img src="assets/hermes-icon-white.svg" alt="Hermes Agent" width="100">
 </p>
 
-This repository is a Raspberry Pi 2 / IoT install profile for the original Hermes Agent project.
+This repository is a Raspberry Pi 2 / IoT install profile for the original Hermes Agent project. It tracks Hermes Agent code while keeping this fork's default install path lightweight for small ARM/Linux devices.
 
-Original source baseline on this machine:
+## Repository lineage
+
+Current target repository:
 
 ```text
-/media/matt/E/hermes-agent
+https://github.com/matttest0080-prog/hermes-agent-iot
+```
+
+Local source used for the latest sync:
+
+```text
+/home/matt/work/matt0080/hermes-agent-iot
 ```
 
 Upstream project:
 
 ```text
 https://github.com/NousResearch/hermes-agent
+```
+
+Latest integrated source commit:
+
+```text
+b273e7129 chore: sync IoT main with Hermes 0.17.0
 ```
 
 ## Positioning
@@ -27,6 +41,7 @@ The goal is:
 - keep Hermes Agent's native architecture and package layout
 - keep CLI, tools, skills, memory, session search, cron, delegation, MCP, ACP, gateway, plugins, and provider adapters available
 - make the default Pi2 install avoid heavy dependencies and heavy default tool surfaces
+- preserve this repository's slim IoT checkout by excluding desktop app, website, large docs/test trees, and CI artifacts from the target branch
 - let users re-enable features later through standard Hermes commands
 
 ## Quick install
@@ -60,7 +75,7 @@ bash setup-pi2-minimal.sh --profile rag
 
 ## What changed for Pi2
 
-The Pi2 installer now uses Hermes' native Python package metadata:
+The Pi2 installer uses Hermes' native Python package metadata:
 
 ```bash
 python -m pip install -e ".[cli,pty]"
@@ -88,7 +103,7 @@ The Pi2 config disables these toolsets by default where appropriate:
 - Discord/Feishu/Yuanbao/Spotify/Home Assistant depending on profile
 - experimental heavy reasoning/toolsets
 
-The code remains present. Re-enable later with:
+The core code remains present. Re-enable features later with:
 
 ```bash
 hermes tools
