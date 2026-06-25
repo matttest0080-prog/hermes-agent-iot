@@ -96,6 +96,7 @@ templates/config.pi2-rag.yaml
 The Pi2 config disables these toolsets by default where appropriate:
 
 - browser
+- uvloop / `uvicorn[standard]` (web API/dashboard use uvicorn's native Python asyncio mode)
 - image/video generation
 - TTS/STT-style voice features
 - computer_use
@@ -112,6 +113,12 @@ hermes tools enable image_gen
 ```
 
 and install any required extras when prompted.
+
+For Pi2, do not install `uvicorn[standard]`; it pulls `uvloop`, which is not reliable on ARMv7/Pi2. If you need web API/dashboard dependencies manually, use:
+
+```bash
+pip install fastapi uvicorn python-multipart
+```
 
 ## Memory and RAG
 
