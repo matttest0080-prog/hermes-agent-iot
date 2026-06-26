@@ -75,7 +75,7 @@ bash setup-pi2-minimal.sh --profile rag
 ```
 
 - `core`: smallest practical CLI profile. Heavy browser/media/platform toolsets are disabled by default.
-- `native`: broader native profile with MCP/ACP/Home Assistant/SMS extras installed, still default-off for heavy tool surfaces.
+- `native`: broader native profile with MCP/ACP/Home Assistant/MQTT/SMS extras installed, still default-off for heavy tool surfaces.
 - `rag`: native profile plus lightweight document/RAG helpers. Remote embeddings/cloud memory are recommended on Pi2.
 
 ## What changed for Pi2
@@ -118,6 +118,28 @@ hermes tools enable image_gen
 ```
 
 and install any required extras when prompted.
+
+## MQTT IoT tools
+
+The native and rag profiles include lightweight MQTT support for embedded sensors and actuators through the `mqtt` toolset. Configure a broker with:
+
+```bash
+export MQTT_HOST=192.168.1.10
+export MQTT_PORT=1883
+# Optional:
+export MQTT_USERNAME=iot-user
+export MQTT_PASSWORD=secret
+export MQTT_TLS=false
+hermes tools enable mqtt
+```
+
+Available MQTT tools:
+
+- `mqtt_publish`: publish sensor values or device commands
+- `mqtt_subscribe_recent`: listen briefly for retained/new messages on a topic filter
+- `mqtt_device_command`: publish a command and optionally wait for a state/ack topic
+
+MQTT brokers do not provide history by default. `mqtt_subscribe_recent` returns retained messages and messages published while the tool is listening.
 
 For Pi2, do not install `uvicorn[standard]`; it pulls `uvloop`, which is not reliable on ARMv7/Pi2. If you need web API/dashboard dependencies manually, use:
 
