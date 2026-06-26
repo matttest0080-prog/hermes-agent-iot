@@ -1,10 +1,12 @@
-# Hermes Agent IoT / Pi2 Edition
+# Hermes Agent IoT / Pi2+ Edition
 
 <p align="center">
   <img src="assets/hermes-icon-white.svg" alt="Hermes Agent" width="100">
 </p>
 
 This repository is a Raspberry Pi 2 / IoT install profile for the original Hermes Agent project. It tracks Hermes Agent code while keeping this fork's default install path lightweight for small ARM/Linux devices.
+
+Raspberry Pi 2 is the baseline target, not the upper limit. The same profile is intended for Pi2-class or better Linux systems, including Raspberry Pi 3/4/5, Pi Zero 2 W, ARM64 SBCs, x86 mini PCs, and VMs. Higher-spec devices can keep the conservative Pi2 defaults or enable heavier Hermes features later.
 
 ## Repository lineage
 
@@ -34,7 +36,7 @@ b273e7129 chore: sync IoT main with Hermes 0.17.0
 
 ## Positioning
 
-This is intended to be a native-compatible Pi2 profile, not a rewritten mini-agent.
+This is intended to be a native-compatible Pi2+ profile, not a rewritten mini-agent.
 
 The goal is:
 
