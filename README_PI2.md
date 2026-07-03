@@ -48,16 +48,30 @@ The code remains present. Heavy features can be re-enabled later with `hermes to
 Use the native-compatible installer:
 
 ```bash
-bash setup-pi2-minimal.sh --profile core
-bash setup-pi2-minimal.sh --profile native
+bash setup-pi2-minimal.sh --profile minimal
+bash setup-pi2-minimal.sh --profile iot
 bash setup-pi2-minimal.sh --profile rag
+bash setup-pi2-minimal.sh --profile full   # stronger edge host only
+bash setup-pi2-minimal.sh --profile dev    # contributor machine
 ```
+
+Backward-compatible aliases are still accepted: `core` -> `minimal`, `native` -> `iot`.
 
 Profiles:
 
-- `core`: smallest practical Hermes CLI profile. Installs package through `pip install -e .[cli,pty]`, writes a config that disables heavy toolsets by default.
-- `native`: core plus MCP/ACP/Home Assistant/MQTT/SMS extras. Still disables browser/media/messaging tool surfaces by default.
-- `rag`: native plus lightweight document helpers and Honcho optional dependency. Remote embeddings are recommended; local torch stacks are not installed by default.
+- `minimal`: smallest practical Hermes CLI profile. Installs package through `pip install -e .[cli,pty]`, writes a config that disables heavy toolsets by default.
+- `iot`: minimal plus MCP/ACP/Home Assistant/MQTT/SMS extras. Still disables browser/media/messaging tool surfaces by default.
+- `rag`: iot plus lightweight document helpers and Honcho optional dependency. Remote embeddings are recommended; local torch stacks are not installed by default.
+- `full`: broader cross-platform Hermes extras for stronger Raspberry Pi, ARM64, x86 mini PC, VM, or NAS hosts.
+- `dev`: full plus test/developer tooling.
+
+## Optional integration security posture
+
+Pi2/minimal and IoT profiles keep risky or heavy integrations opt-in:
+
+- `website/` is for full/dev builds and should stay npm-audit clean.
+- `plugins/platforms/photon/sidecar/` is a full-profile sidecar, not a Pi2/minimal default.
+- `scripts/whatsapp-bridge/` is disabled by default because Baileys currently has a critical advisory with no fixed version (`GHSA-qvv5-jq5g-4cgg`). To opt in on an isolated host, review the advisory, run `npm run install:unsafe-baileys` inside `scripts/whatsapp-bridge/`, and start it with `HERMES_ENABLE_EXPERIMENTAL_WHATSAPP_BRIDGE=1`.
 
 ## Recommended Pi2 install
 
@@ -67,7 +81,7 @@ sudo apt install -y python3 python3-venv python3-pip build-essential git
 
 git clone --depth 1 https://github.com/matttest0080-prog/hermes-agent-iot.git
 cd hermes-agent-iot
-bash setup-pi2-minimal.sh --profile core
+bash setup-pi2-minimal.sh --profile minimal
 
 source ~/.hermes-venv/bin/activate
 hermes setup model

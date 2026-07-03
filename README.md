@@ -72,7 +72,7 @@ sudo apt install -y python3 python3-venv python3-pip build-essential git
 
 git clone --depth 1 --branch pi2-lite https://github.com/matttest0080-prog/hermes-agent-iot.git
 cd hermes-agent-iot
-bash setup-pi2-minimal.sh --profile core
+bash setup-pi2-minimal.sh --profile minimal
 
 source ~/.hermes-venv/bin/activate
 hermes setup model
@@ -84,16 +84,30 @@ Hermes requires Python `>=3.11,<3.14`. If your Raspberry Pi OS image ships older
 ## Install profiles
 
 ```bash
-bash setup-pi2-minimal.sh --profile core
-bash setup-pi2-minimal.sh --profile native
-bash setup-pi2-minimal.sh --profile rag
+bash setup-pi2-minimal.sh --profile minimal  # Pi2 / ARMv7 / 1GB RAM baseline
+bash setup-pi2-minimal.sh --profile iot      # Pi3/4/5, ARM64 SBCs, x86 edge nodes
+bash setup-pi2-minimal.sh --profile rag      # lightweight docs/RAG helpers; remote embeddings preferred
+bash setup-pi2-minimal.sh --profile full     # stronger edge server / VM / mini PC
+bash setup-pi2-minimal.sh --profile dev      # contributor machine
 ```
+
+Backward-compatible aliases are still accepted: `core` -> `minimal`, `native` -> `iot`.
 
 Profiles:
 
-- `core`: smallest practical Hermes CLI profile. Installs package through `pip install -e .[cli,pty]`, writes a config that disables heavy toolsets by default.
-- `native`: core plus MCP/ACP/Home Assistant/MQTT/SMS extras. Still disables browser/media/messaging tool surfaces by default.
-- `rag`: native plus lightweight document helpers and Honcho optional dependency. Remote embeddings are recommended; local torch stacks are not installed by default.
+- `minimal`: smallest practical Hermes CLI profile. Installs package through `pip install -e .[cli,pty]`, writes a config that disables heavy toolsets by default.
+- `iot`: minimal plus MCP/ACP/Home Assistant/MQTT/SMS extras. Still disables browser/media/messaging tool surfaces by default.
+- `rag`: iot plus lightweight document helpers and Honcho optional dependency. Remote embeddings are recommended; local torch stacks are not installed by default.
+- `full`: broader cross-platform Hermes extras for stronger Raspberry Pi, ARM64, x86 mini PC, VM, or NAS hosts.
+- `dev`: full plus test/developer tooling.
+
+## Optional integration security posture
+
+This fork keeps cross-platform code available, but Pi2/minimal and IoT profiles do not install risky or heavy integrations by default.
+
+- `website/` remains available for full/dev builds. Its lockfile should stay npm-audit clean before publishing.
+- `plugins/platforms/photon/sidecar/` remains a full-profile opt-in sidecar. It is not part of the Pi2/minimal install path.
+- `scripts/whatsapp-bridge/` is disabled by default because the Baileys RC dependency currently has a critical advisory with no fixed version (`GHSA-qvv5-jq5g-4cgg`). To opt in on an isolated host, review the advisory, run `npm run install:unsafe-baileys` inside `scripts/whatsapp-bridge/`, and start it with `HERMES_ENABLE_EXPERIMENTAL_WHATSAPP_BRIDGE=1`.
 
 ## What changed for Pi2
 

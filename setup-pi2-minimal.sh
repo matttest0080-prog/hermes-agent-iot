@@ -9,12 +9,14 @@
 # It does NOT patch or delete source files.
 #
 # Usage:
-#   bash setup-pi2-minimal.sh [--profile core|native|rag] [--venv ~/.hermes-venv]
+#   bash setup-pi2-minimal.sh [--profile minimal|iot|rag|full|dev] [--venv ~/.hermes-venv]
 #
 # Profiles:
-#   core   : smallest practical Hermes CLI install; heavy tools disabled by config
-#   native : core + MCP/ACP/Home Assistant/SMS extras, still no browser/voice/media
-#   rag    : native + lightweight document/RAG helpers; remote embeddings recommended
+#   minimal: smallest practical Hermes CLI install; heavy tools disabled by config
+#   iot    : minimal + MCP/ACP/Home Assistant/MQTT/SMS extras
+#   rag    : iot + lightweight document/RAG helpers; remote embeddings recommended
+#   full   : broader cross-platform Hermes extras for stronger edge hosts
+#   dev    : full + developer/test tooling
 # ============================================================
 
 set -euo pipefail
@@ -27,12 +29,13 @@ HERMES_HOME_DIR="${HERMES_HOME:-$HOME/.hermes}"
 
 usage() {
   cat <<'EOF'
-Usage: bash setup-pi2-minimal.sh [--profile core|native|rag] [--venv PATH]
+Usage: bash setup-pi2-minimal.sh [--profile minimal|iot|rag|full|dev] [--venv PATH]
 
 Examples:
   bash setup-pi2-minimal.sh
-  bash setup-pi2-minimal.sh --profile native
+  bash setup-pi2-minimal.sh --profile iot
   bash setup-pi2-minimal.sh --profile rag --venv ~/.hermes-venv
+  bash setup-pi2-minimal.sh --profile full    # stronger Pi/ARM64/x86 host only
 EOF
 }
 
@@ -59,9 +62,11 @@ while [[ $# -gt 0 ]]; do
 done
 
 case "$PROFILE" in
-  core|native|rag) ;;
+  core) PROFILE="minimal" ;;
+  native) PROFILE="iot" ;;
+  minimal|iot|rag|full|dev) ;;
   *)
-    echo "Invalid profile: $PROFILE (expected core, native, or rag)" >&2
+    echo "Invalid profile: $PROFILE (expected minimal, iot, rag, full, or dev)" >&2
     exit 2
     ;;
 esac
@@ -94,14 +99,20 @@ source "$VENV_DIR/bin/activate"
 python -m pip install --upgrade pip setuptools wheel
 
 case "$PROFILE" in
-  core)
+  minimal)
     EXTRAS="cli,pty"
     ;;
-  native)
+  iot)
     EXTRAS="cli,pty,mcp,acp,homeassistant,mqtt,sms"
     ;;
   rag)
     EXTRAS="cli,pty,mcp,acp,homeassistant,mqtt,sms,honcho"
+    ;;
+  full)
+    EXTRAS="all"
+    ;;
+  dev)
+    EXTRAS="all,dev"
     ;;
 esac
 
@@ -131,7 +142,11 @@ PY
 fi
 
 install -d "$HERMES_HOME_DIR"
-TEMPLATE="$REPO_DIR/templates/config.pi2-$PROFILE.yaml"
+case "$PROFILE" in
+  minimal) TEMPLATE="$REPO_DIR/templates/config.pi2-core.yaml" ;;
+  iot|full|dev) TEMPLATE="$REPO_DIR/templates/config.pi2-native.yaml" ;;
+  rag) TEMPLATE="$REPO_DIR/templates/config.pi2-rag.yaml" ;;
+esac
 if [[ ! -f "$TEMPLATE" ]]; then
   TEMPLATE="$REPO_DIR/templates/config.pi2-core.yaml"
 fi
@@ -168,5 +183,6 @@ echo ""
 echo "Optional next steps:"
 echo "  - Configure model/provider: hermes setup model"
 echo "  - Re-enable disabled tools later: hermes tools"
+echo "  - WhatsApp/Baileys bridge and Photon sidecar stay opt-in; review npm audit before enabling"
 echo "  - For local llama.cpp/OpenAI-compatible endpoint, set model.provider/custom config via hermes setup"
 echo "  - Active hermes command resolved as: $HERMES_CMD"
