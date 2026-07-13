@@ -252,6 +252,9 @@ termux-all = [
   "hermes-agent[sms]",
   "hermes-agent[web]",
 ]
+# alibabacloud-tea-openapi 0.4.4 caps cryptography<47 on Python>=3.8,
+# conflicting with the core cryptography 48 security floor. The lock therefore
+# resolves tea-openapi 0.3.16, which does not impose that vulnerable upper cap.
 dingtalk = ["dingtalk-stream==0.24.3", "alibabacloud-dingtalk==2.2.42", "qrcode==7.4.2"]
 feishu = ["lark-oapi==1.6.8", "qrcode==7.4.2"]
 google = [
