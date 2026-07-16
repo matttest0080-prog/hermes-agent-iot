@@ -49,9 +49,32 @@ hermes setup model
 hermes
 ```
 
-Select `--profile iot` for MQTT/Home Assistant integrations or `--profile rag`
-for the remote-first Honcho/RAG profile. See [README_PI2.md](README_PI2.md) for
-the complete profile matrix and safety guidance.
+#### Install profiles
+
+Choose the profile that matches the target device and workload:
+
+```bash
+bash setup-pi2-minimal.sh --profile minimal  # Pi2 / ARMv7 / 1GB RAM baseline
+bash setup-pi2-minimal.sh --profile iot      # MQTT, Home Assistant, MCP/ACP and SMS
+bash setup-pi2-minimal.sh --profile rag      # IoT + Honcho; remote-first RAG
+bash setup-pi2-minimal.sh --profile full     # Stronger Pi, ARM64, x86 edge server or VM
+bash setup-pi2-minimal.sh --profile dev      # Full profile + development/test tooling
+```
+
+- `minimal`: smallest practical Hermes CLI installation for Raspberry Pi 2.
+- `iot`: adds MQTT, Home Assistant, MCP, ACP and SMS integrations.
+- `rag`: adds Honcho and a remote-first RAG configuration; local heavy embedding
+  stacks are not installed by default.
+- `full`: installs the broader Hermes feature set and is not recommended for
+  Raspberry Pi 2 or other 1 GB systems.
+- `dev`: installs full and developer/test dependencies; intended for contributor
+  machines rather than production edge nodes.
+
+Backward-compatible aliases remain available: `core` → `minimal` and
+`native` → `iot`.
+
+See [README_PI2.md](README_PI2.md) for the complete dependency matrix,
+configuration templates and safety guidance.
 
 ### Upstream Hermes full installer
 
