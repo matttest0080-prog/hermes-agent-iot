@@ -181,6 +181,19 @@ All documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes
 | [CLI Reference](https://hermes-agent.nousresearch.com/docs/reference/cli-commands)                  | All commands and flags                                     |
 | [Environment Variables](https://hermes-agent.nousresearch.com/docs/reference/environment-variables) | Complete env var reference                                 |
 
+### Raspberry Pi 2 and IoT profiles
+
+This fork also carries opt-in low-resource profiles while preserving the
+upstream Agent, Gateway, tool, plugin, memory, cron, MCP, and ACP architecture:
+
+- [Pi2 quickstart and profile guide](README_PI2.md)
+- [Detailed Raspberry Pi 2 manual](RASPBERRY_PI2_MANUAL.md)
+- [Robotics architecture and safety guidance](ROBOTICS.md)
+
+Start with `bash setup-pi2-minimal.sh --profile minimal`, or select `iot` or
+`rag` for MQTT/Home Assistant and remote-first RAG dependencies. Heavy browser,
+media, local embedding, and desktop surfaces remain opt-in on constrained hosts.
+
 ---
 
 ## Migrating from OpenClaw
