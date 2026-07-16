@@ -40,9 +40,9 @@ Raspberry Pi OS 若仍是 Python 3.9，必須先安裝 Python 3.11+。
 sudo apt update
 sudo apt install -y git python3 python3-venv python3-pip build-essential
 
-git clone https://github.com/matttest0080-prog/hermes-agent-iot.git
+git clone --branch pi2-lite --depth 1 \
+  https://github.com/matttest0080-prog/hermes-agent-iot.git
 cd hermes-agent-iot
-git switch sync/upstream-main-20260716
 ```
 
 使用唯一維護的安裝器：

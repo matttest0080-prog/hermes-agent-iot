@@ -34,6 +34,31 @@ Use any model you want — [Nous Portal](https://portal.nousresearch.com), OpenR
 
 ## Quick Install
 
+### Raspberry Pi 2 / IoT — this fork
+
+For Raspberry Pi 2, ARMv7, low-resource edge nodes, MQTT device control, or
+remote-first RAG, install the maintained `pi2-lite` branch from this repository:
+
+```bash
+git clone --branch pi2-lite --depth 1 \
+  https://github.com/matttest0080-prog/hermes-agent-iot.git
+cd hermes-agent-iot
+bash setup-pi2-minimal.sh --profile minimal
+source ~/.hermes-venv/bin/activate
+hermes setup model
+hermes
+```
+
+Select `--profile iot` for MQTT/Home Assistant integrations or `--profile rag`
+for the remote-first Honcho/RAG profile. See [README_PI2.md](README_PI2.md) for
+the complete profile matrix and safety guidance.
+
+### Upstream Hermes full installer
+
+The installers below install the official `NousResearch/hermes-agent` build.
+Use them for general desktop/server installations; they do **not** install this
+fork's Pi2 profiles or MQTT additions.
+
 ### Linux, macOS, WSL2, Termux
 
 ```bash
@@ -162,7 +187,7 @@ For the full command lists, see the [CLI guide](https://hermes-agent.nousresearc
 
 ## Documentation
 
-All documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)**:
+Upstream Hermes documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)**. This IoT fork adds the local Pi2 and robotics guides listed below.
 
 | Section                                                                                             | What's Covered                                             |
 | --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
