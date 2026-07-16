@@ -202,7 +202,8 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     "platform.teams": ("microsoft-teams-apps==2.0.13.4", "aiohttp==3.14.1"),  # aiohttp 3.14.1: CVE-2026-34993(RCE)/47265 + 34513/34518/34519/34520/34525
 
     # ─── Terminal backends ─────────────────────────────────────────────────
-    "terminal.modal": ("modal==1.3.4",),
+    # cbor2 5.9.0 keeps a patched pure-Python wheel available on Pi2/ARMv7.
+    "terminal.modal": ("modal==1.3.4", "cbor2==5.9.0"),
     "terminal.daytona": ("daytona==0.155.0",),
 
     # ─── Skills ────────────────────────────────────────────────────────────
@@ -219,7 +220,7 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     # Dashboard (`hermes dashboard`)
     "tool.dashboard": (
         "fastapi==0.133.1",
-        "uvicorn[standard]==0.41.0",
+        "uvicorn==0.41.0",
         "starlette==1.0.1",  # CVE-2026-48710 (BadHost) — keep lazy-install in sync with pyproject [web]
         "python-multipart==0.0.27",  # FastAPI UploadFile/Form for streaming uploads (NS-501)
     ),
@@ -229,6 +230,8 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     # call site uses prompt=False so it can never raise a blocking input()
     # prompt mid-session (#40490).
     "tool.vision": ("Pillow==12.2.0",),
+    # MQTT IoT tools — small pure-Python client, installed only when used.
+    "tool.mqtt": ("paho-mqtt==2.1.0",),
     # Computer Use (cua-driver) — the MCP client SDK used to spawn and talk
     # to the cua-driver process over stdio. Matches the `mcp` / `computer-use`
     # extras in pyproject.toml. The one-liner installer pulls this in via

@@ -25,6 +25,15 @@ name: OSV-Scanner
 
 on:
   workflow_call:
+  # CI only runs on main. Keep a narrow direct trigger for pi2-lite so
+  # branch-scoped Code Scanning alerts close after lockfile-only fixes.
+  push:
+    branches: [pi2-lite]
+    paths:
+      - uv.lock
+      - package-lock.json
+      - website/package-lock.json
+      - .github/workflows/osv-scanner.yml
   schedule:
     # Weekly scan against main — catches CVEs published after merge for
     # deps that haven't changed since.
