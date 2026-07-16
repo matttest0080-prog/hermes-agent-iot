@@ -80,7 +80,7 @@ Pi2/minimal and IoT profiles keep risky or heavy integrations opt-in:
 sudo apt update
 sudo apt install -y python3 python3-venv python3-pip build-essential git
 
-git clone --depth 1 https://github.com/matttest0080-prog/hermes-agent-iot.git
+git clone --branch pi2-lite --depth 1 https://github.com/matttest0080-prog/hermes-agent-iot.git
 cd hermes-agent-iot
 bash setup-pi2-minimal.sh --profile minimal
 
