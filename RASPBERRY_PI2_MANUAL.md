@@ -1,503 +1,303 @@
-# Hermes Agent on Raspberry Pi 2 (ARMv7 32-bit)
-## Installation and Operation Manual
+# Hermes Agent IoT：Raspberry Pi 2／ARMv7 操作手冊
 
----
+本手冊適用於 `matttest0080-prog/hermes-agent-iot` 的最新 upstream 同步分支。Pi2 是最低基準；相同 Profile 也可用於 Pi 3/4/5、Pi Zero 2 W、ARM64 SBC、x86 小主機與 VM。
 
-## Table of Contents
-1. [Hardware and System Requirements](#hardware-and-system-requirements)
-2. [Installation Steps](#installation-steps)
-3. [Multi-Pi2 Shared Memory / RAG](#multi-pi2-shared-memory--rag)
-4. [Using lm-studio (Recommended)](#using-lm-studio-recommended)
-5. [Using llama.cpp (Advanced)](#using-llamacpp-advanced)
-6. [FAQ](#faq)
+## 1. 設計原則
 
----
+Pi2 僅負責輕量 Agent、MQTT、Home Assistant、Session/FTS 記憶和遠端 API 協調。以下工作應放在較強的 LAN／Cloud 節點：
 
-## Hardware and System Requirements
+- 大型 LLM 推論
+- Embedding 模型
+- `torch`／`sentence-transformers`
+- Chroma、Qdrant 或 pgvector
+- 影像／影片生成
+- Chromium／Computer Use
 
-| Item | Specification |
-|------|---------------|
-| Device | Raspberry Pi 2 Model B or newer / equivalent Linux SBC |
-| CPU | ARMv7 900MHz (4 cores) minimum |
-| RAM | 1GB LPDDR2 minimum |
-| Storage | microSD card (at least 8GB) |
-| OS | Raspberry Pi OS Lite (32-bit) or compatible Linux |
-
-**Note:** Raspberry Pi 2 is the minimum target used to keep the default profile conservative. Newer Raspberry Pi boards, Pi Zero 2 W, ARM64 SBCs, x86 mini PCs, and VMs can use the same install path; higher-spec systems may enable heavier Hermes features after setup.
-
-**Note:** Raspberry Pi 2 uses a 32-bit ARM architecture and does not support 64-bit software.
-
----
-
-## Installation Steps
-
-### 1. Update the system
-
-```bash
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3 python3-pip python3-venv build-essential git wget
-```
-
-### 2. Create a virtual environment
-
-```bash
-python3 -m venv ~/.hermes-venv
-source ~/.hermes-venv/bin/activate
-pip install --upgrade pip
-```
-
-### 3. Install Hermes Agent dependencies
-
-```bash
-pip install honcho-ai pypdf beautifulsoup4
-```
-
-Do not install `torch`, `sentence-transformers`, or `chromadb` on Raspberry Pi 2 by default. Pi2 is ARMv7 with 1GB RAM; those packages are large, often require source builds, and are too slow/heavy for local semantic RAG. Use Hermes built-in memory/session search locally, and use remote embeddings, cloud memory, or a vector database on another machine when semantic RAG is needed.
-
----
-
-## Multi-Pi2 Shared Memory / RAG
-
-When several Pi2 nodes need the same long-term memory or RAG corpus, keep the Pi2 devices light and centralize the heavy work. Each Pi2 should run Hermes Agent and call a shared LAN/cloud memory service over HTTP.
+推薦拓撲：
 
 ```text
-Pi2 kitchen ┐
-Pi2 lab     ├── HTTP/LAN API ──> shared memory/RAG server
-Pi2 garage  ┘                    ├── SQLite/Postgres memory store
-                                  ├── remote embedding API or LAN embedding model
-                                  └── Qdrant/Chroma/pgvector vector index
+Pi2 Hermes Agent -> MQTT/HTTP -> MCU、感測器、Home Assistant
+       |
+       +---------- HTTPS/LAN -> 遠端 LLM
+       +---------- HTTPS/LAN -> 中央 RAG／Honcho／FTS5 API
 ```
 
-Recommended responsibilities:
+硬即時控制、馬達保護、障礙反射與緊急停止必須留在 MCU／PLC／ROS controller，不能交由 LLM。
 
-- Pi2 nodes: Hermes CLI, local short-term/session cache, API calls to add/search memory, no local embedding model.
-- Shared server: embeddings, vector index, keyword index, backups, deduplication, and conflict handling.
-- Storage: start with SQLite FTS5 or Postgres for shared keyword memory; add Qdrant/pgvector only when semantic search is required.
+## 2. 系統需求
 
-Store scope metadata with each item so one Pi2 does not accidentally pollute another Pi2's context:
+- Python `>=3.11,<3.14`
+- Git
+- Python venv
+- 約 1 GB RAM；建議啟用 swap 供安裝使用
+- 遠端或 LAN OpenAI-compatible model endpoint
 
-```json
-{
-  "device_id": "pi2-kitchen",
-  "scope": "global|device|room|user",
-  "source": "conversation|note|sensor|manual",
-  "created_at": "2026-06-25T00:00:00Z"
-}
-```
+Raspberry Pi OS 若仍是 Python 3.9，必須先安裝 Python 3.11+。
 
-Avoid these patterns on Pi2:
-
-- installing `torch`, `sentence-transformers`, and `chromadb` on every node
-- syncing raw Chroma/vector DB directories between nodes
-- letting multiple Pi2 devices write directly to one SQLite database over NFS/Samba
-
-Use an API boundary instead: the server serializes writes and Pi2 nodes remain replaceable clients.
-
----
-
-## Using lm-studio (Recommended)
-
-### Advantages
-- ✅ Graphical interface, easy to operate
-- ✅ No need to compile llama.cpp
-- ✅ Supports hot-swapping models
-- ✅ Built-in model download support
-
-### Disadvantages
-- ⚠️ Requires a graphical interface (desktop environment)
-
-### Install lm-studio
+## 3. 安裝
 
 ```bash
-# Download lm-studio for Linux
-wget https://github.com/lmstudio-ai/lmstudio/releases/download/v0.4.0/lmstudio_0.4.0_amd64.deb
-sudo dpkg -i lmstudio_0.4.0_amd64.deb
-```
+sudo apt update
+sudo apt install -y git python3 python3-venv python3-pip build-essential
 
-**Note:** Raspberry Pi 2 is ARMv7, so lm-studio must be compiled for ARM or used through a web version.
-
-### Alternative: Use a Web API (Recommended)
-
-#### 1. Install the llama.cpp Web Server (ARMv7)
-
-```bash
-# Clone llama.cpp
-git clone https://github.com/ggerganov/llama.cpp.git
-cd llama.cpp
-
-# Compile (disable AVX/AVX2, enable NEON)
-make clean
-make -j$(nproc) LLAMA_AVX2=OFF LLAMA_AVX=OFF LLAMA_F16C=OFF LLAMA_FMA=OFF server
-
-cd ..
-```
-
-#### 2. Download the Qwen2.5-7B GGUF model
-
-```bash
-# Install huggingface-cli
-pip install huggingface_hub
-
-# Download the model (q4_k_m quantized version, about 4.6GB)
-huggingface-cli download Qwen/Qwen2.5-7B-Instruct-GGUF \
-    qwen2.5-7b-instruct-q4_k_m.gguf \
-    --local-dir ~
-```
-
-#### 3. Start the llama.cpp service
-
-```bash
-cd ~/llama.cpp
-./server -m ~/qwen2.5-7b-instruct-q4_k_m.gguf \
-    -c 2048 \
-    --port 8080 \
-    -np 1 \
-    --n_gpu_layers 0
-```
-
-**Parameter notes:**
-- `-c 2048`: context size (limited by Raspberry Pi 2 RAM)
-- `--n_gpu_layers 0`: do not use GPU (Raspberry Pi 2 has no CUDA)
-
-Hermes' upstream local/Ollama tool-use guard defaults to a 64K runtime-context floor. The Pi2 templates tune that down with `agent.minimum_tool_context_length` (`2048` for core, `8192` for native/rag) so constrained local models can run in a degraded low-tool mode. Use a stronger LAN/cloud model with 64K+ context for full Hermes tool use and shared RAG.
-
-#### 4. Test the API
-
-```bash
-curl http://localhost:8080/v1/models
-```
-
-Expected response:
-```json
-{
-  "data": [
-    {
-      "id": "qwen2.5-7b-instruct-q4_k_m",
-      "object": "model"
-    }
-  ]
-}
-```
-
-#### 5. Configure Hermes Agent
-
-```bash
-# Create the config file
-cat > ~/.hermes/config.yaml << 'EOF'
-models:
-  - name: "custom:qwen2.5-7b"
-    base_url: "http://localhost:8080/v1"
-    api_key: "not-used"
-
-providers:
-  - name: "custom"
-    provider: "openai_compatible"
-    base_url: "http://localhost:8080/v1"
-    api_key: "not-used"
-
-memory:
-  memory_enabled: true
-  user_profile_enabled: true
-  memory_char_limit: 2200
-  user_char_limit: 1375
-  provider: "honcho"
-  nudge_interval: 10
-  flush_min_turns: 6
-
-tools:
-  - memory
-  - skills
-  - terminal
-  - session_search
-EOF
-```
-
-#### 6. Install Hermes Agent
-
-```bash
 git clone https://github.com/matttest0080-prog/hermes-agent-iot.git
 cd hermes-agent-iot
-pip install -e .
+git switch sync/upstream-main-20260716
 ```
 
-#### 7. Start Hermes Agent
+使用唯一維護的安裝器：
+
+```bash
+bash setup-pi2-minimal.sh --profile minimal
+```
+
+`setup-pi2.sh` 僅是向後相容 wrapper，會直接轉交給 `setup-pi2-minimal.sh`；它不再維護第二套依賴清單。
+
+### Profiles
+
+```text
+minimal  CLI + PTY，最低資源
+IoT      minimal + MCP/ACP/Home Assistant/MQTT/SMS
+rag      IoT + Honcho；中央／遠端 RAG 優先
+full     較強 ARM64/x86 主機使用
+Dev      full + 測試與開發依賴
+```
+
+範例：
+
+```bash
+bash setup-pi2-minimal.sh --profile iot
+bash setup-pi2-minimal.sh --profile rag
+```
+
+安裝器：
+
+- 驗證 Python 3.11–3.13
+- 建立 `~/.hermes-venv`
+- 以 `pip install -e '.[extras]'` 使用 `pyproject.toml` 作為唯一依賴來源
+- 不另外安裝未鎖定的套件清單
+- 不在 Pi2 預裝 torch、Chroma 或本機 embedding stack
+- 只在尚無設定時建立 `~/.hermes/config.yaml`
+
+啟動：
 
 ```bash
 source ~/.hermes-venv/bin/activate
+hermes --help
+hermes setup model
 hermes
 ```
 
----
+## 4. Pi2 設定模板
 
-## Using llama.cpp (Advanced)
-
-### Advantages
-- ✅ Pure command line, no graphical interface required
-- ✅ Better resource control
-- ✅ Supports GPU acceleration (not useful on Raspberry Pi 2)
-
-### Disadvantages
-- ⚠️ Requires compilation (about 15-30 minutes)
-- ⚠️ Requires manual model management
-
-### Installation Steps
-
-#### 1. Compile llama.cpp
-
-```bash
-git clone https://github.com/ggerganov/llama.cpp.git
-cd llama.cpp
-
-# Compile (ARMv7 32-bit)
-make clean
-make -j$(nproc) LLAMA_AVX2=OFF LLAMA_AVX=OFF LLAMA_F16C=OFF LLAMA_FMA=OFF
-
-# Test the build
-./llama-cli --version
+```text
+templates/config.pi2-core.yaml
+templates/config.pi2-native.yaml
+templates/config.pi2-rag.yaml
 ```
 
-#### 2. Download the model
+目前 config schema 使用：
 
-```bash
-# Use huggingface-cli
-pip install huggingface_hub
-
-# Download Qwen2.5-7B (q4_k_m quantized)
-huggingface-cli download Qwen/Qwen2.5-7B-Instruct-GGUF \
-    qwen2.5-7b-instruct-q4_k_m.gguf \
-    --local-dir ~
-```
-
-#### 3. Start the server
-
-```bash
-cd ~/llama.cpp
-./server -m ~/qwen2.5-7b-instruct-q4_k_m.gguf \
-    -c 2048 \
-    --port 8080 \
-    -np 1
-```
-
-#### 4. Test
-
-```bash
-curl http://localhost:8080/v1/chat/completions \
-    -H "Content-Type: application/json" \
-    -d '{
-        "model": "qwen2.5-7b-instruct-q4_k_m",
-        "messages": [{"role": "user", "content": "Hello!"}],
-        "temperature": 0.7
-    }'
-```
-
----
-
-## FAQ
-
-### Q1: Not enough memory when compiling llama.cpp?
-
-**Solution:** Use fewer cores.
-```bash
-make -j2 LLAMA_AVX2=OFF LLAMA_AVX=OFF  # Use only 2 cores
-```
-
-### Q2: Model loading failed?
-
-**Reason:** The GGUF model is too large (4.6GB) and exceeds available RAM.
-**Solution:**
-- Use a smaller model, such as `qwen2.5-1.5B`
-- Use the `--n_ctx` parameter to reduce context size
-
-```bash
-./server -m ~/qwen2.5-1.5b-instruct-q4_k_m.gguf -c 1024 --port 8080
-```
-
-### Q3: Hermes shows `no module named honcho-ai` on startup?
-
-**Solution:**
-```bash
-source ~/.hermes-venv/bin/activate
-pip install honcho-ai pypdf beautifulsoup4
-```
-
-Do not fix this by installing `sentence-transformers`, `torch`, or `chromadb` locally on Pi2. Prefer remote embeddings/cloud memory or another machine for vector search.
-
-### Q4: How do I configure memory limits?
-
-Adjust `~/.hermes/config.yaml`:
 ```yaml
-memory:
-  memory_char_limit: 1500   # Reduce memory usage
-  user_char_limit: 800
-```
+model:
+  default: tiny-local-model
+  provider: custom
+  base_url: http://127.0.0.1:8080/v1
+  context_length: 8192
 
----
+providers: {}
+fallback_providers: []
 
-## Quick Start Scripts
+toolsets:
+  - hermes-cli
+  - mqtt
 
-### start_lm_server.sh
-```bash
-#!/bin/bash
-# Start the llama.cpp service
-
-cd ~/llama.cpp
-./server -m ~/qwen2.5-7b-instruct-q4_k_m.gguf \
-    -c 2048 \
-    --port 8080 \
-    -np 1 \
-    --n_gpu_layers 0
-```
-
-### start_hermes.sh
-```bash
-#!/bin/bash
-# Start Hermes Agent
-
-cd ~/hermes-agent-iot
-source ~/.hermes-venv/bin/activate
-hermes
-```
-
-### Usage
-```bash
-# Terminal 1 - start the model service
-chmod +x start_lm_server.sh
-./start_lm_server.sh
-
-# Terminal 2 - start Hermes
-chmod +x start_hermes.sh
-./start_hermes.sh
-```
-
----
-
-## Verification Test
-
-In the Hermes CLI, enter:
-```
-/hermes tools list
-```
-
-Expected output:
-```
-✓ enabled  memory          💾 Memory
-✓ enabled  skills          🛠 Skills
-✓ enabled  terminal        🖥 Terminal
-✓ enabled  session_search  🔍 Session Search
-```
-
----
-
-## Notes
-
-1. **Raspberry Pi 2 is 32-bit ARM**, so make sure all software supports ARMv7.
-2. **Memory is limited** (1GB), so avoid running multiple models at the same time.
-3. **Use quantized models** (q4_k_m, q5_k_m) to reduce memory usage.
-4. **Use a virtual environment** to avoid conflicts with the system Python.
-
----
-
-**Version**: v0.2-pi2  \
-**Author**: Matt0080828  \
-**Repository**: https://github.com/matttest0080-prog/hermes-agent-iot
-
----
-
-## Quick Migration Script (New Machine)
-
-### One-click migration to a new Raspberry Pi 2
-
-```bash
-#!/bin/bash
-# setup_pi2_hermes.sh - Quick setup for Raspberry Pi 2
-
-set -e
-
-echo "=== Hermes Agent Quick Setup for Pi2 ==="
-
-# Step 1: Update system
-echo "Step 1: Updating system..."
-sudo apt update && sudo apt upgrade -y
-sudo apt install -y python3 python3-pip python3-venv build-essential git wget
-
-# Step 2: Clone hermes-agent (shallow)
-echo "Step 2: Cloning hermes-agent (shallow)..."
-git clone --depth=1 https://github.com/matttest0080-prog/hermes-agent-iot.git ~/hermes-agent-iot
-
-# Step 3: Create virtual environment
-echo "Step 3: Creating virtual environment..."
-python3 -m venv ~/.hermes-venv
-source ~/.hermes-venv/bin/activate
-
-# Step 4: Install hermes-agent
-echo "Step 4: Installing hermes-agent..."
-cd ~/hermes-agent-iot
-pip install -e .
-
-# Step 5: Install lightweight memory/document helpers only
-echo "Step 5: Installing lightweight memory/document helpers..."
-pip install honcho-ai pypdf beautifulsoup4
-echo "Skipping local torch, sentence-transformers, and chromadb on Pi2."
-echo "Use remote embeddings/cloud memory or a vector DB on another machine for semantic RAG."
-
-# Step 6: Setup config
-echo "Step 6: Creating config..."
-mkdir -p ~/.hermes
-cat > ~/.hermes/config.yaml << 'EOF'
-models:
-  - name: "custom:qwen2.5-7b"
-    base_url: "http://localhost:8080/v1"
-    api_key: "not-used"
-
-providers:
-  - name: "custom"
-    provider: "openai_compatible"
-    base_url: "http://localhost:8080/v1"
-    api_key: "not-used"
+agent:
+  minimum_tool_context_length: 8192
+  disabled_toolsets:
+    - browser
+    - image_gen
+    - video_gen
+    - computer_use
 
 memory:
   memory_enabled: true
   user_profile_enabled: true
-  memory_char_limit: 2200
-  user_char_limit: 1375
-  provider: "honcho"
-  nudge_interval: 10
-  flush_min_turns: 6
-
-tools:
-  - memory
-  - skills
-  - terminal
-  - session_search
-EOF
-
-echo "=== Setup Complete! ==="
-echo ""
-echo "Next steps:"
-echo "1. Build llama.cpp: cd ~/ && git clone https://github.com/ggerganov/llama.cpp.git && cd llama.cpp && make -j\$(nproc) LLAMA_AVX2=OFF LLAMA_AVX=OFF"
-echo "2. Download model: huggingface-cli download Qwen/Qwen2.5-7B-Instruct-GGUF qwen2.5-7b-instruct-q4_k_m.gguf --local-dir ~"
-echo "3. Start server: cd ~/llama.cpp && ./server -m ~/qwen2.5-7b-instruct-q4_k_m.gguf -c 2048 --port 8080"
-echo "4. Run hermes: cd ~/hermes-agent-iot && source ~/.hermes-venv/bin/activate && hermes"
+  provider: ""
 ```
 
-### Memory optimization settings (1GB RAM)
+推薦使用 `hermes setup model` 寫入 Model／Provider，不要手工建立舊版 `models:` list、list 型 `providers:` 或 `tools:` keys。
 
-If system memory is insufficient, adjust `~/.hermes/config.yaml`:
+API key 應放在 `~/.hermes/.env`，行為設定放在 `config.yaml`。
 
-```yaml
-memory:
-  memory_char_limit: 1000   # Reduce memory usage
-  user_char_limit: 500
+## 5. Context Floor
+
+官方 Hermes 預設維持約 64K 工具工作流門檻。Pi2 Profile 明確降低為：
+
+```text
+core:   2,048
+native: 8,192
+rag:    8,192
 ```
 
-### Use a smaller model (512MB RAM)
+這是低資源降級模式，不代表完整工具 schema 能在 2K 內可靠運行。2K 只應搭配極小工具面；Coding、多工具、長對話與 RAG 建議使用遠端 64K+ 模型。
+
+## 6. MQTT
+
+MQTT 是獨立、明確 opt-in toolset，不會只因系統存在 `MQTT_HOST` 就自動加入所有 CLI、Gateway 或 Cron Session。
+
+啟用：
 
 ```bash
-# Download a smaller model
-huggingface-cli download Qwen/Qwen2.5-1.5B-Instruct-GGUF \
-    qwen2.5-1.5b-instruct-q4_k_m.gguf \
-    --local-dir ~
-
-# Start the service
-./server -m ~/qwen2.5-1.5b-instruct-q4_k_m.gguf -c 1024 --port 8080
+source ~/.hermes-venv/bin/activate
+hermes tools enable mqtt
 ```
+
+設定秘密與連線資訊：
+
+```bash
+export MQTT_HOST=192.168.1.10
+export MQTT_PORT=1883
+export MQTT_USERNAME=iot-user
+export MQTT_PASSWORD='replace-me'
+export MQTT_TLS=true
+```
+
+工具：
+
+- `mqtt_publish`
+- `mqtt_subscribe_recent`
+- `mqtt_device_command`
+
+安全建議：
+
+- Broker 使用 TLS
+- 每個 Hermes node 使用獨立帳號
+- Broker ACL 僅允許指定 topic prefix
+- 感測器帳號預設只讀
+- Actuator command topic 另外授權
+- 緊急停止與硬安全不得依賴 MQTT／LLM
+- 避免將 MQTT toolset 啟用於不需要裝置控制的公開 Gateway Session
+
+`mqtt_device_command` 會先完成 state/ACK 訂閱，再發布命令，以避免立即 ACK 在訂閱建立前遺失。
+
+## 7. 中央 RAG
+
+Pi2 RAG Profile 使用：
+
+- Hermes built-in memory
+- Session Search
+- SQLite／FTS5
+- Honcho（可選）
+- 遠端 embedding／中央向量庫
+
+不要把一個可寫 SQLite DB 直接掛載到多台 Pi2 的 NFS／Samba。應透過 HTTP API 寫入中央服務，或每台裝置使用本機 DB 後再同步。
+
+推薦 metadata：
+
+```json
+{
+  "device_id": "pi2-lab",
+  "scope": "global|device|room|user",
+  "source": "conversation|sensor|manual",
+  "created_at": "ISO-8601 timestamp"
+}
+```
+
+## 8. llama.cpp（進階）
+
+Pi2 本機執行 7B 模型通常不實用；優先在 LAN 主機執行 `llama-server`。若仍要在 ARM 裝置編譯，使用 llama.cpp 現行 CMake 介面：
+
+```bash
+git clone https://github.com/ggml-org/llama.cpp.git
+cd llama.cpp
+cmake -B build -DGGML_NATIVE=OFF
+cmake --build build --config Release -j2 --target llama-server
+```
+
+下載 GGUF 可使用新版 Hugging Face CLI：
+
+```bash
+python -m pip install 'huggingface-hub[cli]'
+hf download OWNER/MODEL-GGUF model.gguf --local-dir ~/models
+```
+
+啟動現行 server binary：
+
+```bash
+./build/bin/llama-server \
+  -m ~/models/model.gguf \
+  --host 127.0.0.1 \
+  --port 8080 \
+  --ctx-size 8192
+```
+
+檢查：
+
+```bash
+curl http://127.0.0.1:8080/v1/models
+```
+
+然後執行：
+
+```bash
+hermes setup model
+```
+
+選擇 Custom／OpenAI-compatible endpoint，Base URL 設為：
+
+```text
+http://127.0.0.1:8080/v1
+```
+
+## 9. 驗證與維護
+
+```bash
+source ~/.hermes-venv/bin/activate
+hermes --help
+hermes tools list
+python scripts/check_pi2_install_guards.py --repo .
+```
+
+檢查更新：
+
+```bash
+git fetch upstream main
+git log --oneline HEAD..upstream/main
+```
+
+每次同步 upstream 後至少執行：
+
+```bash
+pytest -q tests/test_mqtt_tool.py tests/test_pi2_install_guards.py
+uv lock --check
+ruff check tools/mqtt_tool.py agent/agent_init.py agent/conversation_loop.py
+```
+
+## 10. 故障排除
+
+記憶體不足：
+
+```bash
+free -h
+swapon --show
+```
+
+MQTT 無法使用：
+
+```bash
+python -c 'import paho.mqtt.client; print("paho-mqtt ok")'
+printenv MQTT_HOST
+hermes tools list
+```
+
+Model context 被拒絕時，確認兩者一致：
+
+```yaml
+model:
+  context_length: 8192
+agent:
+  minimum_tool_context_length: 8192
+```
+
+若 Profile 已降低 context floor 但工具 schema 仍過大，應關閉更多 toolsets 或改用遠端 64K+ 模型，而不是繼續降低門檻。

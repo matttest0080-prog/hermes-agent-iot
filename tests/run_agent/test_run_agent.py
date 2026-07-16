@@ -926,6 +926,52 @@ class TestMaskApiKey:
 
 
 class TestInit:
+    def test_pi2_context_floor_applies_during_real_agent_initialization(self):
+        config = {
+            "model": {"context_length": 4096},
+            "agent": {"minimum_tool_context_length": 2048},
+        }
+        with (
+            patch("run_agent.get_tool_definitions", return_value=_make_tool_defs("terminal")),
+            patch("run_agent.check_toolset_requirements", return_value={}),
+            patch("run_agent.OpenAI"),
+            patch("hermes_cli.config.load_config", return_value=config),
+        ):
+            initialized = AIAgent(
+                api_key="test-key-1234567890",
+                provider="custom",
+                model="tiny-local-model",
+                base_url="http://localhost:11434/v1",
+                quiet_mode=True,
+                skip_context_files=True,
+                skip_memory=True,
+            )
+
+        assert initialized.context_compressor.context_length == 4096
+        assert initialized._minimum_tool_context_length == 2048
+
+    def test_pi2_context_floor_rejects_context_below_profile_minimum(self):
+        config = {
+            "model": {"context_length": 1024},
+            "agent": {"minimum_tool_context_length": 2048},
+        }
+        with (
+            patch("run_agent.get_tool_definitions", return_value=_make_tool_defs("terminal")),
+            patch("run_agent.check_toolset_requirements", return_value={}),
+            patch("run_agent.OpenAI"),
+            patch("hermes_cli.config.load_config", return_value=config),
+            pytest.raises(ValueError, match="configured minimum 2,048"),
+        ):
+            AIAgent(
+                api_key="test-key-1234567890",
+                provider="custom",
+                model="tiny-local-model",
+                base_url="http://localhost:11434/v1",
+                quiet_mode=True,
+                skip_context_files=True,
+                skip_memory=True,
+            )
+
     def test_anthropic_base_url_accepted(self):
         """Anthropic base URLs should route to native Anthropic client."""
         with (

@@ -1893,18 +1893,18 @@ def init_agent(
     agent.compression_in_place = compression_in_place
     agent.codex_app_server_auto_compaction = codex_app_server_auto_compaction
 
-    # Reject models whose context window is below the minimum required
-    # for reliable tool-calling workflows (64K tokens).
+    # Reject models whose context window is below the configured tool-workflow
+    # floor. The default remains Hermes' 64K safety floor; constrained profiles
+    # may explicitly lower it together with a reduced tool surface.
     _ctx = getattr(agent.context_compressor, "context_length", 0)
-    if _ctx and _ctx < MINIMUM_CONTEXT_LENGTH:
+    _minimum_ctx = getattr(agent, "_minimum_tool_context_length", MINIMUM_CONTEXT_LENGTH)
+    if _ctx and _ctx < _minimum_ctx:
         raise ValueError(
             f"Model {agent.model} has a context window of {_ctx:,} tokens, "
-            f"which is below the minimum {MINIMUM_CONTEXT_LENGTH:,} required "
-            f"by Hermes Agent.  Choose a model with at least "
-            f"{MINIMUM_CONTEXT_LENGTH // 1000}K context.  If your server "
-            f"reports a window smaller than the model's true window, set "
-            f"model.context_length in config.yaml to the real value "
-            f"(this must be at least {MINIMUM_CONTEXT_LENGTH // 1000}K)."
+            f"which is below the configured minimum {_minimum_ctx:,} required "
+            f"by Hermes Agent. Choose a model with at least {_minimum_ctx:,} "
+            f"tokens of context, or set model.context_length in config.yaml "
+            f"to the server's real value (it must be at least {_minimum_ctx:,})."
         )
 
     # Nous Hermes 3/4 are chat models, not tool-call-tuned. The interactive

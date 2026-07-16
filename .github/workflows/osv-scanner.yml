@@ -21,10 +21,12 @@ name: OSV-Scanner
 
 on:
   workflow_call:
-  # CI only runs on main. Keep a narrow direct trigger for pi2-lite so
+  # Keep narrow direct triggers for maintained low-resource/sync branches so
   # branch-scoped Code Scanning alerts close after lockfile-only fixes.
   push:
-    branches: [pi2-lite]
+    branches:
+      - pi2-lite
+      - "sync/**"
     paths:
       - uv.lock
       - package-lock.json

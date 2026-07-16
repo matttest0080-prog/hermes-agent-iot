@@ -23,7 +23,6 @@ BANNED_DEFAULT_DEPS = (
     "sentence-transformers",
     "chromadb",
 )
-HEAVY_RAG_DEPS = ("torch", "sentence-transformers", "chromadb")
 
 
 class FailureCollector:
@@ -103,49 +102,31 @@ def check_lazy_deps(repo: Path, failures: FailureCollector) -> None:
             )
 
 
-def joined_shell_commands(path: Path) -> list[str]:
-    commands: list[str] = []
-    current = ""
-    for raw_line in path.read_text(encoding="utf-8").splitlines():
-        stripped = raw_line.strip()
-        if not stripped or stripped.startswith("#"):
-            continue
-        if current:
-            current += " " + stripped.rstrip("\\").strip()
-        else:
-            current = stripped.rstrip("\\").strip()
-        if stripped.endswith("\\"):
-            continue
-        commands.append(current)
-        current = ""
-    if current:
-        commands.append(current)
-    return commands
-
-
 def check_setup_pi2(repo: Path, failures: FailureCollector) -> None:
     setup = repo / "setup-pi2.sh"
     if not setup.exists():
         failures.add("setup-pi2.sh is missing")
         return
 
-    for command in joined_shell_commands(setup):
-        if not re.search(r"(^|\s)(python\s+-m\s+)?pip\s+install(\s|$)", command):
-            continue
-        if command.lstrip().startswith("echo "):
-            continue
-        lowered = command.lower()
-        for dep in HEAVY_RAG_DEPS:
-            if re.search(rf"(^|[\s'\"]){re.escape(dep)}([\s'\"]|$)", lowered):
-                failures.add(
-                    f"setup-pi2.sh default pip install command contains {dep}; "
-                    "Pi2 defaults must not install local heavy RAG/embedding stacks"
-                )
-        if "uvicorn[standard]" in lowered or "uvloop" in lowered:
-            failures.add(
-                "setup-pi2.sh default pip install command contains uvicorn[standard]/uvloop; "
-                "use plain uvicorn on Pi2"
-            )
+    text = setup.read_text(encoding="utf-8")
+    commands = [
+        line.strip()
+        for line in text.splitlines()
+        if line.strip() and not line.lstrip().startswith(("#", "#!"))
+    ]
+    valid_wrapper = (
+        len(commands) == 3
+        and commands[0] == "set -euo pipefail"
+        and commands[1].startswith("SCRIPT_DIR=")
+        and commands[2].startswith("exec ")
+        and "setup-pi2-minimal.sh" in commands[2]
+        and '"$@"' in commands[2]
+    )
+    if not valid_wrapper:
+        failures.add(
+            "setup-pi2.sh deprecated wrapper must only contain strict mode, "
+            "SCRIPT_DIR resolution, and exec of setup-pi2-minimal.sh"
+        )
 
 
 def check_setup_pi2_minimal(repo: Path, failures: FailureCollector) -> None:
@@ -187,26 +168,26 @@ def check_iot_optional_deps(repo: Path, failures: FailureCollector) -> None:
 
 
 def check_pi2_context_templates(repo: Path, failures: FailureCollector) -> None:
-    """Guard the low-resource context-floor optimization from regressions."""
+    """Guard the low-resource context-floor optimization using stdlib only."""
     expected = {
         "config.pi2-core.yaml": 2048,
         "config.pi2-native.yaml": 8192,
         "config.pi2-rag.yaml": 8192,
     }
-    try:
-        import yaml  # type: ignore
-    except Exception as exc:  # pragma: no cover - CI/dev envs have PyYAML
-        failures.add(f"PyYAML is required to validate Pi2 config templates: {exc}")
-        return
 
     for filename, expected_floor in expected.items():
         path = repo / "templates" / filename
         if not path.exists():
             failures.add(f"{path.relative_to(repo)} is missing")
             continue
-        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-        agent_cfg = data.get("agent") or {}
-        actual = agent_cfg.get("minimum_tool_context_length")
+        text = path.read_text(encoding="utf-8")
+        agent_match = re.search(r"(?ms)^agent:\s*\n(?P<body>(?:^[ \t]+.*(?:\n|$))*)", text)
+        body = agent_match.group("body") if agent_match else ""
+        floor_match = re.search(
+            r"(?m)^[ \t]+minimum_tool_context_length:\s*([0-9]+)\s*(?:#.*)?$",
+            body,
+        )
+        actual = int(floor_match.group(1)) if floor_match else None
         if actual != expected_floor:
             failures.add(
                 f"{path.relative_to(repo)} agent.minimum_tool_context_length should be "

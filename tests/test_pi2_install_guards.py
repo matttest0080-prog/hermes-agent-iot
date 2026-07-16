@@ -36,12 +36,9 @@ mqtt = ["paho-mqtt==2.1.0"]
     (root / "setup-pi2.sh").write_text(
         """
 #!/usr/bin/env bash
-pip install \
-  openai \
-  pypdf \
-  beautifulsoup4
-
-echo "pip install fastapi uvicorn"
+set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+exec "$SCRIPT_DIR/setup-pi2-minimal.sh" "$@"
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -49,18 +46,7 @@ echo "pip install fastapi uvicorn"
     (root / "setup-pi2-minimal.sh").write_text(
         """
 #!/usr/bin/env bash
-MACHINE="$(python - <<'PY'
-import platform
-print(platform.machine().lower())
-PY
-)"
-if [[ "${HERMES_PI2_TRY_SQLITE_VEC:-0}" == "1" ]]; then
-  python -m pip install sqlite-vec
-elif [[ "$MACHINE" == armv7l || "$MACHINE" == armv6l ]]; then
-  echo "sqlite-vec wheels are unavailable"
-else
-  python -m pip install sqlite-vec
-fi
+python -m pip install -e "$REPO_DIR[$EXTRAS]"
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -79,10 +65,14 @@ fi
 
 
 class Pi2InstallGuardTests(unittest.TestCase):
-    def run_guard(self, repo: Path) -> subprocess.CompletedProcess[str]:
+    def run_guard(self, repo: Path, *, no_site: bool = False) -> subprocess.CompletedProcess[str]:
         script = Path(__file__).resolve().parents[1] / "scripts" / "check_pi2_install_guards.py"
+        command = [sys.executable]
+        if no_site:
+            command.append("-S")
+        command.extend([str(script), "--repo", str(repo)])
         return subprocess.run(
-            [sys.executable, str(script), "--repo", str(repo)],
+            command,
             check=False,
             text=True,
             capture_output=True,
@@ -94,6 +84,16 @@ class Pi2InstallGuardTests(unittest.TestCase):
             write_minimal_repo(repo)
 
             result = self.run_guard(repo)
+
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("Pi2 install guard checks passed", result.stdout)
+
+    def test_pi2_install_guard_has_no_third_party_runtime_dependency(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            write_minimal_repo(repo)
+
+            result = self.run_guard(repo, no_site=True)
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Pi2 install guard checks passed", result.stdout)
@@ -114,24 +114,46 @@ class Pi2InstallGuardTests(unittest.TestCase):
         self.assertIn("uvicorn[standard]", result.stdout)
         self.assertIn("pyproject.toml", result.stdout)
 
-    def test_pi2_install_guard_blocks_heavy_default_rag_deps(self) -> None:
+    def test_pi2_install_guard_blocks_legacy_unlocked_installer(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
             write_minimal_repo(repo)
-            setup = repo / "setup-pi2.sh"
-            setup.write_text(
-                setup.read_text(encoding="utf-8").replace(
-                    "beautifulsoup4",
-                    "beautifulsoup4 \\\n  chromadb \\\n  sentence-transformers",
-                ),
+            (repo / "setup-pi2.sh").write_text(
+                "#!/usr/bin/env bash\npip install openai pyyaml beautifulsoup4\n",
                 encoding="utf-8",
             )
 
             result = self.run_guard(repo)
 
         self.assertEqual(result.returncode, 1)
-        self.assertIn("chromadb", result.stdout)
-        self.assertIn("sentence-transformers", result.stdout)
+        self.assertIn("setup-pi2-minimal.sh", result.stdout)
+        self.assertIn("deprecated wrapper", result.stdout)
+
+    def test_pi2_wrapper_rejects_common_package_install_invocations(self) -> None:
+        invocations = (
+            "pip install pyyaml",
+            "pip3 install pyyaml",
+            "python -m pip install pyyaml",
+            "python3 -m pip install pyyaml",
+            "command pip install pyyaml",
+        )
+        for invocation in invocations:
+            with self.subTest(invocation=invocation), tempfile.TemporaryDirectory() as tmp:
+                repo = Path(tmp)
+                write_minimal_repo(repo)
+                (repo / "setup-pi2.sh").write_text(
+                    "#!/usr/bin/env bash\n"
+                    "set -euo pipefail\n"
+                    f"{invocation}\n"
+                    "SCRIPT_DIR=\"$(cd \"$(dirname \"${BASH_SOURCE[0]}\")\" && pwd)\"\n"
+                    "exec \"$SCRIPT_DIR/setup-pi2-minimal.sh\" \"$@\"\n",
+                    encoding="utf-8",
+                )
+
+                result = self.run_guard(repo)
+
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("only contain strict mode", result.stdout)
 
     def test_pi2_install_guard_requires_asyncio_loop_even_if_comment_mentions_uvloop(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
