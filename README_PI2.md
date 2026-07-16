@@ -62,7 +62,7 @@ Profiles:
 
 - `minimal`: smallest practical Hermes CLI profile. Installs package through `pip install -e .[cli,pty]`, writes a config that disables heavy toolsets by default.
 - `iot`: minimal plus MCP/ACP/Home Assistant/MQTT/SMS extras. Still disables browser/media/messaging tool surfaces by default.
-- `rag`: iot plus lightweight document helpers and Honcho optional dependency. Remote embeddings are recommended; local torch stacks are not installed by default.
+- `rag`: iot plus Honcho optional dependency and a remote-first RAG configuration. It does not install a second unpinned document/vector package list.
 - `full`: broader cross-platform Hermes extras for stronger Raspberry Pi, ARM64, x86 mini PC, VM, or NAS hosts.
 - `dev`: full plus test/developer tooling.
 
@@ -105,7 +105,7 @@ See `ROBOTICS.md` for recommended robot architectures, MQTT topic conventions, s
 
 ## MQTT IoT tools
 
-The native and rag profiles include lightweight MQTT support for embedded sensors and actuators through the `mqtt` toolset. Configure a broker with:
+The native and rag profiles explicitly select the lightweight `mqtt` toolset. Other profiles and platforms do not gain publish capability merely because `MQTT_HOST` exists. Configure a broker with:
 
 ```bash
 export MQTT_HOST=192.168.1.10
@@ -124,6 +124,8 @@ Available MQTT tools:
 - `mqtt_device_command`: publish a command and optionally wait for a state/ack topic
 
 MQTT brokers do not provide history by default. `mqtt_subscribe_recent` returns retained messages and messages published while the tool is listening.
+
+Use a dedicated broker account with TLS and topic ACLs. Grant sensor topics read-only access and restrict actuator command topics to the smallest required prefix. Hard real-time and emergency-stop paths must remain in the MCU/PLC/ROS controller.
 
 ## Local llama.cpp / OpenAI-compatible model
 
@@ -165,7 +167,7 @@ Optional RAG:
 bash setup-pi2-minimal.sh --profile rag
 ```
 
-The RAG profile intentionally avoids installing `torch`, `sentence-transformers`, and `chromadb` by default. For Pi2, prefer remote embeddings or cloud memory providers. `sqlite-vec` is optional; Raspberry Pi 2 / ARMv7 wheels are not currently available from PyPI/piwheels, so the installer skips it and falls back to SQLite FTS5/remote embeddings. The IoT branch also uses plain `uvicorn` instead of `uvicorn[standard]` to avoid `uvloop` source builds on ARMv7. If you explicitly want local embeddings/vector indexing, install them manually and expect high RAM/compile cost.
+The RAG profile intentionally avoids installing `torch`, `sentence-transformers`, `chromadb`, `sqlite-vec`, or a second unpinned document-helper list. For Pi2, use built-in SQLite/FTS memory plus remote embeddings or cloud memory providers. The IoT branch also uses plain `uvicorn` instead of `uvicorn[standard]` to avoid `uvloop` source builds on ARMv7. Run local embeddings/vector indexing only on a stronger central node.
 
 ## Multi-Pi2 shared memory / RAG architecture
 

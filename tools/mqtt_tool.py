@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 import os
+import threading
 import time
 from typing import Any, Callable
 
@@ -179,6 +180,7 @@ def _publish(topic: str, payload: str, *, qos: int, retain: bool) -> dict[str, A
     config = _get_config()
     client = _connect_client(config)
     try:
+        client.loop_start()
         result = client.publish(topic, payload, qos=qos, retain=retain)
         if hasattr(result, "wait_for_publish"):
             result.wait_for_publish(timeout=10)
@@ -188,28 +190,71 @@ def _publish(topic: str, payload: str, *, qos: int, retain: bool) -> dict[str, A
             raise RuntimeError("MQTT publish did not complete before timeout")
         return {"success": True, "topic": topic, "qos": qos, "retain": retain, "bytes": len(payload.encode("utf-8"))}
     finally:
+        try:
+            client.loop_stop()
+        except Exception:
+            pass
         client.disconnect()
+
+
+def _subscription_rejection(reason_codes: Any) -> str | None:
+    """Return an error for MQTT 3 granted-QoS 128 or MQTT 5 failure codes."""
+    codes = reason_codes if isinstance(reason_codes, (list, tuple)) else [reason_codes]
+    for code in codes:
+        if code is None:
+            continue
+        if bool(getattr(code, "is_failure", False)):
+            return str(code)
+        value = getattr(code, "value", code)
+        try:
+            numeric = int(value)
+        except (TypeError, ValueError):
+            continue
+        if numeric >= 128:
+            return str(code)
+    return None
 
 
 def _subscribe_recent(topic_filter: str, *, timeout_seconds: float, max_messages: int, qos: int = 0) -> dict[str, Any]:
     config = _get_config()
     messages: deque[dict[str, Any]] = deque(maxlen=max_messages)
     client = _connect_client(config)
+    subscribed = threading.Event()
+    subscribe_errors: list[str] = []
 
     def on_message(client_obj, userdata, msg):  # noqa: ANN001 - paho callback signature
         messages.append(_message_to_dict(msg))
 
-    client.on_message = on_message
-    try:
-        subscribe_result = client.subscribe(topic_filter, qos=qos)
-        rc = subscribe_result[0] if isinstance(subscribe_result, tuple) else getattr(subscribe_result, "rc", 0)
+    def on_connect(client_obj, userdata, flags, reason_code, properties=None):  # noqa: ANN001
+        rc = getattr(reason_code, "value", reason_code)
         if rc not in (0, None):
-            raise RuntimeError(f"MQTT subscribe failed with rc={rc}")
+            subscribe_errors.append(f"MQTT connect failed with rc={rc}")
+            subscribed.set()
+            return
+        result = client_obj.subscribe(topic_filter, qos=qos)
+        sub_rc = result[0] if isinstance(result, tuple) else getattr(result, "rc", 0)
+        if sub_rc not in (0, None):
+            subscribe_errors.append(f"MQTT subscribe failed with rc={sub_rc}")
+            subscribed.set()
+
+    def on_subscribe(client_obj, userdata, mid, reason_codes, properties=None):  # noqa: ANN001
+        rejection = _subscription_rejection(reason_codes)
+        if rejection is not None:
+            subscribe_errors.append(f"MQTT subscription rejected: {rejection}")
+        subscribed.set()
+
+    client.on_message = on_message
+    client.on_connect = on_connect
+    client.on_subscribe = on_subscribe
+    try:
         client.loop_start()
+        if not subscribed.wait(timeout=10):
+            raise RuntimeError("MQTT subscribe acknowledgement timed out")
+        if subscribe_errors:
+            raise RuntimeError(subscribe_errors[0])
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline and len(messages) < max_messages:
             time.sleep(0.05)
-        client.loop_stop()
         return {
             "success": True,
             "topic_filter": topic_filter,
@@ -218,6 +263,85 @@ def _subscribe_recent(topic_filter: str, *, timeout_seconds: float, max_messages
             "note": "MQTT brokers only return retained messages or messages published while this tool is listening.",
         }
     finally:
+        try:
+            client.loop_stop()
+        except Exception:
+            pass
+        client.disconnect()
+
+
+def _command_and_wait(
+    command_topic: str,
+    payload: str,
+    *,
+    state_topic_filter: str,
+    timeout_seconds: float,
+    qos: int,
+    retain: bool,
+) -> dict[str, Any]:
+    """Subscribe to state first, then publish a command on the same client."""
+    config = _get_config()
+    client = _connect_client(config)
+    messages: deque[dict[str, Any]] = deque(maxlen=10)
+    subscribed = threading.Event()
+    subscribe_errors: list[str] = []
+
+    def on_message(client_obj, userdata, msg):  # noqa: ANN001
+        messages.append(_message_to_dict(msg))
+
+    def on_connect(client_obj, userdata, flags, reason_code, properties=None):  # noqa: ANN001
+        rc = getattr(reason_code, "value", reason_code)
+        if rc not in (0, None):
+            subscribe_errors.append(f"MQTT connect failed with rc={rc}")
+            subscribed.set()
+            return
+        result = client_obj.subscribe(state_topic_filter, qos=0)
+        sub_rc = result[0] if isinstance(result, tuple) else getattr(result, "rc", 0)
+        if sub_rc not in (0, None):
+            subscribe_errors.append(f"MQTT subscribe failed with rc={sub_rc}")
+            subscribed.set()
+
+    def on_subscribe(client_obj, userdata, mid, reason_codes, properties=None):  # noqa: ANN001
+        rejection = _subscription_rejection(reason_codes)
+        if rejection is not None:
+            subscribe_errors.append(f"MQTT state subscription rejected: {rejection}")
+        subscribed.set()
+
+    client.on_message = on_message
+    client.on_connect = on_connect
+    client.on_subscribe = on_subscribe
+    try:
+        client.loop_start()
+        if not subscribed.wait(timeout=10):
+            raise RuntimeError("MQTT state subscription acknowledgement timed out")
+        if subscribe_errors:
+            raise RuntimeError(subscribe_errors[0])
+
+        publish_result = client.publish(command_topic, payload, qos=qos, retain=retain)
+        if hasattr(publish_result, "wait_for_publish"):
+            publish_result.wait_for_publish(timeout=10)
+        if getattr(publish_result, "rc", 0) not in (0, None):
+            raise RuntimeError(f"MQTT publish failed with rc={publish_result.rc}")
+        if hasattr(publish_result, "is_published") and not publish_result.is_published():
+            raise RuntimeError("MQTT publish did not complete before timeout")
+
+        deadline = time.monotonic() + timeout_seconds
+        while time.monotonic() < deadline and len(messages) < 10:
+            time.sleep(0.05)
+        return {
+            "success": True,
+            "topic": command_topic,
+            "command_topic": command_topic,
+            "qos": qos,
+            "retain": retain,
+            "bytes": len(payload.encode("utf-8")),
+            "state_messages": list(messages),
+        }
+    finally:
+        try:
+            client.loop_stop()
+        except Exception:
+            pass
         client.disconnect()
 
 
@@ -250,15 +374,21 @@ def _handle_mqtt_device_command(args: dict, **kw) -> str:
         payload = _payload_to_text(args.get("payload", ""))
         qos = _bounded_int(args.get("qos"), default=0, minimum=0, maximum=2, name="qos")
         retain = bool(args.get("retain", False))
-        publish_result = _publish(command_topic, payload, qos=qos, retain=retain)
         state_filter = (args.get("state_topic_filter") or "").strip()
-        state_messages: list[dict[str, Any]] = []
         if state_filter:
             validated_filter = _validate_topic(state_filter, allow_wildcards=True)
             timeout_seconds = _bounded_float(args.get("timeout_seconds"), default=5.0, minimum=0.01, maximum=30.0, name="timeout_seconds")
-            state_result = _subscribe_recent(validated_filter, timeout_seconds=timeout_seconds, max_messages=10, qos=0)
-            state_messages = state_result["messages"]
-        return json.dumps({"result": {**publish_result, "command_topic": command_topic, "state_messages": state_messages}})
+            command_result = _command_and_wait(
+                command_topic,
+                payload,
+                state_topic_filter=validated_filter,
+                timeout_seconds=timeout_seconds,
+                qos=qos,
+                retain=retain,
+            )
+            return json.dumps({"result": command_result})
+        publish_result = _publish(command_topic, payload, qos=qos, retain=retain)
+        return json.dumps({"result": {**publish_result, "command_topic": command_topic, "state_messages": []}})
     except Exception as exc:
         return tool_error(str(exc))
 
@@ -301,7 +431,7 @@ MQTT_DEVICE_COMMAND_SCHEMA = {
         "properties": {
             "command_topic": {"type": "string", "description": "MQTT command topic, e.g. devices/lamp/cmd. Wildcards are not allowed."},
             "payload": {"description": "Command payload. Objects are encoded as compact JSON."},
-            "state_topic_filter": {"type": "string", "description": "Optional MQTT topic/filter to listen for state or ack after publishing."},
+            "state_topic_filter": {"type": "string", "description": "Optional MQTT topic/filter subscribed before command publication to capture immediate state or ACK messages."},
             "timeout_seconds": {"type": "number", "description": "How long to wait for state messages, 0.01-30 seconds. Default 5."},
             "qos": {"type": "integer", "description": "MQTT publish QoS 0, 1, or 2. Default 0."},
             "retain": {"type": "boolean", "description": "Set retain flag on command publish. Default false."},

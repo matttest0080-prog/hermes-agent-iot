@@ -22,7 +22,12 @@ class FakeMessage:
 class FakePublishResult:
     rc = 0
 
+    def __init__(self, client) -> None:
+        self.client = client
+
     def wait_for_publish(self, timeout: float | None = None) -> bool:
+        if not self.client.loop_running:
+            raise RuntimeError("network loop must run while waiting for publish")
         self.timeout = timeout
         return True
 
@@ -38,10 +43,16 @@ class FakeClient:
     username_pw: list[tuple[str, str | None]] = []
     tls_enabled = False
     disconnected = 0
+    events: list[str] = []
+    subscribe_reason_codes: list[int] = [0]
 
     def __init__(self, client_id: str = "", protocol=None) -> None:
         self.client_id = client_id
         self.on_message = None
+        self.on_connect = None
+        self.on_subscribe = None
+        self.loop_running = False
+        self.active_subscription = False
 
     @classmethod
     def reset(cls) -> None:
@@ -52,6 +63,8 @@ class FakeClient:
         cls.username_pw = []
         cls.tls_enabled = False
         cls.disconnected = 0
+        cls.events = []
+        cls.subscribe_reason_codes = [0]
 
     def username_pw_set(self, username: str, password: str | None = None) -> None:
         type(self).username_pw.append((username, password))
@@ -66,20 +79,33 @@ class FakeClient:
         type(self).disconnected += 1
 
     def publish(self, topic: str, payload: str, qos: int = 0, retain: bool = False) -> FakePublishResult:
+        type(self).events.append("publish")
         type(self).published.append((topic, payload, qos, retain))
-        return FakePublishResult()
+        if self.active_subscription and self.on_message:
+            for msg in list(type(self).queued_messages):
+                self.on_message(self, None, msg)
+        return FakePublishResult(self)
 
     def subscribe(self, topic_filter: str, qos: int = 0):
+        type(self).events.append("subscribe")
+        self.active_subscription = True
         type(self).subscribed.append((topic_filter, qos))
+        if self.on_subscribe:
+            self.on_subscribe(self, None, 1, list(type(self).subscribe_reason_codes))
         return (0, 1)
 
     def loop_start(self) -> None:
+        self.loop_running = True
+        type(self).events.append("loop_start")
+        if self.on_connect:
+            self.on_connect(self, None, {}, 0)
         for msg in list(type(self).queued_messages):
             if self.on_message:
                 self.on_message(self, None, msg)
 
     def loop_stop(self) -> None:
-        pass
+        type(self).events.append("loop_stop")
+        self.loop_running = False
 
 
 class MQTTToolTests(unittest.TestCase):
@@ -93,11 +119,15 @@ class MQTTToolTests(unittest.TestCase):
             "MQTT_TLS",
         ]
         self._mqtt_env_before = {key: os.environ.get(key) for key in self._mqtt_env_keys}
+        from tools import mqtt_tool
+        self._mqtt_client_factory_before = mqtt_tool._mqtt_client_factory
         for key in self._mqtt_env_keys:
             os.environ.pop(key, None)
         FakeClient.reset()
 
     def tearDown(self) -> None:
+        from tools import mqtt_tool
+        mqtt_tool._mqtt_client_factory = self._mqtt_client_factory_before
         for key in self._mqtt_env_keys:
             previous = self._mqtt_env_before[key]
             if previous is None:
@@ -136,6 +166,8 @@ class MQTTToolTests(unittest.TestCase):
         self.assertEqual(FakeClient.username_pw, [("iot-user", "secret")])
         self.assertTrue(FakeClient.tls_enabled)
         self.assertEqual(FakeClient.published, [("devices/lamp/cmd", "ON", 1, True)])
+        self.assertLess(FakeClient.events.index("loop_start"), FakeClient.events.index("publish"))
+        self.assertLess(FakeClient.events.index("publish"), FakeClient.events.index("loop_stop"))
 
         invalid = json.loads(mqtt_tool._handle_mqtt_publish({"topic": "devices/+/cmd", "payload": "ON"}))
         self.assertIn("error", invalid)
@@ -179,6 +211,27 @@ class MQTTToolTests(unittest.TestCase):
         self.assertTrue(result["result"]["success"])
         self.assertEqual(FakeClient.published, [("devices/lamp/cmd", "ON", 0, False)])
         self.assertEqual(result["result"]["state_messages"][0]["payload"], "ON")
+        self.assertLess(FakeClient.events.index("subscribe"), FakeClient.events.index("publish"))
+
+    def test_device_command_does_not_publish_when_subscription_is_rejected(self) -> None:
+        from tools import mqtt_tool
+
+        mqtt_tool._mqtt_client_factory = lambda: FakeClient
+        os.environ["MQTT_HOST"] = "broker.local"
+        FakeClient.subscribe_reason_codes = [128]
+
+        result = json.loads(mqtt_tool._handle_mqtt_device_command({
+            "command_topic": "devices/lamp/cmd",
+            "payload": "ON",
+            "state_topic_filter": "devices/lamp/state",
+            "timeout_seconds": 0.01,
+        }))
+
+        self.assertIn("error", result)
+        self.assertIn("subscription rejected", result["error"])
+        self.assertEqual(FakeClient.published, [])
+        self.assertIn("loop_stop", FakeClient.events)
+        self.assertEqual(FakeClient.disconnected, 1)
 
     def test_mqtt_toolset_is_resolvable(self) -> None:
         from toolsets import resolve_toolset
@@ -186,6 +239,23 @@ class MQTTToolTests(unittest.TestCase):
         self.assertCountEqual(
             resolve_toolset("mqtt"),
             ["mqtt_publish", "mqtt_subscribe_recent", "mqtt_device_command"],
+        )
+
+    def test_model_tool_discovery_requires_host_and_explicit_toolset(self) -> None:
+        from model_tools import get_tool_definitions
+        from tools.registry import invalidate_check_fn_cache
+
+        invalidate_check_fn_cache()
+        unavailable = get_tool_definitions(["mqtt"], [], quiet_mode=False)
+        self.assertEqual(unavailable, [])
+
+        os.environ["MQTT_HOST"] = "broker.example"
+        invalidate_check_fn_cache()
+        available = get_tool_definitions(["mqtt"], [], quiet_mode=False)
+        names = sorted(item["function"]["name"] for item in available)
+        self.assertEqual(
+            names,
+            ["mqtt_device_command", "mqtt_publish", "mqtt_subscribe_recent"],
         )
 
 
