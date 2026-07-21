@@ -159,7 +159,11 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     # uploaded to the Discord gateway fails to decode at att.read() with
     # "Can not decode content-encoding: br" — see #12511 / #15744.
     "platform.discord": (
-        "discord.py[voice]==2.7.1",
+        # discord.py's voice extra caps PyNaCl<1.6; spell out the equivalent
+        # runtime dependencies so GHSA-mrfv-m5wm-5w6w is fixed without losing voice.
+        "discord.py==2.7.1",
+        "PyNaCl==1.6.2",
+        "davey==0.1.4",
         "brotlicffi==1.2.0.1",
         # discord.py pulls aiohttp transitively (>=3.7.4,<4) as its HTTP
         # backbone. Pin the patched floor here too so the lazy Discord path
@@ -221,15 +225,15 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     "tool.dashboard": (
         "fastapi==0.133.1",
         "uvicorn==0.41.0",
-        "starlette==1.0.1",  # CVE-2026-48710 (BadHost) — keep lazy-install in sync with pyproject [web]
-        "python-multipart==0.0.27",  # FastAPI UploadFile/Form for streaming uploads (NS-501)
+        "starlette==1.3.1",  # Keep lazy-install in sync with pyproject [web]
+        "python-multipart==0.0.32",  # FastAPI UploadFile/Form for streaming uploads (NS-501)
     ),
     # Vision image-resize recovery (Pillow). Pillow is now a CORE dependency
     # (pyproject `dependencies`), so this entry is a belt-and-suspenders fallback
     # for stripped/source-build installs that somehow dropped it. The vision
     # call site uses prompt=False so it can never raise a blocking input()
     # prompt mid-session (#40490).
-    "tool.vision": ("Pillow==12.2.0",),
+    "tool.vision": ("Pillow==12.3.0",),
     # MQTT IoT tools — small pure-Python client, installed only when used.
     "tool.mqtt": ("paho-mqtt==2.1.0",),
     # Computer Use (cua-driver) — the MCP client SDK used to spawn and talk
@@ -238,8 +242,8 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     # `[all]`; lazy-installing here covers lean / partial / broken-extra
     # installs so computer_use never dead-ends on `No module named 'mcp'`.
     "tool.computer_use": (
-        "mcp==1.26.0",
-        "starlette==1.0.1",  # CVE-2026-48710 — keep in sync with pyproject [computer-use]
+        "mcp==1.28.1",
+        "starlette==1.3.1",  # Keep in sync with pyproject [computer-use]
     ),
     # HF Agent Trace Viewer upload (hermes trace upload / /upload-trace).
     "tool.trace_upload": ("huggingface-hub==1.2.3",),
