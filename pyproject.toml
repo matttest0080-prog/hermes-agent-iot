@@ -116,7 +116,7 @@ dependencies = [
   # FastAPI's UploadFile/Form depend on python-multipart; it is NOT pulled in
   # by fastapi itself, so the dashboard's multipart upload endpoint would 500
   # without an explicit dependency here (and in the `web` extra below).
-  "python-multipart>=0.0.9,<1",
+  "python-multipart>=0.0.32,<1",
   "ptyprocess>=0.7.0,<1; sys_platform != 'win32'",
   "pywinpty>=2.0.0,<3; sys_platform == 'win32'",
   # Image resize recovery for the vision tools. Pillow shrinks oversized images
