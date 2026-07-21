@@ -109,11 +109,11 @@ The native and rag profiles explicitly select the lightweight `mqtt` toolset. Ot
 
 ```bash
 export MQTT_HOST=192.168.1.10
-export MQTT_PORT=1883
+export MQTT_PORT=8883
 # Optional:
 export MQTT_USERNAME=iot-user
 export MQTT_PASSWORD=secret
-export MQTT_TLS=false
+export MQTT_TLS=true
 hermes tools enable mqtt
 ```
 
@@ -123,7 +123,7 @@ Available MQTT tools:
 - `mqtt_subscribe_recent`: listen briefly for retained/new messages on a topic filter
 - `mqtt_device_command`: publish a command and optionally wait for a state/ack topic
 
-MQTT brokers do not provide history by default. `mqtt_subscribe_recent` returns retained messages and messages published while the tool is listening.
+MQTT brokers do not provide history by default. `mqtt_subscribe_recent` returns retained messages and messages published while the tool is listening. Credentials fail closed unless TLS is enabled. For an isolated, trusted plaintext lab network only, `MQTT_ALLOW_INSECURE_CREDENTIALS=true` is the explicit override. To protect Pi2 memory, inbound messages larger than 64 KiB and messages that would push one tool response past 256 KiB of payload data are dropped and reported in the response.
 
 Use a dedicated broker account with TLS and topic ACLs. Grant sensor topics read-only access and restrict actuator command topics to the smallest required prefix. Hard real-time and emergency-stop paths must remain in the MCU/PLC/ROS controller.
 

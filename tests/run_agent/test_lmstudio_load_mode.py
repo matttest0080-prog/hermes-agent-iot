@@ -1,6 +1,8 @@
 from types import SimpleNamespace
 from typing import Any, cast
 
+import pytest
+
 from run_agent import AIAgent
 
 
@@ -61,3 +63,20 @@ def test_missing_lmstudio_load_mode_defaults_to_explicit(monkeypatch):
     AIAgent._ensure_lmstudio_runtime_loaded(cast(Any, agent))
 
     assert len(calls) == 1
+
+
+@pytest.mark.parametrize("profile_floor", [2_048, 8_192])
+def test_lmstudio_explicit_preload_uses_instance_profile_floor(monkeypatch, profile_floor):
+    calls = []
+    agent = _agent("explicit")
+    agent._minimum_tool_context_length = profile_floor
+
+    def fake_ensure(*args, **kwargs):
+        calls.append((args, kwargs))
+        return profile_floor
+
+    monkeypatch.setattr("hermes_cli.models.ensure_lmstudio_model_loaded", fake_ensure)
+
+    AIAgent._ensure_lmstudio_runtime_loaded(cast(Any, agent))
+
+    assert calls[0][0][3] == profile_floor

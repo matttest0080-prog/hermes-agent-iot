@@ -8,6 +8,7 @@ only when a tool is called, and reads broker settings from environment vars:
 - MQTT_USERNAME / MQTT_PASSWORD: optional credentials
 - MQTT_CLIENT_ID: optional client ID prefix
 - MQTT_TLS: true/1/yes/on to enable TLS
+- MQTT_ALLOW_INSECURE_CREDENTIALS: explicit opt-in for credentials without TLS
 
 Tools:
 - mqtt_publish: publish a payload to a command/sensor topic
@@ -31,6 +32,8 @@ from tools.registry import registry, tool_error
 
 _MAX_TOPIC_BYTES = 65535
 _MAX_PAYLOAD_BYTES = 256 * 1024
+_MAX_INBOUND_PAYLOAD_BYTES = 64 * 1024
+_MAX_INBOUND_RESPONSE_BYTES = 256 * 1024
 
 
 def _mqtt_client_factory():
@@ -56,6 +59,7 @@ class MQTTConfig:
     password: str = ""
     client_id: str = ""
     tls: bool = False
+    allow_insecure_credentials: bool = False
 
 
 def _parse_bool(value: str | None) -> bool:
@@ -78,6 +82,7 @@ def _get_config() -> MQTTConfig:
         password=os.getenv("MQTT_PASSWORD", ""),
         client_id=os.getenv("MQTT_CLIENT_ID", "").strip(),
         tls=_parse_bool(os.getenv("MQTT_TLS")),
+        allow_insecure_credentials=_parse_bool(os.getenv("MQTT_ALLOW_INSECURE_CREDENTIALS")),
     )
 
 
@@ -156,13 +161,27 @@ def _make_client(config: MQTTConfig):
 def _connect_client(config: MQTTConfig):
     if not config.host:
         raise ValueError("MQTT_HOST is required")
+    if (config.username or config.password) and not config.tls and not config.allow_insecure_credentials:
+        raise ValueError(
+            "MQTT credentials require MQTT_TLS=true; set "
+            "MQTT_ALLOW_INSECURE_CREDENTIALS=true only for trusted plaintext networks"
+        )
     client = _make_client(config)
     client.connect(config.host, config.port, keepalive=60)
     return client
 
 
+def _inbound_payload_size(msg: Any) -> int:
+    raw_payload = getattr(msg, "payload", b"")
+    if isinstance(raw_payload, (bytes, bytearray, memoryview)):
+        return len(raw_payload)
+    return len(str(raw_payload).encode("utf-8"))
+
+
 def _message_to_dict(msg: Any) -> dict[str, Any]:
     raw_payload = getattr(msg, "payload", b"")
+    if _inbound_payload_size(msg) > _MAX_INBOUND_PAYLOAD_BYTES:
+        raise ValueError("MQTT inbound payload exceeds per-message safety limit")
     if isinstance(raw_payload, bytes):
         payload = raw_payload.decode("utf-8", errors="replace")
     else:
@@ -218,12 +237,25 @@ def _subscription_rejection(reason_codes: Any) -> str | None:
 def _subscribe_recent(topic_filter: str, *, timeout_seconds: float, max_messages: int, qos: int = 0) -> dict[str, Any]:
     config = _get_config()
     messages: deque[dict[str, Any]] = deque(maxlen=max_messages)
+    accepted_bytes = 0
+    dropped_messages = 0
+    dropped_bytes = 0
     client = _connect_client(config)
     subscribed = threading.Event()
     subscribe_errors: list[str] = []
 
     def on_message(client_obj, userdata, msg):  # noqa: ANN001 - paho callback signature
+        nonlocal accepted_bytes, dropped_messages, dropped_bytes
+        payload_bytes = _inbound_payload_size(msg)
+        if (
+            payload_bytes > _MAX_INBOUND_PAYLOAD_BYTES
+            or accepted_bytes + payload_bytes > _MAX_INBOUND_RESPONSE_BYTES
+        ):
+            dropped_messages += 1
+            dropped_bytes += payload_bytes
+            return
         messages.append(_message_to_dict(msg))
+        accepted_bytes += payload_bytes
 
     def on_connect(client_obj, userdata, flags, reason_code, properties=None):  # noqa: ANN001
         rc = getattr(reason_code, "value", reason_code)
@@ -255,13 +287,18 @@ def _subscribe_recent(topic_filter: str, *, timeout_seconds: float, max_messages
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline and len(messages) < max_messages:
             time.sleep(0.05)
-        return {
+        result = {
             "success": True,
             "topic_filter": topic_filter,
             "count": len(messages),
             "messages": list(messages),
+            "dropped_messages": dropped_messages,
+            "dropped_bytes": dropped_bytes,
             "note": "MQTT brokers only return retained messages or messages published while this tool is listening.",
         }
+        if dropped_messages:
+            result["warning"] = "One or more MQTT messages were dropped by inbound payload safety limits."
+        return result
     finally:
         try:
             client.loop_stop()
@@ -283,11 +320,24 @@ def _command_and_wait(
     config = _get_config()
     client = _connect_client(config)
     messages: deque[dict[str, Any]] = deque(maxlen=10)
+    accepted_bytes = 0
+    dropped_messages = 0
+    dropped_bytes = 0
     subscribed = threading.Event()
     subscribe_errors: list[str] = []
 
     def on_message(client_obj, userdata, msg):  # noqa: ANN001
+        nonlocal accepted_bytes, dropped_messages, dropped_bytes
+        payload_bytes = _inbound_payload_size(msg)
+        if (
+            payload_bytes > _MAX_INBOUND_PAYLOAD_BYTES
+            or accepted_bytes + payload_bytes > _MAX_INBOUND_RESPONSE_BYTES
+        ):
+            dropped_messages += 1
+            dropped_bytes += payload_bytes
+            return
         messages.append(_message_to_dict(msg))
+        accepted_bytes += payload_bytes
 
     def on_connect(client_obj, userdata, flags, reason_code, properties=None):  # noqa: ANN001
         rc = getattr(reason_code, "value", reason_code)
@@ -328,7 +378,7 @@ def _command_and_wait(
         deadline = time.monotonic() + timeout_seconds
         while time.monotonic() < deadline and len(messages) < 10:
             time.sleep(0.05)
-        return {
+        result = {
             "success": True,
             "topic": command_topic,
             "command_topic": command_topic,
@@ -336,7 +386,12 @@ def _command_and_wait(
             "retain": retain,
             "bytes": len(payload.encode("utf-8")),
             "state_messages": list(messages),
+            "dropped_messages": dropped_messages,
+            "dropped_bytes": dropped_bytes,
         }
+        if dropped_messages:
+            result["warning"] = "One or more MQTT messages were dropped by inbound payload safety limits."
+        return result
     finally:
         try:
             client.loop_stop()

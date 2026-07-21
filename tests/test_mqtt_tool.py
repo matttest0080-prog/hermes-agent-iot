@@ -19,6 +19,11 @@ class FakeMessage:
         self.retain = retain
 
 
+class DecodeBomb(bytes):
+    def decode(self, *args, **kwargs):
+        raise AssertionError("oversized payload must not be decoded")
+
+
 class FakePublishResult:
     rc = 0
 
@@ -45,6 +50,7 @@ class FakeClient:
     disconnected = 0
     events: list[str] = []
     subscribe_reason_codes: list[int] = [0]
+    deliver_on_loop_start = True
 
     def __init__(self, client_id: str = "", protocol=None) -> None:
         self.client_id = client_id
@@ -65,6 +71,7 @@ class FakeClient:
         cls.disconnected = 0
         cls.events = []
         cls.subscribe_reason_codes = [0]
+        cls.deliver_on_loop_start = True
 
     def username_pw_set(self, username: str, password: str | None = None) -> None:
         type(self).username_pw.append((username, password))
@@ -99,9 +106,10 @@ class FakeClient:
         type(self).events.append("loop_start")
         if self.on_connect:
             self.on_connect(self, None, {}, 0)
-        for msg in list(type(self).queued_messages):
-            if self.on_message:
-                self.on_message(self, None, msg)
+        if type(self).deliver_on_loop_start:
+            for msg in list(type(self).queued_messages):
+                if self.on_message:
+                    self.on_message(self, None, msg)
 
     def loop_stop(self) -> None:
         type(self).events.append("loop_stop")
@@ -117,6 +125,7 @@ class MQTTToolTests(unittest.TestCase):
             "MQTT_PASSWORD",
             "MQTT_CLIENT_ID",
             "MQTT_TLS",
+            "MQTT_ALLOW_INSECURE_CREDENTIALS",
         ]
         self._mqtt_env_before = {key: os.environ.get(key) for key in self._mqtt_env_keys}
         from tools import mqtt_tool
@@ -173,6 +182,45 @@ class MQTTToolTests(unittest.TestCase):
         self.assertIn("error", invalid)
         self.assertIn("wildcards", invalid["error"])
 
+    def test_credentials_without_tls_fail_before_client_creation(self) -> None:
+        from tools import mqtt_tool
+
+        os.environ["MQTT_HOST"] = "broker.local"
+        factory_calls = []
+        mqtt_tool._mqtt_client_factory = lambda: factory_calls.append(True) or FakeClient
+
+        for credential_key in ("MQTT_USERNAME", "MQTT_PASSWORD"):
+            with self.subTest(credential_key=credential_key):
+                os.environ[credential_key] = "secret"
+                result = json.loads(mqtt_tool._handle_mqtt_publish({
+                    "topic": "devices/lamp/cmd",
+                    "payload": "ON",
+                }))
+                self.assertIn("error", result)
+                self.assertIn("MQTT_TLS", result["error"])
+                self.assertEqual(factory_calls, [])
+                self.assertEqual(FakeClient.connected, [])
+                os.environ.pop(credential_key)
+
+    def test_insecure_credentials_require_explicit_opt_in(self) -> None:
+        from tools import mqtt_tool
+
+        mqtt_tool._mqtt_client_factory = lambda: FakeClient
+        os.environ.update({
+            "MQTT_HOST": "broker.local",
+            "MQTT_USERNAME": "iot-user",
+            "MQTT_PASSWORD": "secret",
+            "MQTT_ALLOW_INSECURE_CREDENTIALS": "true",
+        })
+
+        result = json.loads(mqtt_tool._handle_mqtt_publish({
+            "topic": "devices/lamp/cmd",
+            "payload": "ON",
+        }))
+
+        self.assertTrue(result["result"]["success"])
+        self.assertEqual(FakeClient.connected, [("broker.local", 1883, 60)])
+
     def test_subscribe_recent_collects_messages_without_requiring_broker_history(self) -> None:
         from tools import mqtt_tool
 
@@ -194,6 +242,35 @@ class MQTTToolTests(unittest.TestCase):
         self.assertEqual(result["result"]["messages"][0]["payload"], "23.5")
         self.assertTrue(result["result"]["messages"][0]["retain"])
 
+    def test_subscribe_recent_drops_single_and_cumulative_payload_overflow_before_decode(self) -> None:
+        from tools import mqtt_tool
+
+        mqtt_tool._mqtt_client_factory = lambda: FakeClient
+        os.environ["MQTT_HOST"] = "broker.local"
+        FakeClient.queued_messages = [
+            FakeMessage("sensors/oversized", DecodeBomb(b"12345")),
+            FakeMessage("sensors/accepted", b"1234"),
+            FakeMessage("sensors/aggregate-overflow", b"abc"),
+        ]
+        old_single = mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES
+        old_total = mqtt_tool._MAX_INBOUND_RESPONSE_BYTES
+        mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES = 4
+        mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = 6
+        try:
+            result = json.loads(mqtt_tool._handle_mqtt_subscribe_recent({
+                "topic_filter": "sensors/#",
+                "timeout_seconds": 0.01,
+                "max_messages": 10,
+            }))
+        finally:
+            mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES = old_single
+            mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = old_total
+
+        self.assertEqual([message["payload"] for message in result["result"]["messages"]], ["1234"])
+        self.assertEqual(result["result"]["dropped_messages"], 2)
+        self.assertEqual(result["result"]["dropped_bytes"], 8)
+        self.assertIn("safety limit", result["result"]["warning"])
+
     def test_device_command_publishes_and_optionally_waits_for_state(self) -> None:
         from tools import mqtt_tool
 
@@ -212,6 +289,37 @@ class MQTTToolTests(unittest.TestCase):
         self.assertEqual(FakeClient.published, [("devices/lamp/cmd", "ON", 0, False)])
         self.assertEqual(result["result"]["state_messages"][0]["payload"], "ON")
         self.assertLess(FakeClient.events.index("subscribe"), FakeClient.events.index("publish"))
+
+    def test_device_command_drops_ack_payload_overflow_before_decode(self) -> None:
+        from tools import mqtt_tool
+
+        mqtt_tool._mqtt_client_factory = lambda: FakeClient
+        os.environ["MQTT_HOST"] = "broker.local"
+        FakeClient.deliver_on_loop_start = False
+        FakeClient.queued_messages = [
+            FakeMessage("devices/lamp/oversized", DecodeBomb(b"12345")),
+            FakeMessage("devices/lamp/state", b"1234"),
+            FakeMessage("devices/lamp/aggregate-overflow", b"abc"),
+        ]
+        old_single = mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES
+        old_total = mqtt_tool._MAX_INBOUND_RESPONSE_BYTES
+        mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES = 4
+        mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = 6
+        try:
+            result = json.loads(mqtt_tool._handle_mqtt_device_command({
+                "command_topic": "devices/lamp/cmd",
+                "payload": "ON",
+                "state_topic_filter": "devices/lamp/#",
+                "timeout_seconds": 0.01,
+            }))
+        finally:
+            mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES = old_single
+            mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = old_total
+
+        self.assertEqual([message["payload"] for message in result["result"]["state_messages"]], ["1234"])
+        self.assertEqual(result["result"]["dropped_messages"], 2)
+        self.assertEqual(result["result"]["dropped_bytes"], 8)
+        self.assertIn("safety limit", result["result"]["warning"])
 
     def test_device_command_does_not_publish_when_subscription_is_rejected(self) -> None:
         from tools import mqtt_tool

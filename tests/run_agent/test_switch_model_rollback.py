@@ -202,3 +202,96 @@ def test_successful_switch_still_works_after_rollback_refactor():
     assert agent.provider == "openrouter"
     assert agent.api_key == "or-key-new"
     assert agent.client is new_client
+
+
+class _MutatingCompressor:
+    def __init__(self, *, raise_after_mutation: bool = False):
+        self.model = "x-ai/grok-4"
+        self.context_length = 128_000
+        self.base_url = "https://openrouter.ai/api/v1"
+        self.api_key = "or-key-original"
+        self.provider = "openrouter"
+        self.api_mode = "chat_completions"
+        self.threshold_tokens = 64_000
+        self.raise_after_mutation = raise_after_mutation
+
+    def update_model(self, **kwargs):
+        for name, value in kwargs.items():
+            setattr(self, name, value)
+        self.threshold_tokens = int(self.context_length * 0.5)
+        if self.raise_after_mutation:
+            raise RuntimeError("compressor mutated then failed")
+
+
+def _make_floor_guard_agent(*, compressor):
+    agent = _make_agent_openrouter()
+    agent.context_compressor = compressor
+    agent._minimum_tool_context_length = 2_048
+    agent._credential_pool = MagicMock(name="OriginalPool", provider="openrouter")
+    agent._use_prompt_caching = False
+    agent._use_native_cache_layout = False
+    agent._anthropic_prompt_cache_policy = lambda **_kwargs: (True, True)
+    agent._ensure_lmstudio_runtime_loaded = lambda *_args, **_kwargs: None
+    agent._create_openai_client = lambda *_args, **_kwargs: MagicMock(name="NewClient")
+    return agent
+
+
+def test_switch_rejects_context_below_profile_floor_and_rolls_back_runtime():
+    compressor = _MutatingCompressor()
+    agent = _make_floor_guard_agent(compressor=compressor)
+    original_pool = agent._credential_pool
+    original_client = agent.client
+
+    with (
+        patch("agent.model_metadata.get_model_context_length", return_value=1_024),
+        patch("hermes_cli.timeouts.get_provider_request_timeout", return_value=None),
+    ):
+        with pytest.raises(ValueError, match="configured minimum 2,048"):
+            agent.switch_model(
+                new_model="tiny-model",
+                new_provider="openrouter",
+                api_key="new-key",
+                base_url="https://openrouter.ai/api/v1",
+                api_mode="chat_completions",
+            )
+
+    assert agent.model == "x-ai/grok-4"
+    assert agent.provider == "openrouter"
+    assert agent.api_key == "or-key-original"
+    assert agent.client is original_client
+    assert agent._credential_pool is original_pool
+    assert agent._use_prompt_caching is False
+    assert agent._use_native_cache_layout is False
+    assert compressor.model == "x-ai/grok-4"
+    assert compressor.context_length == 128_000
+    assert compressor.threshold_tokens == 64_000
+
+
+def test_switch_rolls_back_compressor_mutation_and_prompt_cache_flags():
+    compressor = _MutatingCompressor(raise_after_mutation=True)
+    agent = _make_floor_guard_agent(compressor=compressor)
+    original_pool = agent._credential_pool
+
+    with (
+        patch("agent.model_metadata.get_model_context_length", return_value=8_192),
+        patch("hermes_cli.timeouts.get_provider_request_timeout", return_value=None),
+    ):
+        with pytest.raises(RuntimeError, match="compressor mutated then failed"):
+            agent.switch_model(
+                new_model="valid-small-model",
+                new_provider="openrouter",
+                api_key="new-key",
+                base_url="https://openrouter.ai/api/v1",
+                api_mode="chat_completions",
+            )
+
+    assert agent.model == "x-ai/grok-4"
+    assert agent.provider == "openrouter"
+    assert agent._credential_pool is original_pool
+    assert agent._use_prompt_caching is False
+    assert agent._use_native_cache_layout is False
+    assert compressor.model == "x-ai/grok-4"
+    assert compressor.context_length == 128_000
+    assert compressor.base_url == "https://openrouter.ai/api/v1"
+    assert compressor.api_key == "or-key-original"
+    assert compressor.threshold_tokens == 64_000

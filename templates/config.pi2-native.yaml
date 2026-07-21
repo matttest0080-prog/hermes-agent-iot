@@ -6,9 +6,10 @@
 model: ""
 providers: {}
 fallback_providers: []
-toolsets:
-  - hermes-cli
-  - mqtt
+platform_toolsets:
+  cli:
+    - hermes-cli
+    - mqtt
 
 agent:
   max_turns: 75

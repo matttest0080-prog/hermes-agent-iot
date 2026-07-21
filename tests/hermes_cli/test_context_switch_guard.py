@@ -103,3 +103,29 @@ def test_merge_appends_to_existing_warning(monkeypatch):
     merge_preflight_compression_warning(result, agent=agent)
     assert "expensive" in result.warning_message
     assert "preflight compression" in result.warning_message
+
+
+def test_warning_threshold_uses_instance_profile_floor(monkeypatch):
+    monkeypatch.setattr(
+        "hermes_cli.context_switch_guard.resolve_display_context_length",
+        lambda *a, **k: 8_192,
+    )
+    monkeypatch.setattr(
+        "hermes_cli.context_switch_guard._estimate_tokens",
+        lambda *a, **k: 5_000,
+    )
+    cc = _compressor(monkeypatch)
+    cc.threshold_percent = 0.5
+    agent = SimpleNamespace(
+        context_compressor=cc,
+        compression_enabled=True,
+        base_url="",
+        api_key="",
+        _minimum_tool_context_length=2_048,
+    )
+    result = _result()
+
+    merge_preflight_compression_warning(result, agent=agent)
+
+    assert result.warning_message
+    assert "auto-compress at ~4,096" in result.warning_message

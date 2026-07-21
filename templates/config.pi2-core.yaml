@@ -5,8 +5,9 @@
 model: ""
 providers: {}
 fallback_providers: []
-toolsets:
-  - hermes-cli
+platform_toolsets:
+  cli:
+    - hermes-cli
 
 agent:
   max_turns: 60

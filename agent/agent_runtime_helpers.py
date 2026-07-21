@@ -2002,6 +2002,15 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
             "_anthropic_base_url",
             "_is_anthropic_oauth",
             "_config_context_length",
+            "_use_prompt_caching",
+            "_use_native_cache_layout",
+            "reasoning_config",
+            "_cached_system_prompt",
+            "_primary_runtime",
+            "_fallback_activated",
+            "_fallback_index",
+            "_fallback_chain",
+            "_fallback_model",
         )
     }
     # _client_kwargs is a dict — snapshot a shallow copy so mutating the
@@ -2011,6 +2020,33 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
     # restore the original pool (issue #52727: pool reload is part of this
     # switch and must be reversible on rollback).
     _snapshot["_credential_pool"] = getattr(agent, "_credential_pool", _MISSING)
+    for _mutable_name in ("_primary_runtime", "_fallback_chain", "_transport_cache"):
+        _mutable_value = getattr(agent, _mutable_name, _MISSING)
+        if isinstance(_mutable_value, dict):
+            _snapshot[_mutable_name] = dict(_mutable_value)
+        elif isinstance(_mutable_value, list):
+            _snapshot[_mutable_name] = list(_mutable_value)
+    _compressor = getattr(agent, "context_compressor", None)
+    _compressor_snapshot = (
+        dict(vars(_compressor))
+        if _compressor is not None and hasattr(_compressor, "__dict__")
+        else None
+    )
+
+    def _rollback_switch() -> None:
+        for _name, _value in _snapshot.items():
+            if _value is _MISSING:
+                continue
+            try:
+                setattr(agent, _name, _value)
+            except Exception:  # noqa: BLE001
+                pass
+        if _compressor_snapshot is not None:
+            try:
+                vars(_compressor).clear()
+                vars(_compressor).update(_compressor_snapshot)
+            except Exception:  # noqa: BLE001
+                pass
 
     try:
         # Clear the per-config context_length override so the new model's
@@ -2177,32 +2213,33 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
         # caller's exception handler can surface a meaningful warning.  The
         # exception is re-raised; cli.py / gateway/run.py / tui_gateway catch
         # it and print "Agent swap failed; change applied to next session".
-        for _name, _value in _snapshot.items():
-            if _value is _MISSING:
-                # Attribute did not exist before the swap — don't fabricate it.
-                continue
-            try:
-                setattr(agent, _name, _value)
-            except Exception:  # noqa: BLE001
-                pass
+        _rollback_switch()
         raise
 
     # ── Re-evaluate prompt caching ──
-    agent._use_prompt_caching, agent._use_native_cache_layout = (
-        agent._anthropic_prompt_cache_policy(
-            provider=new_provider,
-            base_url=agent.base_url,
-            api_mode=api_mode,
-            model=new_model,
+    try:
+        agent._use_prompt_caching, agent._use_native_cache_layout = (
+            agent._anthropic_prompt_cache_policy(
+                provider=new_provider,
+                base_url=agent.base_url,
+                api_mode=api_mode,
+                model=new_model,
+            )
         )
-    )
+    except Exception:
+        _rollback_switch()
+        raise
 
     # ── LM Studio: preload before probing context length ──
-    agent._ensure_lmstudio_runtime_loaded()
+    try:
+        agent._ensure_lmstudio_runtime_loaded()
+    except Exception:
+        _rollback_switch()
+        raise
 
     # ── Update context compressor ──
     if hasattr(agent, "context_compressor") and agent.context_compressor:
-        from agent.model_metadata import get_model_context_length
+        from agent.model_metadata import get_model_context_length, MINIMUM_CONTEXT_LENGTH
         # Re-read custom_providers from live config so per-model
         # context_length overrides are honored when switching to a
         # custom provider mid-session (closes #15779).
@@ -2219,22 +2256,33 @@ def switch_model(agent, new_model, new_provider, api_key='', base_url='', api_mo
         # length normally resolves via config or static catalogs and
         # never hits a probe, but coerce to empty string defensively.
         _ctx_api_key = agent.api_key if isinstance(agent.api_key, str) else ""
-        new_context_length = get_model_context_length(
-            agent.model,
-            base_url=agent.base_url,
-            api_key=_ctx_api_key,
-            provider=agent.provider,
-            config_context_length=getattr(agent, "_config_context_length", None),
-            custom_providers=_sm_custom_providers,
-        )
-        agent.context_compressor.update_model(
-            model=agent.model,
-            context_length=new_context_length,
-            base_url=agent.base_url,
-            api_key=agent.api_key,  # context_compressor forwards to call_llm; callable preserved
-            provider=agent.provider,
-            api_mode=agent.api_mode,
-        )
+        try:
+            new_context_length = get_model_context_length(
+                agent.model,
+                base_url=agent.base_url,
+                api_key=_ctx_api_key,
+                provider=agent.provider,
+                config_context_length=getattr(agent, "_config_context_length", None),
+                custom_providers=_sm_custom_providers,
+            )
+            from agent.model_metadata import validate_tool_context_length
+
+            validate_tool_context_length(
+                agent.model,
+                new_context_length,
+                getattr(agent, "_minimum_tool_context_length", MINIMUM_CONTEXT_LENGTH),
+            )
+            agent.context_compressor.update_model(
+                model=agent.model,
+                context_length=new_context_length,
+                base_url=agent.base_url,
+                api_key=agent.api_key,  # context_compressor forwards to call_llm; callable preserved
+                provider=agent.provider,
+                api_mode=agent.api_mode,
+            )
+        except Exception:
+            _rollback_switch()
+            raise
 
     # ── Re-resolve reasoning_config from per-model override ──
     # The new model may have a different reasoning_effort override. Re-read

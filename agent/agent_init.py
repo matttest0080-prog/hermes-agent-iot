@@ -1951,14 +1951,9 @@ def init_agent(
     # may explicitly lower it together with a reduced tool surface.
     _ctx = getattr(agent.context_compressor, "context_length", 0)
     _minimum_ctx = getattr(agent, "_minimum_tool_context_length", MINIMUM_CONTEXT_LENGTH)
-    if _ctx and _ctx < _minimum_ctx:
-        raise ValueError(
-            f"Model {agent.model} has a context window of {_ctx:,} tokens, "
-            f"which is below the configured minimum {_minimum_ctx:,} required "
-            f"by Hermes Agent. Choose a model with at least {_minimum_ctx:,} "
-            f"tokens of context, or set model.context_length in config.yaml "
-            f"to the server's real value (it must be at least {_minimum_ctx:,})."
-        )
+    from agent.model_metadata import validate_tool_context_length
+
+    validate_tool_context_length(agent.model, _ctx, _minimum_ctx)
 
     # Nous Hermes 3/4 are chat models, not tool-call-tuned. The interactive
     # CLI already warns via cli.py show_banner() (richer output + /model hint),

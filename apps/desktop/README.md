@@ -74,6 +74,10 @@ HERMES_HOME=/tmp/throwaway npm run dev
 npm run dev:fake-boot   # exercise the startup overlay with deterministic delays
 ```
 
+`concurrently` is intentionally held at `^9.2.4`. Version 10.0.3 depends on
+`shell-quote<=1.8.4`, which is affected by GHSA-395f-4hp3-45gv. Do not restore
+the 10.x range until its dependency tree contains a patched `shell-quote`.
+
 ### Building installers
 
 ```bash

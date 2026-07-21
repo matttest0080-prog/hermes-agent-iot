@@ -2,9 +2,9 @@ name: Pi2 install guards
 
 on:
   pull_request:
-    branches: [main]
+    branches: [main, pi2-lite]
   push:
-    branches: [main]
+    branches: [main, pi2-lite, "sync/**"]
   workflow_dispatch:
 
 permissions:

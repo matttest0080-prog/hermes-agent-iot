@@ -24,6 +24,32 @@ from hermes_constants import OPENROUTER_MODELS_URL
 logger = logging.getLogger(__name__)
 
 
+def get_minimum_tool_context_length(agent: Any) -> int:
+    """Return an agent instance's profile floor, preserving the 64K default."""
+    value = getattr(agent, "_minimum_tool_context_length", MINIMUM_CONTEXT_LENGTH)
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        return MINIMUM_CONTEXT_LENGTH
+    return value if value > 0 else MINIMUM_CONTEXT_LENGTH
+
+
+def validate_tool_context_length(
+    model: str,
+    context_length: int | None,
+    minimum_context_length: int,
+) -> None:
+    """Reject a known model context window below the active tool profile floor."""
+    if context_length and context_length < minimum_context_length:
+        raise ValueError(
+            f"Model {model} has a context window of {context_length:,} tokens, "
+            f"which is below the configured minimum {minimum_context_length:,} required "
+            f"by Hermes Agent. Choose a model with at least {minimum_context_length:,} "
+            f"tokens of context, or set model.context_length in config.yaml "
+            f"to the server's real value (it must be at least {minimum_context_length:,})."
+        )
+
+
 def _resolve_requests_verify() -> bool | str:
     """Resolve SSL verify setting for `requests` calls from env vars.
 

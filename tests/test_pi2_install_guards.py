@@ -57,6 +57,7 @@ python -m pip install -e "$REPO_DIR[$EXTRAS]"
         "config.pi2-core.yaml": 2048,
         "config.pi2-native.yaml": 8192,
         "config.pi2-rag.yaml": 8192,
+        "config.pi2-full.yaml": 65536,
     }.items():
         (templates / name).write_text(
             f"agent:\n  minimum_tool_context_length: {floor}\n",
@@ -183,6 +184,36 @@ class Pi2InstallGuardTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 1)
         self.assertIn("HERMES_PI2_TRY_SQLITE_VEC", result.stdout)
+
+    def test_real_pi2_templates_use_active_cli_platform_toolsets(self) -> None:
+        import yaml
+
+        from hermes_cli.tools_config import _get_platform_tools
+
+        repo = Path(__file__).resolve().parents[1]
+        expected_mqtt = {
+            "config.pi2-core.yaml": False,
+            "config.pi2-native.yaml": True,
+            "config.pi2-rag.yaml": True,
+            "config.pi2-full.yaml": False,
+        }
+
+        for name, mqtt_enabled in expected_mqtt.items():
+            with self.subTest(profile=name):
+                config = yaml.safe_load((repo / "templates" / name).read_text(encoding="utf-8"))
+                self.assertNotIn("toolsets", config, "legacy top-level toolsets key is ignored")
+                self.assertIn("cli", config.get("platform_toolsets", {}))
+                resolved = _get_platform_tools(config, "cli")
+                self.assertEqual("mqtt" in resolved, mqtt_enabled)
+                if name == "config.pi2-full.yaml":
+                    self.assertEqual(config["agent"]["minimum_tool_context_length"], 65_536)
+                    self.assertNotIn("disabled_toolsets", config["agent"])
+
+        setup_text = (repo / "setup-pi2-minimal.sh").read_text(encoding="utf-8")
+        self.assertIn(
+            'full|dev) TEMPLATE="$REPO_DIR/templates/config.pi2-full.yaml"',
+            setup_text,
+        )
 
 
 if __name__ == "__main__":

@@ -129,8 +129,9 @@ fi
 install -d "$HERMES_HOME_DIR"
 case "$PROFILE" in
   minimal) TEMPLATE="$REPO_DIR/templates/config.pi2-core.yaml" ;;
-  iot|full|dev) TEMPLATE="$REPO_DIR/templates/config.pi2-native.yaml" ;;
+  iot) TEMPLATE="$REPO_DIR/templates/config.pi2-native.yaml" ;;
   rag) TEMPLATE="$REPO_DIR/templates/config.pi2-rag.yaml" ;;
+  full|dev) TEMPLATE="$REPO_DIR/templates/config.pi2-full.yaml" ;;
 esac
 if [[ ! -f "$TEMPLATE" ]]; then
   TEMPLATE="$REPO_DIR/templates/config.pi2-core.yaml"

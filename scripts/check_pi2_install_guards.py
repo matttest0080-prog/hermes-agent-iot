@@ -173,6 +173,7 @@ def check_pi2_context_templates(repo: Path, failures: FailureCollector) -> None:
         "config.pi2-core.yaml": 2048,
         "config.pi2-native.yaml": 8192,
         "config.pi2-rag.yaml": 8192,
+        "config.pi2-full.yaml": 65536,
     }
 
     for filename, expected_floor in expected.items():
