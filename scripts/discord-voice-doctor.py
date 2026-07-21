@@ -14,6 +14,8 @@ import sys
 import shutil
 from pathlib import Path
 
+from packaging.version import InvalidVersion, Version
+
 # Resolve project root
 SCRIPT_DIR = Path(__file__).resolve().parent
 PROJECT_ROOT = SCRIPT_DIR.parent
@@ -28,6 +30,15 @@ WARN = "\033[93m!\033[0m"
 
 # Track whether discord.py is available for later sections
 _discord_available = False
+PYNACL_MIN_VERSION = Version("1.6.2")
+
+
+def _pynacl_version_is_secure(version):
+    """Return whether *version* meets the patched PyNaCl security floor."""
+    try:
+        return Version(version) >= PYNACL_MIN_VERSION
+    except InvalidVersion:
+        return False
 
 
 def mask(value):
@@ -80,13 +91,17 @@ def check_packages():
     try:
         import nacl
         ver = getattr(nacl, "__version__", "unknown")
-        try:
-            import nacl.secret
-            nacl.secret.Aead(bytes(32))
-            check("PyNaCl", True, f"v{ver}")
-        except (AttributeError, Exception):
-            check("PyNaCl (Aead)", False, f"v{ver} — need >=1.6.2")
+        if not _pynacl_version_is_secure(ver):
+            check("PyNaCl", False, f"v{ver} — need >=1.6.2 for GHSA-mrfv-m5wm-5w6w")
             ok = False
+        else:
+            try:
+                import nacl.secret
+                nacl.secret.Aead(bytes(32))
+                check("PyNaCl", True, f"v{ver}")
+            except Exception:
+                check("PyNaCl (Aead)", False, f"v{ver} — encryption unavailable")
+                ok = False
     except ImportError:
         check("PyNaCl", False, "pip install 'PyNaCl==1.6.2'")
         ok = False

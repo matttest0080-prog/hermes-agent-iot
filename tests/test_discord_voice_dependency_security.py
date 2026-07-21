@@ -4,6 +4,7 @@ The Discord recovery paths must not use ``discord.py[voice]`` because
 ``discord.py==2.7.1`` constrains that extra to vulnerable ``PyNaCl<1.6``.
 """
 
+import importlib.util
 from pathlib import Path
 
 
@@ -21,6 +22,15 @@ PATCHED_VOICE_SPECS = (
     "PyNaCl==1.6.2",
     "davey==0.1.4",
 )
+
+
+def _load_voice_doctor():
+    path = REPO_ROOT / "scripts" / "discord-voice-doctor.py"
+    spec = importlib.util.spec_from_file_location("discord_voice_doctor", path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
 
 
 def test_all_discord_install_paths_use_patched_voice_specs():
@@ -45,6 +55,15 @@ def test_voice_doctor_never_recommends_vulnerable_pynacl_floor():
     assert "need >=1.5" not in VOICE_DOCTOR
     assert "PyNaCl==1.6.2" in VOICE_DOCTOR
     assert "davey==0.1.4" in VOICE_DOCTOR
+
+
+def test_voice_doctor_enforces_pynacl_security_floor():
+    doctor = _load_voice_doctor()
+    assert not doctor._pynacl_version_is_secure("1.5.0")
+    assert not doctor._pynacl_version_is_secure("1.6.1")
+    assert doctor._pynacl_version_is_secure("1.6.2")
+    assert doctor._pynacl_version_is_secure("1.7.0")
+    assert not doctor._pynacl_version_is_secure("unknown")
 
 
 def test_low_resource_pi2_profiles_do_not_install_discord_voice_stack():
