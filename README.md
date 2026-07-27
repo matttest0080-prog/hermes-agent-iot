@@ -9,8 +9,9 @@
 <p align="center">
   <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
   <a href="https://discord.gg/NousResearch"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/NousResearch/hermes-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://nousresearch.com"><img src="https://img.shields.io/badge/Built%20by-Nous%20Research-blueviolet?style=for-the-badge" alt="Built by Nous Research"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://nousresearch.com"><img src="https://img.shields.io/badge/Upstream-Nous%20Research-blueviolet?style=for-the-badge" alt="Upstream by Nous Research"></a>
+  <a href="https://github.com/matttest0080-prog"><img src="https://img.shields.io/badge/IoT%20fork-matttest0080--prog-orange?style=for-the-badge" alt="IoT fork maintained by matttest0080-prog"></a>
   <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
   <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
   <a href="README.es.md"><img src="https://img.shields.io/badge/Lang-Español-orange?style=for-the-badge" alt="Español"></a>
@@ -356,4 +357,9 @@ scripts/run_tests.sh
 
 MIT — see [LICENSE](LICENSE).
 
-Built by [Nous Research](https://nousresearch.com).
+Upstream Hermes Agent is built by [Nous Research](https://nousresearch.com).
+This Raspberry Pi / IoT fork is maintained by
+[matttest0080-prog](https://github.com/matttest0080-prog).
+
+Bundled plugins, skills and third-party components may include their own
+license or notice files; those terms apply to the corresponding components.
