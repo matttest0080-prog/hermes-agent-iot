@@ -49,6 +49,21 @@ hermes setup model
 hermes
 ```
 
+> **Keep the clone directory.** The Pi2 installer uses an editable Python
+> installation (`pip install -e`), so the installed `hermes` command continues
+> to reference this checkout. Moving or deleting `hermes-agent-iot` can break
+> the environment.
+
+Current deployment snapshot:
+
+- Hermes version: `0.19.0`
+- upstream sync base: `f4df260f`
+- deployment branch: `pi2-lite`
+
+The fork may intentionally lag the fast-moving upstream `main` while IoT
+patches, dependency changes and ARMv7 compatibility are reviewed. The version
+number alone does not mean that every newer upstream commit is already present.
+
 #### Install profiles
 
 Choose the profile that matches the target device and workload:
@@ -75,6 +90,25 @@ Backward-compatible aliases remain available: `core` → `minimal` and
 
 See [README_PI2.md](README_PI2.md) for the complete dependency matrix,
 configuration templates and safety guidance.
+
+#### Updating this Pi2 / IoT fork
+
+The generic `hermes update` command is intended for the official managed
+`NousResearch/hermes-agent` installation. This Pi2 installer uses an editable
+checkout, so update the checked-out `pi2-lite` branch and then rerun the same
+profile installer:
+
+```bash
+cd /path/to/hermes-agent-iot
+git status --short
+git pull --ff-only origin pi2-lite
+source ~/.hermes-venv/bin/activate
+bash setup-pi2-minimal.sh --profile minimal
+```
+
+Replace `minimal` with the profile originally installed (`iot`, `rag`, `full`
+or `dev`). Review or preserve any local changes before pulling; do not use a
+hard reset as a routine update method.
 
 ### Upstream Hermes full installer
 
@@ -161,7 +195,7 @@ hermes config get   # Print individual config values
 hermes gateway      # Start the messaging gateway (Telegram, Discord, etc.)
 hermes setup        # Run the full setup wizard (configures everything at once)
 hermes claw migrate # Migrate from OpenClaw (if coming from OpenClaw)
-hermes update       # Update to the latest version
+hermes update       # Official managed installs; Pi2 fork users: see update instructions above
 hermes doctor       # Diagnose any issues
 ```
 
