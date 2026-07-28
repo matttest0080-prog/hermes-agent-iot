@@ -1,0 +1,7 @@
+[[IgnoredVulns]]
+id = "GHSA-qwww-vcr4-c8h2"
+reason = "Only affects unstable RSC APIs; Hermes Desktop/Web use client routers only. react-router 8.3.0 exists but requires Node >=22.22 and react-router-dom 8.3.0 is not published, while Hermes supports Node 20. Re-evaluate by 2026-08-28 or when a complete Node-20-compatible DOM release is available."
+
+[[IgnoredVulns]]
+id = "GHSA-mh99-v99m-4gvg"
+reason = "Affected brace-expansion 1.x/2.x instances are build/dev tooling inputs through minimatch 3/5/9, not attacker-controlled expansion APIs. Forcing 5.0.8 breaks older consumers' callable CommonJS contract. Re-evaluate by 2026-08-28 or when patched compatible majors/parents are published."

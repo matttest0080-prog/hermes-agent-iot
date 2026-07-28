@@ -1,0 +1,3 @@
+[[IgnoredVulns]]
+id = "GHSA-mh99-v99m-4gvg"
+reason = "Affected brace-expansion 1.x is used by serve-handler/minimatch 3 for configured serving patterns; request paths do not become brace patterns. Forcing 5.0.8 breaks minimatch's callable CommonJS contract. Re-evaluate by 2026-08-28 or when a patched compatible major/parent is published."
