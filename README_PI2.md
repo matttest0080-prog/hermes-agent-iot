@@ -133,10 +133,10 @@ Pi2 can connect to a local or LAN OpenAI-compatible endpoint. For example, if `l
 
 ```bash
 hermes setup model
+# Select: Local AI (llama.cpp / llama-server)
 ```
 
-or edit `~/.hermes/config.yaml` using the normal Hermes config commands.
-
+For the complete SD-card GGUF, llama-server, systemd, and remote-primary/local-fallback procedure, see [RASPBERRY_PI2_MANUAL.md](RASPBERRY_PI2_MANUAL.md).
 Important: a 7B model on Raspberry Pi 2 is usually impractical because of RAM and speed. Prefer:
 
 - a remote/OpenRouter/OpenAI-compatible provider, or

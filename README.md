@@ -57,8 +57,9 @@ hermes
 
 Current deployment snapshot:
 
-- Hermes version: `0.19.0`
-- upstream sync base: `f4df260f`
+- Hermes version: `0.19.1`
+- upstream merge commit: `005e84816`
+- security release commit: `a3c7fe707`
 - deployment branch: `pi2-lite`
 
 The fork may intentionally lag the fast-moving upstream `main` while IoT
