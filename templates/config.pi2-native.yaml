@@ -5,7 +5,13 @@
 
 model: ""
 providers: {}
-fallback_providers: []
+fallback_providers:
+  # Remote primary is configured in model:. If it fails, use the local
+  # llama-server endpoint. Start llama-server with --alias pi2-local.
+  - provider: custom
+    model: pi2-local
+    base_url: http://127.0.0.1:8080/v1
+    api_key: local
 platform_toolsets:
   cli:
     - hermes-cli
@@ -15,7 +21,7 @@ agent:
   max_turns: 75
   gateway_timeout: 1200
   restart_drain_timeout: 90
-  api_max_retries: 2
+  api_max_retries: 0
   # Native Pi2 profile still keeps most heavy tools off, but expects a little
   # more headroom than core for MCP/ACP/Home Assistant style workflows.
   minimum_tool_context_length: 8192

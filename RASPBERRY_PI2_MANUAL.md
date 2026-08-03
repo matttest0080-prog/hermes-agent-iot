@@ -99,26 +99,24 @@ templates/config.pi2-rag.yaml
 目前 config schema 使用：
 
 ```yaml
-model:
-  default: tiny-local-model
-  provider: custom
-  base_url: http://127.0.0.1:8080/v1
-  context_length: 8192
-
+model: ""
 providers: {}
-fallback_providers: []
+fallback_providers:
+  # Remote primary is configured in model:. When it fails, Hermes uses
+  # the local llama-server endpoint below.
+  - provider: custom
+    model: pi2-local
+    base_url: http://127.0.0.1:8080/v1
+    api_key: local
 
-toolsets:
-  - hermes-cli
-  - mqtt
+platform_toolsets:
+  cli:
+    - hermes-cli
+    - mqtt
 
 agent:
-  minimum_tool_context_length: 8192
-  disabled_toolsets:
-    - browser
-    - image_gen
-    - video_gen
-    - computer_use
+  api_max_retries: 0
+  minimum_tool_context_length: 2048  # core; native/rag use 8192
 
 memory:
   memory_enabled: true
@@ -252,7 +250,40 @@ hermes setup model
 http://127.0.0.1:8080/v1
 ```
 
-## 9. 驗證與維護
+使用互動設定：
+
+```bash
+hermes setup model
+# 選擇：Local AI (llama.cpp / llama-server)
+```
+
+此選項預填 `http://127.0.0.1:8080/v1`、`local` 與 `pi2-local`，並會嘗試從 `/v1/models` 自動讀取模型清單。
+
+Pi2 profile 的 `fallback_providers` 已預設加入本機 `custom` endpoint。遠端模型仍放在 `model:`，因此正常情況使用遠端；只有遠端發生連線錯誤、5xx、認證失敗、rate limit 或 billing 類錯誤時，Hermes 才切換到本機 llama-server。
+
+llama-server 必須使用與 template 相同的 model alias：
+
+```bash
+./build/bin/llama-server \
+  -m ~/models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+  --alias pi2-local \
+  --host 127.0.0.1 \
+  --port 8080 \
+  --ctx-size 2048 \
+  --parallel 1
+```
+
+確認本機 fallback endpoint：
+
+```bash
+curl -fsS http://127.0.0.1:8080/v1/models
+```
+
+`fallback_providers` 的本機 endpoint 只監聽 `127.0.0.1`，不會直接暴露到 LAN。Pi2 core/native/rag profile 使用較低的 context floor；本機小模型只應處理簡短對話和簡單 IoT 指令，複雜工具工作仍應交給遠端模型。
+
+如果本機 llama-server 沒有啟動，Hermes 會記錄 fallback 失敗並回報遠端與本機都不可用，不會假裝已完成工作。
+
+## 10. 驗證與維護
 
 ```bash
 source ~/.hermes-venv/bin/activate

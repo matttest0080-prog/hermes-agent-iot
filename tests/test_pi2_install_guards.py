@@ -214,6 +214,19 @@ class Pi2InstallGuardTests(unittest.TestCase):
             'full|dev) TEMPLATE="$REPO_DIR/templates/config.pi2-full.yaml"',
             setup_text,
         )
+    def test_low_resource_profiles_have_local_llama_fallback(self) -> None:
+        import yaml
+
+        repo = Path(__file__).resolve().parents[1]
+        for name in ("config.pi2-core.yaml", "config.pi2-native.yaml", "config.pi2-rag.yaml"):
+            with self.subTest(profile=name):
+                config = yaml.safe_load((repo / "templates" / name).read_text(encoding="utf-8"))
+                fallback = config["fallback_providers"]
+                self.assertEqual(len(fallback), 1)
+                self.assertEqual(fallback[0]["provider"], "custom")
+                self.assertEqual(fallback[0]["model"], "pi2-local")
+                self.assertEqual(fallback[0]["base_url"], "http://127.0.0.1:8080/v1")
+                self.assertEqual(fallback[0]["api_key"], "local")
 
 
 if __name__ == "__main__":

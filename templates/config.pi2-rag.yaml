@@ -4,7 +4,13 @@
 
 model: ""
 providers: {}
-fallback_providers: []
+fallback_providers:
+  # Remote primary is configured in model:. If it fails, use the local
+  # llama-server endpoint. Start llama-server with --alias pi2-local.
+  - provider: custom
+    model: pi2-local
+    base_url: http://127.0.0.1:8080/v1
+    api_key: local
 platform_toolsets:
   cli:
     - hermes-cli
@@ -14,7 +20,7 @@ agent:
   max_turns: 75
   gateway_timeout: 1200
   restart_drain_timeout: 90
-  api_max_retries: 2
+  api_max_retries: 0
   # RAG profile is designed for remote embeddings / central RAG. If you still
   # run a local Ollama model on Pi2, keep the local context floor modest and
   # let the central server provide larger 64K+ contexts when available.

@@ -4,7 +4,13 @@
 
 model: ""
 providers: {}
-fallback_providers: []
+fallback_providers:
+  # Remote primary is configured in model:. If it fails, use the local
+  # llama-server endpoint. Start llama-server with --alias pi2-local.
+  - provider: custom
+    model: pi2-local
+    base_url: http://127.0.0.1:8080/v1
+    api_key: local
 platform_toolsets:
   cli:
     - hermes-cli
@@ -13,7 +19,7 @@ agent:
   max_turns: 60
   gateway_timeout: 900
   restart_drain_timeout: 60
-  api_max_retries: 2
+  api_max_retries: 0
   # Low-resource override for local Ollama/llama.cpp use. Upstream Hermes
   # defaults to a 64K runtime-context floor for reliable full tool use; the
   # Pi2 core profile keeps the tool surface tiny, so 2K is allowed as a
