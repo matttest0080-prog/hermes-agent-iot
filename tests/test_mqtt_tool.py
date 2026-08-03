@@ -359,7 +359,9 @@ class MQTTToolTests(unittest.TestCase):
 
         os.environ["MQTT_HOST"] = "broker.example"
         invalidate_check_fn_cache()
-        available = get_tool_definitions(["mqtt"], [], quiet_mode=False)
+        available = get_tool_definitions(
+            ["mqtt"], [], quiet_mode=False, skip_tool_search_assembly=True
+        )
         names = sorted(item["function"]["name"] for item in available)
         self.assertEqual(
             names,
