@@ -862,19 +862,81 @@ def feature_install_command(feature: str) -> Optional[str]:
     return "uv pip install " + " ".join(repr(s) for s in specs)
 
 
+@dataclass
+class InstallSpecsResult:
+    """Outcome of :func:`install_specs` for one batch of pip specs."""
+    ok: bool
+    blocked: bool = False
+    reason: str = ""
+    command: str = ""
+    stdout: str = ""
+    stderr: str = ""
+
+
+def install_specs(specs: list[str] | tuple[str, ...], *, timeout: int = 300) -> InstallSpecsResult:
+    """Install validated manifest specs through the environment-aware pipeline.
+
+    This is used by provider setup flows whose dependencies come from plugin
+    metadata rather than the static LAZY_DEPS allowlist. It never raises:
+    callers inspect the structured result instead.
+    """
+    cleaned = tuple(str(s).strip() for s in specs if str(s).strip())
+    if not cleaned:
+        return InstallSpecsResult(ok=True, command="")
+    for spec in cleaned:
+        if not _spec_is_safe(spec):
+            return InstallSpecsResult(
+                ok=False,
+                blocked=True,
+                reason=f"refusing to install unsafe spec {spec!r}",
+            )
+    if not _allow_lazy_installs():
+        target = _lazy_install_target()
+        if os.environ.get("HERMES_DISABLE_LAZY_INSTALLS") == "1" and target is None:
+            reason = (
+                "runtime installs are disabled: the agent environment is immutable "
+                "and HERMES_LAZY_INSTALL_TARGET is not configured"
+            )
+        else:
+            reason = "runtime installs disabled (security.allow_lazy_installs=false)"
+        return InstallSpecsResult(ok=False, blocked=True, reason=reason)
+
+    target = _lazy_install_target()
+    display = "uv pip install " + (
+        f"--target {target} " if target is not None else ""
+    ) + " ".join(cleaned)
+    try:
+        result = _venv_pip_install(cleaned, timeout=timeout)
+    except Exception as exc:
+        logger.warning("install_specs failed unexpectedly: %s", exc)
+        return InstallSpecsResult(ok=False, command=display, stderr=f"install failed: {exc}")
+
+    try:
+        import importlib
+        importlib.invalidate_caches()
+        import importlib.metadata as _md
+        if hasattr(_md, "_cache_clear"):
+            _md._cache_clear()  # type: ignore[attr-defined]
+    except Exception:
+        pass
+
+    return InstallSpecsResult(
+        ok=result.success,
+        command=display,
+        stdout=result.stdout,
+        stderr=result.stderr,
+    )
+
+
 def active_features() -> list[str]:
-    """Return the list of features the user has ever lazy-installed.
+    """Return features whose anchor package is currently installed.
 
-    A feature counts as "active" if at least one of its declared packages
-    is currently installed in the venv (presence check, ignoring version).
-    Features the user has never enabled stay quiet.
-
-    Used by ``hermes update`` to figure out which lazy backends need a
-    refresh pass when pins move in :data:`LAZY_DEPS`.
+    Shared dependencies must not activate an opt-in backend; the first
+    declared spec is the feature's anchor package.
     """
     active = []
     for feature, specs in LAZY_DEPS.items():
-        if any(_is_present(s) for s in specs):
+        if specs and _is_present(specs[0]):
             active.append(feature)
     return active
 
