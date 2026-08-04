@@ -206,14 +206,69 @@ Pi2 RAG Profile 使用：
 
 ## 8. llama.cpp（進階）
 
-Pi2 本機執行 7B 模型通常不實用；優先在 LAN 主機執行 `llama-server`。若仍要在 ARM 裝置編譯，使用 llama.cpp 現行 CMake 介面：
+Pi2 本機執行 7B 模型通常不實用；優先在 LAN 主機執行 `llama-server`。若仍要在 ARM 裝置編譯，先安裝 CMake 與基本編譯工具。`cmake: command not found` 表示 CMake 尚未安裝，不是 llama.cpp 原始碼錯誤。
+
+### 8.1 安裝建置依賴
+
+```bash
+sudo apt update
+sudo apt install -y cmake build-essential pkg-config libcurl4-openssl-dev
+
+cmake --version
+gcc --version
+g++ --version
+```
+
+Pi2 只有約 1 GB RAM。編譯前檢查記憶體與 swap：
+
+```bash
+free -h
+swapon --show
+```
+
+如果沒有 swap，可暫時建立 1 GB swap 供編譯使用。swap 不是正常推理記憶體，且會增加 SD 卡寫入：
+
+```bash
+sudo fallocate -l 1G /swapfile
+sudo chmod 600 /swapfile
+sudo mkswap /swapfile
+sudo swapon /swapfile
+free -h
+```
+
+### 8.2 編譯 llama-server
 
 ```bash
 git clone https://github.com/ggml-org/llama.cpp.git
 cd llama.cpp
-cmake -B build -DGGML_NATIVE=OFF
-cmake --build build --config Release -j2 --target llama-server
+
+rm -rf build
+cmake -B build \
+  -DGGML_NATIVE=OFF \
+  -DLLAMA_CURL=OFF \
+  -DCMAKE_BUILD_TYPE=Release
+
+# Pi2 使用單執行緒，避免編譯時耗盡 RAM
+cmake --build build \
+  --target llama-server \
+  --config Release \
+  -j1
 ```
+
+說明：
+
+- `GGML_NATIVE=OFF`：避免編譯器使用不相容的 CPU 特性。
+- `LLAMA_CURL=OFF`：本機已有 GGUF 時不需要 llama.cpp 自動從 Hub 下載。
+- `-j1`：Pi2 低記憶體建置的安全設定。
+- 如果需要使用 llama.cpp 的 Hub 下載功能，移除 `-DLLAMA_CURL=OFF`，並保留 `libcurl4-openssl-dev`。
+
+確認 binary：
+
+```bash
+./build/bin/llama-server --version
+```
+
+如果編譯仍因記憶體被終止，確認使用 `-j1`，增加 swap，或改在較強的 LAN 主機編譯後將 binary 複製到 Pi2。
 
 下載 GGUF 可使用新版 Hugging Face CLI：
 
@@ -222,20 +277,37 @@ python -m pip install 'huggingface-hub[cli]'
 hf download OWNER/MODEL-GGUF model.gguf --local-dir ~/models
 ```
 
-啟動現行 server binary：
+### 8.3 啟動與驗證
+
+Pi2 建議 CPU-only、小 context、單 parallel：
 
 ```bash
 ./build/bin/llama-server \
-  -m ~/models/model.gguf \
+  -m ~/models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+  --alias pi2-local \
   --host 127.0.0.1 \
   --port 8080 \
-  --ctx-size 8192
+  --ctx-size 2048 \
+  --parallel 1 \
+  -ngl 0
 ```
 
-檢查：
+檢查 model endpoint：
 
 ```bash
-curl http://127.0.0.1:8080/v1/models
+curl -fsS http://127.0.0.1:8080/v1/models
+```
+
+檢查 chat endpoint：
+
+```bash
+curl -fsS http://127.0.0.1:8080/v1/chat/completions \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "model": "pi2-local",
+    "messages": [{"role": "user", "content": "Reply with exactly OK"}],
+    "max_tokens": 4
+  }'
 ```
 
 然後執行：
@@ -261,27 +333,16 @@ hermes setup model
 
 Pi2 profile 的 `fallback_providers` 已預設加入本機 `custom` endpoint。遠端模型仍放在 `model:`，因此正常情況使用遠端；只有遠端發生連線錯誤、5xx、認證失敗、rate limit 或 billing 類錯誤時，Hermes 才切換到本機 llama-server。
 
-llama-server 必須使用與 template 相同的 model alias：
-
-```bash
-./build/bin/llama-server \
-  -m ~/models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
-  --alias pi2-local \
-  --host 127.0.0.1 \
-  --port 8080 \
-  --ctx-size 2048 \
-  --parallel 1
-```
-
-確認本機 fallback endpoint：
-
-```bash
-curl -fsS http://127.0.0.1:8080/v1/models
-```
-
 `fallback_providers` 的本機 endpoint 只監聽 `127.0.0.1`，不會直接暴露到 LAN。Pi2 core/native/rag profile 使用較低的 context floor；本機小模型只應處理簡短對話和簡單 IoT 指令，複雜工具工作仍應交給遠端模型。
 
 如果本機 llama-server 沒有啟動，Hermes 會記錄 fallback 失敗並回報遠端與本機都不可用，不會假裝已完成工作。
+
+編譯完成後，如果 swap 只為了建置而啟用，可以關閉並刪除：
+
+```bash
+sudo swapoff /swapfile
+sudo rm -f /swapfile
+```
 
 ## 10. 驗證與維護
 
