@@ -204,22 +204,81 @@ Pi2 RAG Profile 使用：
 }
 ```
 
-## 8. llama.cpp（進階）
+## 8. llama.cpp（Pi2B 專用流程）
 
-Pi2 本機執行 7B 模型通常不實用；優先在 LAN 主機執行 `llama-server`。若仍要在 ARM 裝置編譯，先安裝 CMake 與基本編譯工具。`cmake: command not found` 表示 CMake 尚未安裝，不是 llama.cpp 原始碼錯誤。
+Pi2 本機執行 7B 模型通常不實用；優先在 LAN 主機執行大型模型。若要在 Raspberry Pi 2B 使用小型本機 GGUF，請使用本專案維護的 `pi2b-armv7` branch，不要直接把 `ggml-org/llama.cpp` 的 `master` 當成 Pi2 版本。
 
-### 8.1 安裝建置依賴
+```text
+Pi2 branch:
+https://github.com/matttest0080-prog/llama.cpp/tree/pi2b-armv7
+
+Upstream master:
+https://github.com/ggml-org/llama.cpp
+```
+
+### 8.1 取得正確的 Pi2 branch
+
+如果尚未下載：
+
+```bash
+git clone --branch pi2b-armv7 --depth 1 \
+  https://github.com/matttest0080-prog/llama.cpp.git \
+  "$HOME/llama.cpp"
+cd "$HOME/llama.cpp"
+```
+
+如果現有 `~/llama.cpp` 是從 `ggml-org/llama.cpp` 下載的，請不要直接執行 `git pull` 更新 upstream `master`。加入 Pi2 fork 並切換 branch：
+
+```bash
+cd "$HOME/llama.cpp"
+
+git remote get-url pi2 >/dev/null 2>&1 || \
+  git remote add pi2 https://github.com/matttest0080-prog/llama.cpp.git
+
+git fetch pi2 pi2b-armv7
+```
+
+如果本機還沒有 Pi2 branch：
+
+```bash
+git switch --track -c pi2b-armv7 pi2/pi2b-armv7
+```
+
+如果本機已經有 Pi2 branch：
+
+```bash
+git switch pi2b-armv7
+git pull --ff-only pi2 pi2b-armv7
+```
+
+確認：
+
+```bash
+git branch --show-current
+uname -m
+ls -l scripts/build-pi2-armv7.sh
+```
+
+預期：
+
+```text
+pi2b-armv7
+armv7l
+scripts/build-pi2-armv7.sh 存在
+```
+
+### 8.2 安裝 build 依賴
 
 ```bash
 sudo apt update
-sudo apt install -y cmake build-essential pkg-config libcurl4-openssl-dev
+sudo apt install -y cmake build-essential pkg-config git python3-full python3-venv
 
 cmake --version
 gcc --version
 g++ --version
 ```
 
-Pi2 只有約 1 GB RAM。編譯前檢查記憶體與 swap：
+Pi2 只有約 1 GB RAM。編譯前檢查：
 
 ```bash
 free -h
@@ -236,59 +295,129 @@ sudo swapon /swapfile
 free -h
 ```
 
-### 8.2 編譯 llama-server
+### 8.3 編譯 Pi2 llama-server
 
 ```bash
-git clone https://github.com/ggml-org/llama.cpp.git
-cd llama.cpp
-
-rm -rf build
-cmake -B build \
-  -DGGML_NATIVE=OFF \
-  -DLLAMA_CURL=OFF \
-  -DCMAKE_BUILD_TYPE=Release
-
-# Pi2 使用單執行緒，避免編譯時耗盡 RAM
-cmake --build build \
-  --target llama-server \
-  --config Release \
-  -j1
+cd "$HOME/llama.cpp"
+./scripts/build-pi2-armv7.sh
 ```
 
-說明：
+此 script 會使用：
 
-- `GGML_NATIVE=OFF`：避免編譯器使用不相容的 CPU 特性。
-- `LLAMA_CURL=OFF`：本機已有 GGUF 時不需要 llama.cpp 自動從 Hub 下載。
-- `-j1`：Pi2 低記憶體建置的安全設定。
-- 如果需要使用 llama.cpp 的 Hub 下載功能，移除 `-DLLAMA_CURL=OFF`，並保留 `libcurl4-openssl-dev`。
-
-確認 binary：
-
-```bash
-./build/bin/llama-server --version
+```text
+GGML_NATIVE=OFF
+GGML_OPENMP=OFF
+CPU-only
+LLAMA_BUILD_TESTS=OFF
+LLAMA_BUILD_EXAMPLES=OFF
+LLAMA_BUILD_APP=OFF
+LLAMA_BUILD_UI=OFF
+-j1
 ```
 
-如果編譯仍因記憶體被終止，確認使用 `-j1`，增加 swap，或改在較強的 LAN 主機編譯後將 binary 複製到 Pi2。
+編譯完成後，binary 位於：
 
-下載 GGUF 可使用新版 Hugging Face CLI：
-
-```bash
-python -m pip install 'huggingface-hub[cli]'
-hf download OWNER/MODEL-GGUF model.gguf --local-dir ~/models
+```text
+$HOME/llama.cpp/build-pi2-armv7/bin/llama-server
 ```
 
-### 8.3 啟動與驗證
-
-Pi2 建議 CPU-only、小 context、單 parallel：
+確認：
 
 ```bash
-./build/bin/llama-server \
-  -m ~/models/qwen2.5-0.5b-instruct-q4_k_m.gguf \
+ls -lh "$HOME/llama.cpp/build-pi2-armv7/bin/llama-server"
+"$HOME/llama.cpp/build-pi2-armv7/bin/llama-server" --version
+```
+
+注意：如果你目前在 `$HOME`，不能使用：
+
+```bash
+./build-pi2-armv7/bin/llama-server
+```
+
+因為正確路徑是在 `$HOME/llama.cpp` 裡。請先 `cd "$HOME/llama.cpp"`，或直接使用完整路徑。
+
+### 8.4 安裝 Hugging Face CLI（避免 PEP 668）
+
+Raspberry Pi OS 的系統 Python 受到 PEP 668 保護。不要直接執行：
+
+```bash
+python -m pip install ...
+```
+
+也不要使用：
+
+```bash
+--break-system-packages
+```
+
+建立獨立 virtualenv：
+
+```bash
+python3 -m venv "$HOME/.venvs/huggingface"
+"$HOME/.venvs/huggingface/bin/python" -m pip install --upgrade pip
+"$HOME/.venvs/huggingface/bin/python" -m pip install 'huggingface-hub[cli]'
+
+export PATH="$HOME/.venvs/huggingface/bin:$PATH"
+echo 'export PATH="$HOME/.venvs/huggingface/bin:$PATH"' >> "$HOME/.bashrc"
+
+hf --version
+```
+
+### 8.5 下載適合 Pi2 的 Gemma GGUF
+
+以下 repository 已確認包含 `Q4_K_M` 檔案：
+
+```text
+lmstudio-community/gemma-3-270m-it-GGUF
+```
+
+下載：
+
+```bash
+mkdir -p "$HOME/models"
+
+hf download lmstudio-community/gemma-3-270m-it-GGUF \
+  gemma-3-270m-it-Q4_K_M.gguf \
+  --local-dir "$HOME/models"
+```
+
+確認：
+
+```bash
+ls -lh "$HOME/models/gemma-3-270m-it-Q4_K_M.gguf"
+```
+
+已確認的檔名：
+
+```text
+gemma-3-270m-it-Q4_K_M.gguf
+```
+
+不要把下列命令中的 placeholder 當作實際檔案名稱：
+
+```bash
+hf download OWNER/MODEL-GGUF model.gguf --local-dir "$HOME/models"
+```
+
+`ggml-org/gemma-3-270m-it-GGUF` 目前只有 `Q8_0`，沒有 `Q4_K_M`。如果要使用該 repository，命令必須是：
+
+```bash
+hf download ggml-org/gemma-3-270m-it-GGUF \
+  gemma-3-270m-it-Q8_0.gguf \
+  --local-dir "$HOME/models"
+```
+
+### 8.6 啟動與驗證
+
+```bash
+"$HOME/llama.cpp/build-pi2-armv7/bin/llama-server" \
+  -m "$HOME/models/gemma-3-270m-it-Q4_K_M.gguf" \
   --alias pi2-local \
   --host 127.0.0.1 \
   --port 8080 \
   --ctx-size 2048 \
   --parallel 1 \
+  --threads 4 \
   -ngl 0
 ```
 
@@ -310,34 +439,38 @@ curl -fsS http://127.0.0.1:8080/v1/chat/completions \
   }'
 ```
 
-然後執行：
+### 8.7 Hermes fallback 設定
+
+啟動 llama-server 後執行：
 
 ```bash
+source ~/.hermes-venv/bin/activate
 hermes setup model
 ```
 
-選擇 Custom／OpenAI-compatible endpoint，Base URL 設為：
+選擇：
 
 ```text
-http://127.0.0.1:8080/v1
+Local AI (llama.cpp / llama-server)
 ```
 
-使用互動設定：
+確認設定：
 
-```bash
-hermes setup model
-# 選擇：Local AI (llama.cpp / llama-server)
+```text
+Base URL: http://127.0.0.1:8080/v1
+API key:  local
+Model:    pi2-local
 ```
 
-此選項預填 `http://127.0.0.1:8080/v1`、`local` 與 `pi2-local`，並會嘗試從 `/v1/models` 自動讀取模型清單。
+Pi2 profile 的 `fallback_providers` 已預設加入本機 `custom` endpoint。正常情況使用遠端模型；只有遠端連線錯誤、5xx、認證失敗、rate limit 或 billing 類錯誤時，Hermes 才切換到本機 llama-server。
 
-Pi2 profile 的 `fallback_providers` 已預設加入本機 `custom` endpoint。遠端模型仍放在 `model:`，因此正常情況使用遠端；只有遠端發生連線錯誤、5xx、認證失敗、rate limit 或 billing 類錯誤時，Hermes 才切換到本機 llama-server。
+本機 endpoint 只監聽 `127.0.0.1`，不會直接暴露到 LAN。若要開放 LAN，必須另外設定驗證、ACL 與防火牆，不能直接暴露未授權的 inference endpoint。
 
-`fallback_providers` 的本機 endpoint 只監聽 `127.0.0.1`，不會直接暴露到 LAN。Pi2 core/native/rag profile 使用較低的 context floor；本機小模型只應處理簡短對話和簡單 IoT 指令，複雜工具工作仍應交給遠端模型。
+注意：目前 llama.cpp 的 server source 仍有 `mtmd` 與 `llama-ui` target dependency；`LLAMA_BUILD_UI=OFF` 會避免嵌入 UI assets，但不會移除所有相關 source。此 Pi2 branch 刻意不做侵入式 multimodal API refactor。
 
-如果本機 llama-server 沒有啟動，Hermes 會記錄 fallback 失敗並回報遠端與本機都不可用，不會假裝已完成工作。
+不要再使用 `-DLLAMA_CURL=OFF` 作為目前的控制項；upstream CMake 已將 `LLAMA_CURL` 標記為 deprecated。使用本機 GGUF 時不需要 Hub download 功能。
 
-編譯完成後，如果 swap 只為了建置而啟用，可以關閉並刪除：
+完成編譯後，如果 swap 只為了建置而啟用，可以關閉並刪除：
 
 ```bash
 sudo swapoff /swapfile
