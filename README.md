@@ -96,10 +96,12 @@ configuration templates and safety guidance.
 #### Updating this Pi2 / IoT fork
 
 The Pi2 installer uses an editable checkout and profile-specific dependency
-sets. Preview an update with the branch explicitly selected:
+sets. The examples below assume the repository was cloned into
+`~/hermes-agent-iot`; if you used another clone directory, replace that path.
+Preview an update with the branch explicitly selected:
 
 ```bash
-cd /path/to/hermes-agent-iot
+cd ~/hermes-agent-iot
 hermes update --check --branch pi2-lite
 ```
 
@@ -107,7 +109,7 @@ For an actual Pi2 update, use the branch-safe git procedure and rerun the same
 profile installer so the low-resource dependency set is restored:
 
 ```bash
-cd /path/to/hermes-agent-iot
+cd ~/hermes-agent-iot
 git status --short
 git pull --ff-only origin pi2-lite
 source ~/.hermes-venv/bin/activate

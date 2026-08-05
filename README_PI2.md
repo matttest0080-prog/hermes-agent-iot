@@ -94,7 +94,9 @@ Hermes requires Python `>=3.11,<3.14`. If your Raspberry Pi OS image ships older
 ## Updating the Pi2 installation
 
 The Pi2 installation tracks the `pi2-lite` branch and uses profile-specific
-dependency sets. Preview an update with the branch explicitly selected:
+dependency sets. The examples below assume the repository was cloned into
+`~/hermes-agent-iot`; if you used another clone directory, replace that path.
+Preview an update with the branch explicitly selected:
 
 ```bash
 # Preview only; this does not install dependencies
@@ -106,7 +108,7 @@ installer. This preserves the intended `minimal`, `iot`, or `rag` dependency
 set:
 
 ```bash
-cd /path/to/hermes-agent-iot
+cd ~/hermes-agent-iot
 git status --short
 git pull --ff-only origin pi2-lite
 source ~/.hermes-venv/bin/activate
