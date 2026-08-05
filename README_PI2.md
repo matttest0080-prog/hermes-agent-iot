@@ -91,6 +91,35 @@ hermes
 
 Hermes requires Python `>=3.11,<3.14`. If your Raspberry Pi OS image ships older Python, install Python 3.11+ first.
 
+## Updating the Pi2 installation
+
+The Pi2 installation tracks the `pi2-lite` branch. Always pass the branch explicitly when updating:
+
+```bash
+# Preview updates without changing files
+hermes update --check --branch pi2-lite
+
+# Apply the update and keep the Pi2 branch
+hermes update --branch pi2-lite
+
+# Optional: create a full pre-update backup first
+hermes update --branch pi2-lite --backup
+```
+
+Do **not** run a bare `hermes update` on a Pi2 installation. The updater defaults to `main`; without `--branch pi2-lite`, it may switch the checkout away from the ARMv7-compatible Pi2 branch. The update command fetches the selected branch, reinstalls dependencies, validates critical Python files, and rolls back the checkout if the post-update syntax check fails.
+
+Before and after updating, verify the branch and installation:
+
+```bash
+git branch --show-current       # expected: pi2-lite
+git status --short
+git log -1 --oneline
+hermes --version
+hermes doctor
+```
+
+For production or always-on Pi2 nodes, stop active Hermes gateways before updating and use `--backup`. Do not run `git reset --hard` or switch to `main` as a routine update procedure.
+
 ## Robotics applications
 
 This fork can be used as a lightweight robot edge agent: it coordinates high-level tasks, talks to MQTT/HTTP/serial/ROS bridge layers, summarizes robot state, and connects a remote/LAN AI model to the robot controller. Keep hard real-time motor control, obstacle reflexes, and emergency-stop enforcement in an MCU or ROS controller.
