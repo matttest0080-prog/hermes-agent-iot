@@ -93,20 +93,39 @@ Hermes requires Python `>=3.11,<3.14`. If your Raspberry Pi OS image ships older
 
 ## Updating the Pi2 installation
 
-The Pi2 installation tracks the `pi2-lite` branch. Always pass the branch explicitly when updating:
+The Pi2 installation tracks the `pi2-lite` branch and uses profile-specific
+dependency sets. Preview an update with the branch explicitly selected:
 
 ```bash
-# Preview updates without changing files
+# Preview only; this does not install dependencies
 hermes update --check --branch pi2-lite
-
-# Apply the update and keep the Pi2 branch
-hermes update --branch pi2-lite
-
-# Optional: create a full pre-update backup first
-hermes update --branch pi2-lite --backup
 ```
 
-Do **not** run a bare `hermes update` on a Pi2 installation. The updater defaults to `main`; without `--branch pi2-lite`, it may switch the checkout away from the ARMv7-compatible Pi2 branch. The update command fetches the selected branch, reinstalls dependencies, validates critical Python files, and rolls back the checkout if the post-update syntax check fails.
+For an actual Pi2 update, pull the selected branch and rerun the same profile
+installer. This preserves the intended `minimal`, `iot`, or `rag` dependency
+set:
+
+```bash
+cd /path/to/hermes-agent-iot
+git status --short
+git pull --ff-only origin pi2-lite
+source ~/.hermes-venv/bin/activate
+bash setup-pi2-minimal.sh --profile minimal
+```
+
+Replace `minimal` with the profile originally installed (`iot`, `rag`, `full`,
+or `dev`). If you deliberately use the Hermes updater, the branch must still
+be explicit and the profile installer must be rerun afterwards:
+
+```bash
+hermes update --branch pi2-lite --backup
+bash setup-pi2-minimal.sh --profile minimal
+```
+
+The generic updater reinstalls the broader dependency group and is therefore
+not the preferred Pi2 profile update path. Do **not** run a bare `hermes update`
+on a Pi2 installation: the updater defaults to `main` and may switch the
+checkout away from the ARMv7-compatible Pi2 branch.
 
 Before and after updating, verify the branch and installation:
 
@@ -118,7 +137,9 @@ hermes --version
 hermes doctor
 ```
 
-For production or always-on Pi2 nodes, stop active Hermes gateways before updating and use `--backup`. Do not run `git reset --hard` or switch to `main` as a routine update procedure.
+For production or always-on Pi2 nodes, stop active Hermes gateways before
+updating and preserve a backup when needed. Do not run `git reset --hard` or
+switch to `main` as a routine update procedure.
 
 ## Robotics applications
 

@@ -95,10 +95,16 @@ configuration templates and safety guidance.
 
 #### Updating this Pi2 / IoT fork
 
-The generic `hermes update` command is intended for the official managed
-`NousResearch/hermes-agent` installation. This Pi2 installer uses an editable
-checkout, so update the checked-out `pi2-lite` branch and then rerun the same
-profile installer:
+The Pi2 installer uses an editable checkout and profile-specific dependency
+sets. Preview an update with the branch explicitly selected:
+
+```bash
+cd /path/to/hermes-agent-iot
+hermes update --check --branch pi2-lite
+```
+
+For an actual Pi2 update, use the branch-safe git procedure and rerun the same
+profile installer so the low-resource dependency set is restored:
 
 ```bash
 cd /path/to/hermes-agent-iot
@@ -109,8 +115,12 @@ bash setup-pi2-minimal.sh --profile minimal
 ```
 
 Replace `minimal` with the profile originally installed (`iot`, `rag`, `full`
-or `dev`). Review or preserve any local changes before pulling; do not use a
-hard reset as a routine update method.
+or `dev`). The generic `hermes update --branch pi2-lite` command is not the
+preferred Pi2 profile update path because Hermes updates reinstall the broader
+dependency group; if you use it, rerun the original profile installer
+afterwards. Never run a bare `hermes update` here: its default target is
+`main`, not `pi2-lite`. Review or preserve local changes before pulling; do not
+use a hard reset as a routine update method.
 
 ### Upstream Hermes full installer
 
