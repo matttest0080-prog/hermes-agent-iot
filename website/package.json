@@ -36,6 +36,9 @@
     "typescript": "6.0.3"
   },
   "overrides": {
+    "undici": "7.29.0",
+    "fast-uri": "3.1.5",
+    "postcss": "8.5.23",
     "serialize-javascript": "7.0.7",
     "uuid": "14.0.1",
     "minimatch": "10.2.6"

@@ -35,6 +35,8 @@ on:
       - uv.lock
       - package-lock.json
       - website/package-lock.json
+      - plugins/platforms/photon/sidecar/package-lock.json
+      - scripts/whatsapp-bridge/package-lock.json
       - .github/workflows/osv-scanner.yml
   schedule:
     # Weekly scan against main — catches CVEs published after merge for
