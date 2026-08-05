@@ -21,6 +21,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 from utils import is_truthy_value
+from hermes_constants import INDICATOR_STYLES
 
 logger = logging.getLogger(__name__)
 
@@ -132,6 +133,10 @@ COMMAND_REGISTRY: list[CommandDef] = [
                args_hint="[number]"),
     CommandDef("snapshot", "Create or restore state snapshots of Hermes config/state", "Session",
                cli_only=True, aliases=("snap",), args_hint="[create|restore <id>|prune]"),
+    CommandDef("export", "Export a profile (config, skills, theme) to a shareable archive", "Configuration",
+               cli_only=True, args_hint="[profile] [-o output.tar.gz]"),
+    CommandDef("import", "Import a shared profile archive as a new profile", "Configuration",
+               cli_only=True, args_hint="<archive.tar.gz> [--name <name>]"),
     CommandDef("stop", "Kill all running background processes", "Session",
                busy_policy="interrupt_then_dispatch", busy_handler="stop"),
     CommandDef("approve", "Approve a pending dangerous command", "Session",
@@ -226,8 +231,8 @@ COMMAND_REGISTRY: list[CommandDef] = [
     CommandDef("skin", "Show or change the display skin/theme", "Configuration",
                cli_only=True, args_hint="[name]"),
     CommandDef("indicator", "Pick the TUI busy-indicator style", "Configuration",
-               cli_only=True, args_hint="[kaomoji|emoji|unicode|ascii]",
-               subcommands=("kaomoji", "emoji", "unicode", "ascii")),
+               cli_only=True, args_hint=f"[{'|'.join(INDICATOR_STYLES)}]",
+               subcommands=INDICATOR_STYLES),
     CommandDef("voice", "Toggle voice mode", "Configuration",
                args_hint="[on|off|tts|status]", subcommands=("on", "off", "tts", "status")),
     CommandDef("wake", "Toggle the 'Hey Hermes' wake word listener", "Configuration",

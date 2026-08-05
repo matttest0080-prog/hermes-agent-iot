@@ -33,22 +33,31 @@ import {
   $newSessionTabAction,
   $panesWithCloser,
   $treeDragging,
+  $treePaneEpochs,
   activateTreePane,
   closeAllTreeTabs,
   closeOtherTreeTabs,
-  closeTreePane,
+  closeTabPane,
   closeTreeTabsToRight,
   collapseTreePane,
-  dismissTreePane,
   isCollapsePane,
   isSessionStripPane,
   noteActiveTreeGroup,
+  reloadTreePane,
   restoreTreePane,
   SESSION_TILE_DRAG,
   setTreeGroupHeaderHidden,
   setTreeGroupMinimized,
   treeTabCloseTargets
 } from '../store'
+import {
+  $tabSelection,
+  clearTabSelection,
+  isToggleSelectClick,
+  selectionFor,
+  selectTabRange,
+  toggleTabSelected
+} from '../tab-selection'
 
 import { type DoubleTapContext, startPaneDrag } from './drag-session'
 import { forceLoneHeaderForPanes } from './lone-header'
@@ -97,11 +106,17 @@ function ZoneMenu({
 
     return (
       <>
+        {renderActionItem(kit, {
+          icon: 'refresh',
+          label: t.zones.reload,
+          onSelect: () => reloadTreePane(targetPane())
+        })}
+        <kit.Separator />
         {paneId !== undefined &&
           renderActionItem(kit, {
             icon: 'close',
             label: t.common.close,
-            onSelect: () => closeTreePane(paneId)
+            onSelect: () => closeTabPane(paneId)
           })}
         {renderActionItem(kit, {
           disabled: !targets.others,
@@ -179,6 +194,12 @@ export function TreeGroup({
   const narrow = useStore($narrowViewport)
   const newSessionTabAction = useStore($newSessionTabAction)
   const panesWithCloser = useStore($panesWithCloser)
+  // Multi-tab selection (⌥/Ctrl-click, Shift-click) — null for every zone but
+  // the one holding it, so this subscription is quiet during normal use.
+  const tabSelection = useStore($tabSelection)
+  // Reload epochs: only an explicit tab-menu Reload writes here, so this
+  // subscription costs nothing on a normal render.
+  const paneEpochs = useStore($treePaneEpochs)
 
   const paneFor = (id: string) => panes.find(p => p.id === id)
 
@@ -287,10 +308,9 @@ export function TreeGroup({
   // MAIN strands the whole app behind a strip.
   const minimizable = !shown.some(id => paneChrome(paneFor(id)).uncloseable)
 
-  // Tab ✕: a tool panel (terminal/logs) is REMOVED from the layout (comes back
-  // via its toggle); everything else routes through its Close (a session tile
-  // closes the session, a store-bound pane collapses).
-  const closeTab = (paneId: string) => (isCollapsePane(paneId) ? dismissTreePane(paneId) : closeTreePane(paneId))
+  // Middle-click / ⌘-click on a tab: one routing for every tab kind, the same
+  // one the zone menu's Close and ⌘W use.
+  const closeTab = (paneId: string) => closeTabPane(paneId)
 
   // A pane whose store owns Close keeps the gesture even when the pane itself
   // is uncloseable — the workspace tab empties to a fresh draft rather than
@@ -324,6 +344,14 @@ export function TreeGroup({
       // Advertises the visible tab strip so panes can drop their own
       // self-naming labels (see [data-pane-self-label] in styles.css).
       data-zone-header={headerVisible || undefined}
+      // The zone menu opens from the strip, the rail, the edit veil and the
+      // body. Only the strip can name a chip, so resolve the target HERE for
+      // every one of them — otherwise a right-click off the strip reused the
+      // PREVIOUS target, and landing on the uncloseable workspace dropped
+      // Close from the menu for a pane that closes fine.
+      onContextMenu={e => {
+        setMenuPane((e.target as HTMLElement).closest('[data-tree-tab]')?.getAttribute('data-tree-tab') ?? undefined)
+      }}
       ref={ref}
       style={wcOverlap ? { paddingTop: wcOverlap.y + wcOverlap.height } : undefined}
     >
@@ -392,11 +420,6 @@ export function TreeGroup({
             // data-zone-tabstrip: a drop over here STACKS (drag-session reads it).
             className="group/pane-header relative flex h-7 shrink-0 select-none bg-(--ui-sidebar-surface-background) [-webkit-app-region:no-drag] [--pane-tab-active-bg:var(--ui-sidebar-surface-background)]"
             data-zone-tabstrip={node.id}
-            onContextMenu={e => {
-              setMenuPane(
-                (e.target as HTMLElement).closest('[data-tree-tab]')?.getAttribute('data-tree-tab') ?? undefined
-              )
-            }}
             onPointerDown={e =>
               // Tap the header to collapse to it / expand back — the DetailPane
               // / sidebar-section gesture (never for the main zone). Double-tap
@@ -423,6 +446,7 @@ export function TreeGroup({
                 const chrome = paneChrome(paneFor(paneId))
                 const closeable = closeableTab(paneId)
                 const title = paneFor(paneId)?.title ?? paneId
+                const isSelected = tabSelection?.groupId === node.id && tabSelection.ids.has(paneId)
 
                 const tab = (
                   <PaneTab
@@ -432,11 +456,36 @@ export function TreeGroup({
                     key={paneId}
                     onClose={closeable ? () => closeTab(paneId) : undefined}
                     onPointerDown={e => {
+                      // Chrome's tab-selection grammar, ahead of activate/drag:
+                      // Shift-click ranges from the anchor, ⌥-click (Ctrl-click
+                      // off-Mac) toggles. Neither activates nor starts a drag —
+                      // the press IS the selection edit. ⌘-click stays close
+                      // (PaneTab claims it first) and ⌃-click stays the macOS
+                      // context menu.
+                      if (e.button === 0 && e.shiftKey) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        selectTabRange(node.id, shown, paneId, activeId)
+
+                        return
+                      }
+
+                      if (isToggleSelectClick(e)) {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        toggleTabSelected(node.id, paneId, activeId)
+
+                        return
+                      }
+
                       // Tabs ACTIVATE (restoring a collapsed group). Minimize
                       // lives on the chevron / single-pane label — overloading
                       // the active tab made double-click a minimize/restore/hide
-                      // lottery.
+                      // lottery. A plain click also collapses any multi-tab
+                      // selection back to the one tab (Chrome semantics).
                       const onTap = () => {
+                        clearTabSelection()
+
                         if (node.minimized) {
                           restoreTreePane(paneId)
                         }
@@ -451,6 +500,26 @@ export function TreeGroup({
                       if (e.button === 0) {
                         e.preventDefault()
                         e.stopPropagation()
+                      }
+
+                      // Dragging a SELECTED tab carries the whole selection as
+                      // one block through the generic pane move — a multi-tab
+                      // drag outranks the pane's own tab drag (the session drop
+                      // language is single-session).
+                      const dragSelection = selectionFor(node.id, shown, paneId)
+
+                      if (dragSelection) {
+                        startPaneDrag(
+                          paneId,
+                          e,
+                          onTap,
+                          stripRef.current ? { groupId: node.id, strip: stripRef.current } : undefined,
+                          hideHeaderDoubleTap,
+                          t.zones.tabCount(dragSelection.length),
+                          dragSelection
+                        )
+
+                        return
                       }
 
                       // A pane may own its tab drag (a session tab speaks the
@@ -469,6 +538,7 @@ export function TreeGroup({
                       }
                     }}
                     role="tab"
+                    selected={isSelected}
                     style={{ cursor: 'grab' }}
                   >
                     {chrome.tabLead ? (
@@ -556,9 +626,14 @@ export function TreeGroup({
                     // can gate its hot (per-token) subscriptions while hidden;
                     // the group id identifies the ZONE it lives in, for state
                     // that is per-zone rather than per-tab (composer pop-out).
+                    // The reload epoch keys the CONTENT, not this layer: a
+                    // Reload remounts the contribution (effects re-run, state
+                    // resets) while the layer — and every other tab — stays.
                     <PaneGroupContext.Provider value={node.id}>
                       <PaneVisibleContext.Provider value={isActive}>
-                        <ContribBoundary id={pane.id}>{pane.render()}</ContribBoundary>
+                        <ContribBoundary id={pane.id} key={paneEpochs[paneId] ?? 0}>
+                          {pane.render()}
+                        </ContribBoundary>
                       </PaneVisibleContext.Provider>
                     </PaneGroupContext.Provider>
                   ) : (

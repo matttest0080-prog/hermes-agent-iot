@@ -363,6 +363,80 @@ class CLICommandsMixin:
             print(f"  Unknown subcommand: {subcmd}")
             print("  Usage: /snapshot [list|create [label]|restore <id>|prune [N]]")
 
+    def _handle_export_command(self, command: str):
+        """Handle /export — export a profile to a shareable .tar.gz archive.
+
+        Syntax:
+            /export                       — export the active profile
+            /export <profile>             — export a named profile
+            /export [profile] -o <path>   — choose the output path
+        """
+        from hermes_cli.profiles import export_profile, get_active_profile_name
+
+        parts = command.split()[1:]
+        output = None
+        if "-o" in parts:
+            idx = parts.index("-o")
+            if idx + 1 >= len(parts):
+                print("  Usage: /export [profile] [-o output.tar.gz]")
+                return
+            output = parts[idx + 1]
+            parts = parts[:idx] + parts[idx + 2:]
+
+        name = parts[0] if parts else (get_active_profile_name() or "default")
+        if not output:
+            output = f"{name}.tar.gz"
+
+        try:
+            result = export_profile(name, output)
+            print(f"  ✓ Exported '{name}' to {result}")
+            print("  Share it: the other user runs /import or `hermes profile import <archive>`.")
+        except (ValueError, FileNotFoundError) as e:
+            print(f"  Error: {e}")
+
+    def _handle_import_command(self, command: str):
+        """Handle /import — import a shared profile archive as a new profile.
+
+        Syntax:
+            /import <archive.tar.gz> [--name <name>]
+        """
+        from hermes_cli.profiles import (
+            check_alias_collision, create_wrapper_script, import_profile,
+        )
+
+        parts = command.split()[1:]
+        name = None
+        if "--name" in parts:
+            idx = parts.index("--name")
+            if idx + 1 >= len(parts):
+                print("  Usage: /import <archive.tar.gz> [--name <name>]")
+                return
+            name = parts[idx + 1]
+            parts = parts[:idx] + parts[idx + 2:]
+
+        if not parts:
+            print("  Usage: /import <archive.tar.gz> [--name <name>]")
+            return
+
+        archive = " ".join(parts)  # paths may contain spaces
+
+        try:
+            profile_dir = import_profile(archive, name=name)
+        except (ValueError, FileExistsError, FileNotFoundError) as e:
+            print(f"  Error: {e}")
+            return
+
+        imported = profile_dir.name
+        print(f"  ✓ Imported profile '{imported}' at {profile_dir}")
+        try:
+            if not check_alias_collision(imported):
+                wrapper_path = create_wrapper_script(imported)
+                if wrapper_path:
+                    print(f"  Wrapper created: {wrapper_path}")
+        except Exception:
+            pass
+        print(f"  Use it: hermes -p {imported}")
+
     def _handle_stop_command(self):
         """Handle /stop — kill all running background processes and
         background (async) delegations.
@@ -1055,6 +1129,12 @@ class CLICommandsMixin:
         # and a no-op when the session recorded no cwd. See #38562.
         self._restore_session_cwd(session_meta)
 
+        # Restore the target session's persisted YOLO bypass. Any bypass the
+        # PREVIOUS session had toggled on stops applying automatically because
+        # the approval session key just changed. Same contract as a startup
+        # --resume.
+        self._restore_session_yolo(session_meta)
+
     def _handle_sessions_command(self, cmd_original: str) -> None:
         """Handle /sessions [list|<id_or_title>] — browse or resume previous sessions.
 
@@ -1165,25 +1245,32 @@ class CLICommandsMixin:
             _cprint(f"  Failed to create branch session: {e}")
             return
 
-        # Copy conversation history to the new session
-        for msg in self.conversation_history:
-            try:
-                self._session_db.append_message(
-                    session_id=new_session_id,
-                    role=msg.get("role", "user"),
-                    content=msg.get("content"),
-                    tool_name=msg.get("tool_name") or msg.get("name"),
-                    tool_calls=msg.get("tool_calls"),
-                    tool_call_id=msg.get("tool_call_id"),
-                    reasoning=msg.get("reasoning"),
-                    # Keep the api_content sidecar so the branch's first turn
-                    # replays the parent's exact wire bytes (warm provider
-                    # prompt cache) instead of a full cold prefill.
-                    api_content=extract_api_content_sidecar(msg),
-                    timestamp=msg.get("timestamp"),
-                )
-            except Exception:
-                pass  # Best-effort copy
+        # Copy conversation history to the new session in bounded-chunk
+        # transactions (see #23254) instead of one txn per row. Best-effort
+        # like the old loop — a failed copy still yields a usable branch.
+        try:
+            self._session_db.append_messages_batch(
+                new_session_id,
+                [
+                    {
+                        "role": msg.get("role", "user"),
+                        "content": msg.get("content"),
+                        "tool_name": msg.get("tool_name") or msg.get("name"),
+                        "tool_calls": msg.get("tool_calls"),
+                        "tool_call_id": msg.get("tool_call_id"),
+                        "reasoning": msg.get("reasoning"),
+                        # Keep the api_content sidecar so the branch's first turn
+                        # replays the parent's exact wire bytes (warm provider
+                        # prompt cache) instead of a full cold prefill.
+                        "api_content": extract_api_content_sidecar(msg),
+                        "timestamp": msg.get("timestamp"),
+                    }
+                    for msg in self.conversation_history
+                ],
+                chunk_rows=500,
+            )
+        except Exception:
+            pass  # Best-effort copy
 
         # Set title on the branch
         try:
@@ -3055,6 +3142,46 @@ class CLICommandsMixin:
             _cprint(f"  {_DIM}{behavior}{_RST}")
         else:
             _cprint(f"  {_ACCENT}✓ Busy input mode set to '{arg}' (session only){_RST}")
+
+    def _handle_indicator_command(self, cmd: str):
+        """Handle /indicator — pick the TUI busy-indicator style.
+
+        Usage:
+            /indicator              Show the current busy-indicator style
+            /indicator status       Show the current busy-indicator style
+            /indicator kaomoji      Animated kaomoji faces (default)
+            /indicator emoji        Emoji spinner
+            /indicator unicode      Braille spinner
+            /indicator ascii        Plain ASCII spinner
+
+        Persists to ``display.tui_status_indicator`` — the same config key the
+        TUI reads — so the change is picked up the next time the TUI renders.
+        """
+        from cli import _ACCENT, _DIM, _RST, _cprint, save_config_value
+        from hermes_constants import DEFAULT_INDICATOR_STYLE, INDICATOR_STYLES
+        styles = INDICATOR_STYLES
+        current = (
+            (self.config.get("display") or {}).get("tui_status_indicator", DEFAULT_INDICATOR_STYLE)
+        )
+
+        parts = cmd.strip().split(maxsplit=1)
+        if len(parts) < 2 or parts[1].strip().lower() == "status":
+            _cprint(f"  {_ACCENT}Busy-indicator style: {current}{_RST}")
+            _cprint(f"  {_DIM}Usage: /indicator [{'|'.join(styles)}]{_RST}")
+            return
+
+        arg = parts[1].strip().lower()
+        if arg not in styles:
+            _cprint(f"  {_DIM}(._.) Unknown indicator style: {arg}{_RST}")
+            _cprint(f"  {_DIM}Usage: /indicator [{'|'.join(styles)}]{_RST}")
+            return
+
+        self.config.setdefault("display", {})["tui_status_indicator"] = arg
+        if save_config_value("display.tui_status_indicator", arg):
+            _cprint(f"  {_ACCENT}✓ Busy-indicator style set to '{arg}' (saved to config){_RST}")
+            _cprint(f"  {_DIM}The TUI picks up the new style on its next render.{_RST}")
+        else:
+            _cprint(f"  {_ACCENT}✓ Busy-indicator style set to '{arg}' (session only){_RST}")
 
     def _handle_fast_command(self, cmd: str):
         """Handle /fast — toggle fast mode (OpenAI Priority Processing / Anthropic Fast Mode).

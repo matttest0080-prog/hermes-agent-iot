@@ -117,6 +117,7 @@ export const ar = defineLocale({
     errors: {
       elevenLabsNeedsKey: 'يتطلب ElevenLabs STT المفتاح ELEVENLABS_API_KEY.',
       elevenLabsRejectedKey: 'رفض ElevenLabs مفتاح API (401).',
+      diskFull: 'القرص ممتلئ — حرّر مساحة ثم أعد المحاولة.',
       methodNotAllowed: 'رفضت خلفية سطح المكتب هذا الطلب (405 Method Not Allowed). جرب إعادة تشغيل Hermes Desktop.',
       microphonePermission: 'تم رفض إذن الميكروفون.',
       openaiRejectedApiKey: 'رفض OpenAI مفتاح API.',
@@ -1292,6 +1293,12 @@ export const ar = defineLocale({
     count: count => `${count} ملف شخصي`,
     loading: 'جار التحميل...',
     newProfile: 'ملف شخصي جديد',
+    importProfile: 'استيراد ملف شخصي…',
+    exportProfile: 'تصدير ملف شخصي…',
+    imported: 'تم استيراد الملف الشخصي',
+    exported: 'تم تصدير الملف الشخصي',
+    failedImport: 'فشل استيراد الملف الشخصي',
+    failedExport: 'فشل تصدير الملف الشخصي',
     allProfiles: 'كل الملفات الشخصية',
     showAllProfiles: 'إظهار كل الملفات الشخصية',
     switchToProfile: name => `التبديل إلى ${name}`,
@@ -1659,6 +1666,7 @@ export const ar = defineLocale({
     newSessionPlaceholders: ['اسأل Hermes عن شيء...', 'اطلب من Hermes تنفيذ مهمة...', 'ابدأ محادثة جديدة...'],
     followUpPlaceholders: ['اكتب متابعة...', 'أضف توجيها...', 'اسأل سؤالا آخر...'],
     startVoice: 'بدء الصوت',
+    openDirective: 'فتح',
     queueMessage: 'إضافة الرسالة للطابور',
     steer: 'توجيه',
     stop: 'إيقاف',
@@ -2234,6 +2242,7 @@ export const ar = defineLocale({
     closeRunningBody:
       'هذه المحادثة ما زالت تعمل (أو تنتظر إدخالك). إغلاق التبويب يخفيها فقط — ستحتفظ الجلسة بتقدمها ويمكن إعادة فتحها من الشريط الجانبي.',
     closeRunningConfirm: 'إغلاق التبويب',
+    reload: 'إعادة التحميل',
     closeOthers: 'إغلاق الأخرى',
     closeToRight: 'إغلاق ما على اليمين',
     closeAll: 'إغلاق الكل',
@@ -2262,7 +2271,8 @@ export const ar = defineLocale({
     layoutNamePlaceholder: fallback => `اسم التخطيط (${fallback})`,
     saveApply: 'حفظ وتطبيق',
     notExpressible: 'هذا الترتيب متشابك — لا يمكن تمثيله كتقسيمات متداخلة بعد',
-    zoneCount: count => `${count} مناطق`
+    zoneCount: count => `${count} مناطق`,
+    tabCount: count => `${count} تبويبات`
   },
   assistant: {
     thread: {
