@@ -72,7 +72,7 @@ Pi2/minimal and IoT profiles keep risky or heavy integrations opt-in:
 
 - `website/` is for full/dev builds and should stay npm-audit clean.
 - `plugins/platforms/photon/sidecar/` is a full-profile sidecar, not a Pi2/minimal default.
-- `scripts/whatsapp-bridge/` is disabled by default because Baileys currently has a critical advisory with no fixed version (`GHSA-qvv5-jq5g-4cgg`). To opt in on an isolated host, review the advisory, run `npm run install:unsafe-baileys` inside `scripts/whatsapp-bridge/`, and start it with `HERMES_ENABLE_EXPERIMENTAL_WHATSAPP_BRIDGE=1`.
+- `scripts/whatsapp-bridge/` is disabled by default because it is an experimental integration with a separate security and compatibility posture. Before enabling it on a production host, review the current Baileys advisories and bridge-specific configuration, run `npm run install:unsafe-baileys` inside `scripts/whatsapp-bridge/`, and start it with `HERMES_ENABLE_EXPERIMENTAL_WHATSAPP_BRIDGE=1`.
 
 ## Recommended Pi2 install
 
