@@ -123,6 +123,10 @@ Preview an update with the branch explicitly selected:
 hermes update --check --branch pi2-lite
 ```
 
+The CLI may print the generic message `Run 'hermes update' to install.`
+That message is not branch-safe for this Pi2 fork. Do **not** run the bare
+command; continue to use the explicit `pi2-lite` branch shown below.
+
 For an actual Pi2 update, pull the selected branch and rerun the same profile
 installer. This preserves the intended `minimal`, `iot`, or `rag` dependency
 set:
