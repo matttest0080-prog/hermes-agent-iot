@@ -96,6 +96,26 @@ Hermes requires Python `>=3.11,<3.14`. If your Raspberry Pi OS image ships older
 The Pi2 installation tracks the `pi2-lite` branch and uses profile-specific
 dependency sets. The examples below assume the repository was cloned into
 `~/hermes-agent-iot`; if you used another clone directory, replace that path.
+The `hermes` executable is installed in the Pi2 virtual environment created by
+the installer. Opening the repository directory alone does **not** put it on
+`PATH`; activate the environment before running any `hermes` command:
+
+```bash
+cd ~/hermes-agent-iot
+source ~/.hermes-venv/bin/activate
+command -v hermes
+hermes --version
+```
+
+If Bash reports `hermes: command not found`, the virtual environment is not
+active. Run the activation command above. If `~/.hermes-venv/bin/activate`
+does not exist, complete the profile installation first:
+
+```bash
+bash setup-pi2-minimal.sh --profile minimal
+source ~/.hermes-venv/bin/activate
+```
+
 Preview an update with the branch explicitly selected:
 
 ```bash
