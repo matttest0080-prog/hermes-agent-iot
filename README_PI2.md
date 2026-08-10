@@ -109,10 +109,21 @@ set:
 
 ```bash
 cd ~/hermes-agent-iot
+
+# Review local changes first; do not update a dirty checkout blindly.
 git status --short
-git pull --ff-only origin pi2-lite
+
+# Explicitly select the Pi2 branch before fetching or merging.
+git switch pi2-lite
+git fetch origin pi2-lite
+git merge --ff-only origin/pi2-lite
+
 source ~/.hermes-venv/bin/activate
 bash setup-pi2-minimal.sh --profile minimal
+
+# Verify that the checkout stayed on the Pi2 branch.
+test "$(git branch --show-current)" = "pi2-lite"
+git status --short
 ```
 
 Replace `minimal` with the profile originally installed (`iot`, `rag`, `full`,
