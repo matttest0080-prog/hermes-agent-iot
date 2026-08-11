@@ -375,9 +375,13 @@ override-dependencies = [
   # so, we force-override this to pynacl 1.6. here.
   # remove this when we update discord.py
   "pynacl>=1.6,<1.7",
+  # grpclib currently allows vulnerable h2 4.3.x/4.4.0; enforce the
+  # request-smuggling fix while retaining grpclib's public dependency shape.
+  # Remove this override once grpclib publishes a tighter floor.
+  "h2>=4.4.1",
 ]
 exclude-newer = "14 days"
-exclude-newer-package = { aiohttp = false, cryptography = false, vercel = false, nemo-relay = false, huggingface_hub = false }
+exclude-newer-package = { aiohttp = false, cryptography = false, vercel = false, nemo-relay = false, huggingface_hub = false, h2 = false }
 
 [tool.setuptools]
 # Top-level single-file modules (not packages). Without this, uv2nix's
