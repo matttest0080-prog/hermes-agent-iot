@@ -55,9 +55,10 @@ hermes
 > to reference this checkout. Moving or deleting `hermes-agent-iot` can break
 > the environment.
 
-Current deployment snapshot:
+Previous source-deployment snapshot (before the `0.20.0.post1` PyPI packaging
+work in this branch):
 
-- Hermes version: `0.20.0`
+- source version: `0.20.0`
 - upstream merge commit: `4f1082ba14`
 - security release commit: `af60caf08`
 - deployment branch: `pi2-lite`
@@ -67,6 +68,45 @@ patches, dependency changes and ARMv7 compatibility are reviewed. The version
 number alone does not mean that every newer upstream commit is already present.
 
 #### Install profiles
+
+Three similarly named concepts are intentionally separate:
+
+- **Install profiles** (`hermes-iot setup --profile ...`) select one packaged
+  configuration template and record the choice; they never run pip or overwrite
+  an existing `~/.hermes/config.yaml`.
+- **PyPI extras** (`hermes-agent-iot[minimal]`, `[iot]`, `[rag]`, `[full]`,
+  `[dev]`) select dependency sets. Install into a virtual environment first,
+  then run `hermes-iot setup --profile NAME`.
+- **Hermes instance profiles** (`hermes profile ...`) are independent runtime
+  homes/configurations and are unrelated to package installation profiles.
+
+Example PyPI path: `python -m pip install 'hermes-agent-iot[iot]'`, followed by
+`hermes-iot setup --profile iot`. `full` and `dev` target stronger hosts and are
+not suitable for Raspberry Pi 2 / 1 GB systems.
+
+The initial PyPI wheel contains the Python runtime, CLI entry points, Python
+plugin modules, and the four profile configuration templates. Repository-level
+bundled/optional skills, optional MCP catalogs, Desktop/TUI/Web build artifacts,
+and other source-tree assets are intentionally not copied into the lightweight
+wheel. Use the branch-specific Git clone installer when those assets are
+required. In PyPI terminology, `full` and `dev` describe dependency sets; they
+do not turn the wheel into a Desktop bundle.
+
+Consequently, the wheel does not provide the repository's official skills
+catalog, optional MCP catalog, non-English locale catalog, Dashboard bundle, or
+prebuilt TUI bundle. Catalog browsing/install commands, localized UI,
+Dashboard/TUI startup, and source/frontend development require the `pi2-lite`
+Git checkout. These features are not silently downloaded by `hermes-iot setup`.
+
+The wheel build and clean-install smoke tests currently run on x86_64 Linux.
+They do not constitute physical Raspberry Pi 2 / ARMv7 validation. Do not treat
+the first PyPI artifact as a verified Pi2 support claim until the same released
+wheel has completed a clean install and runtime smoke test on physical Pi2
+hardware.
+
+The initial release publishes the universal wheel only. It does not publish an
+sdist whose installation could depend on a source checkout and its release
+build marker.
 
 Choose the profile that matches the target device and workload:
 

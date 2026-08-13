@@ -46,6 +46,43 @@ The code remains present. Heavy features can be re-enabled later with `hermes to
 
 ## Install profiles
 
+Do not confuse these package **install profiles** with Hermes **instance
+profiles** managed by `hermes profile`. The former pair a PyPI dependency extra
+with a packaged default config; the latter isolate running Hermes instances.
+
+PyPI users install exactly one public extra into a virtual environment, then
+apply its config without invoking pip:
+
+```bash
+python -m pip install 'hermes-agent-iot[minimal]'  # or iot/rag/full/dev
+hermes-iot setup --profile minimal
+hermes-iot profile show
+```
+
+The public extras aggregate the retained internal extras: `minimal=cli+pty`,
+`iot=minimal+mcp+acp+homeassistant+mqtt+sms`, `rag=iot+honcho`, `full=all`, and
+`dev=full+developer tools`. `full` and `dev` are not recommended on Pi2/1 GB.
+If config already exists, setup leaves it untouched and prints the packaged
+template path for comparison.
+
+The PyPI wheel deliberately excludes repository-level bundled/optional skills,
+optional MCP catalogs, and Desktop/TUI/Web build assets. Install from the
+`pi2-lite` Git branch when those source-tree assets are needed. The `full` and
+`dev` PyPI extras select broader Python dependencies; they are not Desktop
+application bundles.
+
+The wheel also excludes the repository's non-English locale catalog. It does
+not silently download missing skills, MCP catalogs, locale files, Dashboard, or
+TUI assets. Use the `pi2-lite` source installer for catalog browsing/install,
+localized UI, Dashboard/TUI operation, or frontend/source development.
+
+Current wheel build and clean-install smoke evidence is from x86_64 Linux, not
+physical Raspberry Pi 2 hardware. A release must not be described as verified
+for Pi2/ARMv7 until the exact public wheel has been clean-installed and smoke
+tested on a physical Pi2.
+
+The initial PyPI release is wheel-only; no source distribution is published.
+
 Use the native-compatible installer:
 
 ```bash
@@ -60,7 +97,7 @@ Backward-compatible aliases are still accepted: `core` -> `minimal`, `native` ->
 
 Profiles:
 
-- `minimal`: smallest practical Hermes CLI profile. Installs package through `pip install -e .[cli,pty]`, writes a config that disables heavy toolsets by default.
+- `minimal`: smallest practical Hermes CLI profile. Installs package through `pip install -e .[minimal]`, writes a config that disables heavy toolsets by default.
 - `iot`: minimal plus MCP/ACP/Home Assistant/MQTT/SMS extras. Still disables browser/media/messaging tool surfaces by default.
 - `rag`: iot plus Honcho optional dependency and a remote-first RAG configuration. It does not install a second unpinned document/vector package list.
 - `full`: broader cross-platform Hermes extras for stronger Raspberry Pi, ARM64, x86 mini PC, VM, or NAS hosts.

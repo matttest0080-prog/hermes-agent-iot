@@ -255,7 +255,9 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
         "starlette==1.3.1",  # CVE-2026-48710 — keep in sync with pyproject [computer-use]
     ),
     # HF Agent Trace Viewer upload (hermes trace upload / /upload-trace).
-    "tool.trace_upload": ("huggingface-hub==1.2.3",),
+    # Keep this exact pin synchronized with uv.lock. A stale lower pin causes
+    # `hermes update` to downgrade the shared package below transformers' floor.
+    "tool.trace_upload": ("huggingface-hub==1.24.0",),
 }
 
 
