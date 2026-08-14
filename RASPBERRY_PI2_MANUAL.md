@@ -36,6 +36,57 @@ Raspberry Pi OS 若仍是 Python 3.9，必須先安裝 Python 3.11+。
 
 ## 3. 安裝
 
+### 3.1 公開 PyPI wheel（已完成實體 Pi2 驗證）
+
+目前已驗證版本是 `hermes-agent-iot 0.20.0.post2`。它已從公開 PyPI
+clean-install 到實體 Raspberry Pi 2 Model B Rev 1.1（`armv7l`、32-bit、
+921 MiB RAM、Python 3.13.5），並通過 `minimal` Profile、CLI、`pip check`
+與權限 smoke test。
+
+必須使用 Python `>=3.11,<3.14` 的 virtualenv；不要使用 system pip、
+`sudo pip` 或 `--break-system-packages`：
+
+```bash
+python3 --version
+python3 -m venv ~/.venvs/hermes-iot
+source ~/.venvs/hermes-iot/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install 'hermes-agent-iot[minimal]==0.20.0.post2'
+python -m pip check
+
+hermes-iot setup --profile minimal
+hermes-iot profile show
+command -v hermes
+command -v hermes-iot
+hermes setup model
+hermes
+```
+
+不要將上游 `hermes-agent` distribution 安裝到同一個 virtualenv；兩個
+distribution 會提供重疊的 Python modules 與 CLI。`hermes-iot setup` 不會
+覆寫既有的 `~/.hermes/config.yaml`。
+
+供應鏈識別：
+
+```text
+PyPI:       https://pypi.org/project/hermes-agent-iot/0.20.0.post2/
+Tag:        iot-v0.20.0.post2
+Commit:     3f452a74e0a5b66d9a66b97049da5872c61262b6
+Wheel:      hermes_agent_iot-0.20.0.post2-py3-none-any.whl
+SHA-256:    4ea8d7c4a7989c696076297825f9f4a81af05ec9c7632bc44018624760c81cef
+Workflow:   https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/31764992208
+```
+
+此版本只發布一個 universal wheel，沒有 sdist；公開 PyPI provenance 綁定
+repository `matttest0080-prog/hermes-agent-iot`、workflow
+`publish-pypi.yml` 與受保護的 `pypi` Environment。
+
+### 3.2 `pi2-lite` 原始碼安裝
+
+若需要 repository 內完整 skills／catalog、語系檔、Dashboard/TUI 資產或
+source development 檔案，請使用此路徑：
+
 ```bash
 sudo apt update
 sudo apt install -y git python3 python3-venv python3-pip build-essential
@@ -57,10 +108,10 @@ bash setup-pi2-minimal.sh --profile minimal
 
 ```text
 minimal  CLI + PTY，最低資源
-IoT      minimal + MCP/ACP/Home Assistant/MQTT/SMS
-rag      IoT + Honcho；中央／遠端 RAG 優先
+iot      minimal + MCP/ACP/Home Assistant/MQTT/SMS
+rag      iot + Honcho；中央／遠端 RAG 優先
 full     較強 ARM64/x86 主機使用
-Dev      full + 測試與開發依賴
+dev      full + 測試與開發依賴
 ```
 
 範例：
