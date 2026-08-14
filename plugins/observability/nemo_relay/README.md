@@ -84,8 +84,8 @@ wheel from this checkout. On platforms for which Relay publishes a native
 wheel, Hermes installs its supported NeMo Relay runtime as a normal dependency:
 
 ```bash
-uv build --wheel
-python -m pip install --force-reinstall dist/hermes_agent-*.whl
+HERMES_IOT_RELEASE_BUILD=1 python -m build --wheel
+python -m pip install --force-reinstall dist/hermes_agent_iot-*.whl
 hermes plugins enable observability/nemo_relay
 ```
 

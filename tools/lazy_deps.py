@@ -79,6 +79,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Callable, Optional
 
+from hermes_cli._subprocess_compat import windows_hide_flags
+
 logger = logging.getLogger(__name__)
 
 
@@ -255,7 +257,9 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
         "starlette==1.3.1",  # CVE-2026-48710 — keep in sync with pyproject [computer-use]
     ),
     # HF Agent Trace Viewer upload (hermes trace upload / /upload-trace).
-    "tool.trace_upload": ("huggingface-hub==1.2.3",),
+    # Keep this exact pin synchronized with uv.lock. A stale lower pin causes
+    # `hermes update` to downgrade the shared package below transformers' floor.
+    "tool.trace_upload": ("huggingface-hub==1.24.0",),
 }
 
 
@@ -695,6 +699,7 @@ def _venv_pip_install(specs: tuple[str, ...], *, timeout: int = 300) -> _Install
                     [uv_bin, "pip", "install", *target_args, *constraint_args, *specs],
                     capture_output=True, text=True, timeout=timeout, env=uv_env,
                     stdin=subprocess.DEVNULL,
+                    creationflags=windows_hide_flags(),
                 )
                 if r.returncode == 0:
                     if target is not None:
@@ -711,6 +716,7 @@ def _venv_pip_install(specs: tuple[str, ...], *, timeout: int = 300) -> _Install
                 pip_cmd + ["--version"],
                 capture_output=True, text=True, timeout=15,
                 stdin=subprocess.DEVNULL,
+                creationflags=windows_hide_flags(),
             )
             if probe.returncode != 0:
                 raise FileNotFoundError("pip not in venv")
@@ -720,6 +726,7 @@ def _venv_pip_install(specs: tuple[str, ...], *, timeout: int = 300) -> _Install
                     [sys.executable, "-m", "ensurepip", "--upgrade", "--default-pip"],
                     capture_output=True, text=True, timeout=120, check=True,
                     stdin=subprocess.DEVNULL,
+                    creationflags=windows_hide_flags(),
                 )
             except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as e:
                 return _InstallResult(False, "",
@@ -730,6 +737,7 @@ def _venv_pip_install(specs: tuple[str, ...], *, timeout: int = 300) -> _Install
                 pip_cmd + ["install", *target_args, *constraint_args, *specs],
                 capture_output=True, text=True, timeout=timeout,
                 stdin=subprocess.DEVNULL,
+                creationflags=windows_hide_flags(),
             )
             if r.returncode == 0 and target is not None:
                 _activate_target_on_syspath(target)

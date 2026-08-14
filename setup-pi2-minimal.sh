@@ -23,7 +23,7 @@ set -euo pipefail
 
 PYTHON=${PYTHON:-python3}
 VENV_DIR="$HOME/.hermes-venv"
-PROFILE="core"
+PROFILE="minimal"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 HERMES_HOME_DIR="${HERMES_HOME:-$HOME/.hermes}"
 
@@ -100,23 +100,7 @@ source "$VENV_DIR/bin/activate"
 # from this repository's package metadata instead of a second hand-maintained
 # dependency list.
 
-case "$PROFILE" in
-  minimal)
-    EXTRAS="cli,pty"
-    ;;
-  iot)
-    EXTRAS="cli,pty,mcp,acp,homeassistant,mqtt,sms"
-    ;;
-  rag)
-    EXTRAS="cli,pty,mcp,acp,homeassistant,mqtt,sms,honcho"
-    ;;
-  full)
-    EXTRAS="all"
-    ;;
-  dev)
-    EXTRAS="all,dev"
-    ;;
-esac
+EXTRAS="$PROFILE"
 
 echo "==> [Pi2] Installing Hermes Agent through native package metadata"
 python -m pip install -e "$REPO_DIR[$EXTRAS]"

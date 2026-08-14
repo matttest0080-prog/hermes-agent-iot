@@ -5,7 +5,11 @@ The Discord recovery paths must not use ``discord.py[voice]`` because
 """
 
 import importlib.util
+import tomllib
 from pathlib import Path
+
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -68,6 +72,37 @@ def test_voice_doctor_enforces_pynacl_security_floor():
 
 def test_low_resource_pi2_profiles_do_not_install_discord_voice_stack():
     """ARMv7 has no PyNaCl 1.6.2 wheel; supported Pi2 profiles stay lean."""
-    assert 'EXTRAS="cli,pty"' in PI2_INSTALLER
-    assert 'EXTRAS="cli,pty,mcp,acp,homeassistant,mqtt,sms"' in PI2_INSTALLER
-    assert 'EXTRAS="cli,pty,mcp,acp,homeassistant,mqtt,sms,honcho"' in PI2_INSTALLER
+    project = tomllib.loads(PYPROJECT)["project"]
+    extras = project["optional-dependencies"]
+    core_names = {
+        canonicalize_name(Requirement(spec).name)
+        for spec in project["dependencies"]
+    }
+
+    def dependency_names(profile):
+        names = set(core_names)
+        visited = set()
+
+        def visit(extra):
+            if extra in visited:
+                return
+            visited.add(extra)
+            for spec in extras[extra]:
+                requirement = Requirement(spec)
+                name = canonicalize_name(requirement.name)
+                if name == "hermes-agent-iot":
+                    for nested in requirement.extras:
+                        visit(nested)
+                else:
+                    names.add(name)
+
+        visit(profile)
+        return names
+
+    forbidden = {"discord-py", "pynacl", "davey"}
+    for profile in ("minimal", "iot", "rag"):
+        assert dependency_names(profile).isdisjoint(forbidden)
+
+    # The installer delegates profile expansion to pyproject.toml instead of
+    # maintaining a second dependency list that can drift from wheel metadata.
+    assert 'EXTRAS="$PROFILE"' in PI2_INSTALLER
