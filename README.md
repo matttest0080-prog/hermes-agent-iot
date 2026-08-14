@@ -38,7 +38,55 @@ Use any model you want — [Nous Portal](https://portal.nousresearch.com), OpenR
 ### Raspberry Pi 2 / IoT — this fork
 
 For Raspberry Pi 2, ARMv7, low-resource edge nodes, MQTT device control, or
-remote-first RAG, install the maintained `pi2-lite` branch from this repository:
+remote-first RAG, choose one of these two install paths.
+
+#### Public PyPI wheel (verified Pi2 baseline)
+
+The published `0.20.0.post2` universal wheel has been clean-installed from the
+public PyPI index and smoke-tested on a physical Raspberry Pi 2 Model B Rev 1.1
+running 32-bit ARMv7 (`armv7l`), 921 MiB RAM, and Python 3.13.5. Hermes Agent
+IoT requires Python `>=3.11,<3.14` and must be installed in a virtual
+environment:
+
+```bash
+python3 --version
+python3 -m venv ~/.venvs/hermes-iot
+source ~/.venvs/hermes-iot/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install 'hermes-agent-iot[minimal]==0.20.0.post2'
+python -m pip check
+
+hermes-iot setup --profile minimal
+hermes-iot profile show
+command -v hermes
+command -v hermes-iot
+hermes setup model
+hermes
+```
+
+Do not use system pip, `sudo pip`, or `--break-system-packages`. The setup
+command never overwrites an existing `~/.hermes/config.yaml`; when one exists,
+it prints the packaged template path for comparison.
+
+Current verified release identity:
+
+- PyPI: [`hermes-agent-iot 0.20.0.post2`](https://pypi.org/project/hermes-agent-iot/0.20.0.post2/)
+- tag: `iot-v0.20.0.post2`
+- source commit: `3f452a74e0a5b66d9a66b97049da5872c61262b6`
+- wheel: `hermes_agent_iot-0.20.0.post2-py3-none-any.whl`
+- SHA-256: `4ea8d7c4a7989c696076297825f9f4a81af05ec9c7632bc44018624760c81cef`
+- release workflow: [GitHub Actions run 31764992208](https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/31764992208)
+
+The PyPI release contains exactly one wheel and no source distribution. PyPI
+publishes Sigstore provenance for the GitHub repository, `publish-pypi.yml`
+workflow, and protected `pypi` environment.
+
+#### Source checkout (complete repository assets)
+
+Use the maintained `pi2-lite` branch when you need the repository's complete
+skills/catalogs, locale files, Dashboard/TUI assets, or source development
+files:
 
 ```bash
 git clone --branch pi2-lite --depth 1 \
@@ -50,18 +98,10 @@ hermes setup model
 hermes
 ```
 
-> **Keep the clone directory.** The Pi2 installer uses an editable Python
+> **Keep the clone directory.** The source installer uses an editable Python
 > installation (`pip install -e`), so the installed `hermes` command continues
 > to reference this checkout. Moving or deleting `hermes-agent-iot` can break
 > the environment.
-
-Previous source-deployment snapshot (before the `0.20.0.post1` PyPI packaging
-work in this branch):
-
-- source version: `0.20.0`
-- upstream merge commit: `4f1082ba14`
-- security release commit: `af60caf08`
-- deployment branch: `pi2-lite`
 
 The fork may intentionally lag the fast-moving upstream `main` while IoT
 patches, dependency changes and ARMv7 compatibility are reviewed. The version
@@ -80,11 +120,12 @@ Three similarly named concepts are intentionally separate:
 - **Hermes instance profiles** (`hermes profile ...`) are independent runtime
   homes/configurations and are unrelated to package installation profiles.
 
-Example PyPI path: `python -m pip install 'hermes-agent-iot[iot]'`, followed by
-`hermes-iot setup --profile iot`. `full` and `dev` target stronger hosts and are
-not suitable for Raspberry Pi 2 / 1 GB systems.
+For another profile, keep the extra and setup profile aligned. For example,
+install `hermes-agent-iot[iot]==0.20.0.post2`, then run
+`hermes-iot setup --profile iot`. `full` and `dev` target stronger hosts and
+are not suitable for Raspberry Pi 2 / 1 GB systems.
 
-The initial PyPI wheel contains the Python runtime, CLI entry points, Python
+The PyPI wheel contains the Python runtime, CLI entry points, Python
 plugin modules, and the four profile configuration templates. Repository-level
 bundled/optional skills, optional MCP catalogs, Desktop/TUI/Web build artifacts,
 and other source-tree assets are intentionally not copied into the lightweight
@@ -98,15 +139,11 @@ prebuilt TUI bundle. Catalog browsing/install commands, localized UI,
 Dashboard/TUI startup, and source/frontend development require the `pi2-lite`
 Git checkout. These features are not silently downloaded by `hermes-iot setup`.
 
-The wheel build and clean-install smoke tests currently run on x86_64 Linux.
-They do not constitute physical Raspberry Pi 2 / ARMv7 validation. Do not treat
-the first PyPI artifact as a verified Pi2 support claim until the same released
-wheel has completed a clean install and runtime smoke test on physical Pi2
-hardware.
-
-The initial release publishes the universal wheel only. It does not publish an
-sdist whose installation could depend on a source checkout and its release
-build marker.
+Release `0.20.0.post2` passed the GitHub x86_64 build/clean-install gates and a
+separate exact-wheel clean install on physical Raspberry Pi 2/ARMv7 hardware.
+The SHA-256 of the GitHub artifact, Pi2-tested wheel, and public PyPI download
+matched exactly. This verifies the `minimal` baseline; heavier optional extras
+still require hardware appropriate to their dependency set.
 
 Choose the profile that matches the target device and workload:
 
@@ -133,7 +170,24 @@ Backward-compatible aliases remain available: `core` → `minimal` and
 See [README_PI2.md](README_PI2.md) for the complete dependency matrix,
 configuration templates and safety guidance.
 
-#### Updating this Pi2 / IoT fork
+#### Updating a PyPI wheel installation
+
+Stay in the wheel-specific virtual environment and select the same profile
+extra used for installation:
+
+```bash
+source ~/.venvs/hermes-iot/bin/activate
+python -m pip install --upgrade 'hermes-agent-iot[minimal]'
+python -m pip check
+hermes-iot profile show
+```
+
+For reproducible deployments, pin an audited version such as
+`hermes-agent-iot[minimal]==0.20.0.post2`. Do not install the upstream
+`hermes-agent` distribution into the same virtual environment because both
+distributions provide overlapping modules and CLI commands.
+
+#### Updating a source-checkout installation
 
 The Pi2 installer uses an editable checkout and profile-specific dependency
 sets. The examples below assume the repository was cloned into

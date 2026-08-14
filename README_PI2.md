@@ -51,13 +51,26 @@ profiles** managed by `hermes profile`. The former pair a PyPI dependency extra
 with a packaged default config; the latter isolate running Hermes instances.
 
 PyPI users install exactly one public extra into a virtual environment, then
-apply its config without invoking pip:
+apply its config without invoking pip. Release `0.20.0.post2` is the current
+verified Pi2 baseline:
 
 ```bash
-python -m pip install 'hermes-agent-iot[minimal]'  # or iot/rag/full/dev
+python3 --version  # must be >=3.11,<3.14
+python3 -m venv ~/.venvs/hermes-iot
+source ~/.venvs/hermes-iot/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install 'hermes-agent-iot[minimal]==0.20.0.post2'
 hermes-iot setup --profile minimal
 hermes-iot profile show
+python -m pip check
+command -v hermes
+command -v hermes-iot
 ```
+
+Do not use system pip, `sudo pip`, or `--break-system-packages`. Do not install
+the upstream `hermes-agent` distribution into this virtual environment because
+the two distributions provide overlapping Python modules and CLI commands.
 
 The public extras aggregate the retained internal extras: `minimal=cli+pty`,
 `iot=minimal+mcp+acp+homeassistant+mqtt+sms`, `rag=iot+honcho`, `full=all`, and
@@ -76,12 +89,17 @@ not silently download missing skills, MCP catalogs, locale files, Dashboard, or
 TUI assets. Use the `pi2-lite` source installer for catalog browsing/install,
 localized UI, Dashboard/TUI operation, or frontend/source development.
 
-Current wheel build and clean-install smoke evidence is from x86_64 Linux, not
-physical Raspberry Pi 2 hardware. A release must not be described as verified
-for Pi2/ARMv7 until the exact public wheel has been clean-installed and smoke
-tested on a physical Pi2.
+Release `0.20.0.post2` completed both the x86_64 GitHub release gates and an
+exact-wheel clean-install/profile smoke test on a physical Raspberry Pi 2 Model
+B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Python 3.13.5). The GitHub artifact,
+Pi2-tested wheel, and public PyPI download all had SHA-256
+`4ea8d7c4a7989c696076297825f9f4a81af05ec9c7632bc44018624760c81cef`.
+This evidence verifies the `minimal` baseline; heavier optional extras retain
+their own hardware requirements.
 
-The initial PyPI release is wheel-only; no source distribution is published.
+The release is wheel-only; no source distribution is published. Its public
+PyPI provenance identifies `matttest0080-prog/hermes-agent-iot`, workflow
+`publish-pypi.yml`, and environment `pypi`.
 
 Use the native-compatible installer:
 
@@ -111,7 +129,11 @@ Pi2/minimal and IoT profiles keep risky or heavy integrations opt-in:
 - `plugins/platforms/photon/sidecar/` is a full-profile sidecar, not a Pi2/minimal default.
 - `scripts/whatsapp-bridge/` is disabled by default because it is an experimental integration with a separate security and compatibility posture. Before enabling it on a production host, review the current Baileys advisories and bridge-specific configuration, run `npm run install:unsafe-baileys` inside `scripts/whatsapp-bridge/`, and start it with `HERMES_ENABLE_EXPERIMENTAL_WHATSAPP_BRIDGE=1`.
 
-## Recommended Pi2 install
+## Recommended Pi2 source install
+
+Use this path instead of the lightweight PyPI wheel when repository-level
+skills, optional MCP catalogs, locale files, Dashboard/TUI assets, or source
+development files are required:
 
 ```bash
 sudo apt update
