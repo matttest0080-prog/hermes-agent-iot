@@ -48,9 +48,23 @@ def test_profile_templates_are_packaged_and_dev_reuses_full():
         assert "minimum_tool_context_length" in resource.read_text(encoding="utf-8")
 
 
-def _run_cli(tmp_path, *args, extra_env=None):
+def _run_cli(tmp_path, *args, extra_env=None, installed_distributions=()):
     env = os.environ.copy()
     env["HERMES_HOME"] = str(tmp_path / "home")
+    if installed_distributions:
+        metadata_site = tmp_path / "metadata-site"
+        metadata_site.mkdir()
+        for name, version in installed_distributions:
+            dist_info = metadata_site / f"{name.replace('-', '_')}-{version}.dist-info"
+            dist_info.mkdir()
+            (dist_info / "METADATA").write_text(
+                f"Metadata-Version: 2.1\nName: {name}\nVersion: {version}\n\n",
+                encoding="utf-8",
+            )
+        existing_pythonpath = env.get("PYTHONPATH")
+        env["PYTHONPATH"] = os.pathsep.join(
+            value for value in (str(metadata_site), existing_pythonpath) if value
+        )
     if extra_env:
         env.update(extra_env)
     return subprocess.run(
@@ -60,7 +74,13 @@ def _run_cli(tmp_path, *args, extra_env=None):
 
 
 def test_setup_atomically_creates_private_config_and_secret_free_manifest(tmp_path):
-    result = _run_cli(tmp_path, "setup", "--profile", "iot")
+    result = _run_cli(
+        tmp_path,
+        "setup",
+        "--profile",
+        "iot",
+        installed_distributions=(("paho-mqtt", "2.1.0"),),
+    )
     assert result.returncode == 0, result.stderr
     home = tmp_path / "home"
     config = home / "config.yaml"
@@ -85,7 +105,16 @@ def test_setup_never_overwrites_existing_config(tmp_path):
     home.mkdir()
     config = home / "config.yaml"
     config.write_text("user: value\n", encoding="utf-8")
-    result = _run_cli(tmp_path, "setup", "--profile", "rag")
+    result = _run_cli(
+        tmp_path,
+        "setup",
+        "--profile",
+        "rag",
+        installed_distributions=(
+            ("paho-mqtt", "2.1.0"),
+            ("honcho-ai", "2.2.0"),
+        ),
+    )
     assert result.returncode == 0
     assert config.read_text() == "user: value\n"
     assert not (home / "install-profile.json").exists()
@@ -230,6 +259,21 @@ def test_setup_race_leaves_config_and_record_untouched(tmp_path, monkeypatch, ca
     assert (home / "config.yaml").read_text(encoding="utf-8") == "competing-config\n"
     assert not (home / "install-profile.json").exists()
     assert "left untouched" in capsys.readouterr().out
+
+
+def test_setup_subprocess_rejects_unsatisfied_profile_dependency(tmp_path):
+    result = _run_cli(
+        tmp_path,
+        "setup",
+        "--profile",
+        "iot",
+        installed_distributions=(("paho-mqtt", "0.0.0"),),
+    )
+
+    assert result.returncode != 0
+    assert "paho-mqtt==2.1.0" in result.stderr
+    assert not (tmp_path / "home" / "config.yaml").exists()
+    assert not (tmp_path / "home" / "install-profile.json").exists()
 
 
 def test_missing_requirements_checks_every_constraint(monkeypatch):
