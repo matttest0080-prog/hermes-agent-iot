@@ -163,6 +163,24 @@ Replace `minimal` with the profile originally installed. Do not use a bare `herm
 - [ ] ESP32 MQTT bridge
 - [ ] Raspberry Pi 3 / 4 / 5 validation matrix
 
+## Upstream Desktop / Server Installation
+
+Hermes Agent IoT is primarily for Raspberry Pi and edge deployments. For general desktop or server use, install the upstream Hermes Agent.
+
+### Windows (native PowerShell)
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+### Linux / macOS / WSL2
+
+```bash
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+```
+
+These upstream installers do not install this fork's Pi2-specific profiles or IoT packaging.
+
 ## About Hermes Agent
 
 Hermes Agent is the self-improving AI agent developed by [Nous Research](https://nousresearch.com). It provides a terminal interface, persistent learning and memory, scheduled automations, subagents, multiple execution backends, messaging gateways, and support for multiple LLM providers.
