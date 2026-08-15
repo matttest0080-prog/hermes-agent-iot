@@ -1,92 +1,51 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Hermes Agent" width="100%">
+  <img src="assets/banner.png" alt="Hermes Agent IoT" width="100%">
 </p>
 
-# Hermes Agent ☤
+# Hermes Agent IoT
+
+> Lightweight Hermes Agent for Raspberry Pi 2 / ARMv7, MQTT, Home Assistant, robotics, and low-resource edge AI.
+
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/">Hermes Agent</a> | <a href="https://hermes-agent.nousresearch.com/">Hermes Desktop</a>
-</p>
-<p align="center">
-  <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
-  <a href="https://discord.gg/NousResearch"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
+  <a href="https://pypi.org/project/hermes-agent-iot/"><img src="https://img.shields.io/badge/PyPI-hermes--agent--iot-blue?style=for-the-badge" alt="PyPI"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://nousresearch.com"><img src="https://img.shields.io/badge/Upstream-Nous%20Research-blueviolet?style=for-the-badge" alt="Upstream by Nous Research"></a>
-  <a href="https://github.com/matttest0080-prog"><img src="https://img.shields.io/badge/IoT%20fork-matttest0080--prog-orange?style=for-the-badge" alt="IoT fork maintained by matttest0080-prog"></a>
-  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
-  <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
-  <a href="README.es.md"><img src="https://img.shields.io/badge/Lang-Español-orange?style=for-the-badge" alt="Español"></a>
+  <a href="https://github.com/NousResearch/hermes-agent"><img src="https://img.shields.io/badge/Upstream-NousResearch%2Fhermes--agent-blueviolet?style=for-the-badge" alt="Upstream Hermes Agent"></a>
+  <a href="README_PI2.md"><img src="https://img.shields.io/badge/Raspberry%20Pi%202-ARMv7-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white" alt="Raspberry Pi 2"></a>
 </p>
 
-**The self-improving AI agent built by [Nous Research](https://nousresearch.com).** It's the only agent with a built-in learning loop — it creates skills from experience, improves them during use, nudges itself to persist knowledge, searches its own past conversations, and builds a deepening model of who you are across sessions. Run it on a $5 VPS, a GPU cluster, or serverless infrastructure that costs nearly nothing when idle. It's not tied to your laptop — talk to it from Telegram while it works on a cloud VM.
+Hermes Agent IoT is an IoT/robotics-focused fork of [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent). The maintained `pi2-lite` branch focuses on constrained Raspberry Pi and edge deployments while preserving the upstream Hermes Agent runtime and ecosystem.
 
-Use any model you want — [Nous Portal](https://portal.nousresearch.com), OpenRouter, OpenAI, your own endpoint, and [many others](https://hermes-agent.nousresearch.com/docs/integrations/providers). Switch with `hermes model` — no code changes, no lock-in.
+## Why Hermes Agent IoT?
 
-<table>
-<tr><td><b>A real terminal interface</b></td><td>Full TUI with multiline editing, slash-command autocomplete, conversation history, interrupt-and-redirect, and streaming tool output.</td></tr>
-<tr><td><b>Lives where you do</b></td><td>Telegram, Discord, Slack, WhatsApp, Signal, and CLI — all from a single gateway process. Voice memo transcription, cross-platform conversation continuity.</td></tr>
-<tr><td><b>A closed learning loop</b></td><td>Agent-curated memory with periodic nudges. Autonomous skill creation after complex tasks. Skills self-improve during use. FTS5 session search with LLM summarization for cross-session recall. <a href="https://github.com/plastic-labs/honcho">Honcho</a> dialectic user modeling. Compatible with the <a href="https://agentskills.io">agentskills.io</a> open standard.</td></tr>
-<tr><td><b>Scheduled automations</b></td><td>Built-in cron scheduler with delivery to any platform. Daily reports, nightly backups, weekly audits — all in natural language, running unattended.</td></tr>
-<tr><td><b>Delegates and parallelizes</b></td><td>Spawn isolated subagents for parallel workstreams. Write Python scripts that call tools via RPC, collapsing multi-step pipelines into zero-context-cost turns.</td></tr>
-<tr><td><b>Runs anywhere, not just your laptop</b></td><td>Seven terminal backends — local, Docker, SSH, Singularity, Modal, Daytona, and Vercel Sandbox. Daytona and Modal offer serverless persistence — your agent's environment hibernates when idle and wakes on demand, costing nearly nothing between sessions. Run it on a $5 VPS or a GPU cluster.</td></tr>
-<tr><td><b>Research-ready</b></td><td>Batch trajectory generation, trajectory compression for training the next generation of tool-calling models.</td></tr>
-</table>
+- **Raspberry Pi 2 / ARMv7:** verified low-resource installation path for 1 GB-class hardware.
+- **IoT profiles:** dependency profiles for MQTT, Home Assistant, MCP/ACP, and remote-first RAG.
+- **Edge-first deployment:** keep heavy AI inference remote while the Raspberry Pi handles agent orchestration and device integration.
+- **Robotics direction:** foundation for GPIO, I2C, PWM, sensors, actuators, and robotics skills.
+- **Upstream-aware:** IoT and ARMv7 compatibility changes are reviewed separately from fast-moving upstream development.
 
----
+## Quick Start — Raspberry Pi 2
 
-## Quick Install
-
-### Raspberry Pi 2 / IoT — this fork
-
-For Raspberry Pi 2, ARMv7, low-resource edge nodes, MQTT device control, or
-remote-first RAG, choose one of these two install paths.
-
-#### Public PyPI wheel (verified Pi2 baseline)
-
-The published `0.20.0.post2` universal wheel has been clean-installed from the
-public PyPI index and smoke-tested on a physical Raspberry Pi 2 Model B Rev 1.1
-running 32-bit ARMv7 (`armv7l`), 921 MiB RAM, and Python 3.13.5. Hermes Agent
-IoT requires Python `>=3.11,<3.14` and must be installed in a virtual
-environment:
+Hermes Agent IoT requires Python `>=3.11,<3.14`. Install it in a virtual environment:
 
 ```bash
 python3 --version
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
-
 python -m pip install --upgrade pip
 python -m pip install 'hermes-agent-iot[minimal]==0.20.0.post2'
 python -m pip check
 
 hermes-iot setup --profile minimal
 hermes-iot profile show
-command -v hermes
-command -v hermes-iot
 hermes setup model
 hermes
 ```
 
-Do not use system pip, `sudo pip`, or `--break-system-packages`. The setup
-command never overwrites an existing `~/.hermes/config.yaml`; when one exists,
-it prints the packaged template path for comparison.
+> Do not use system pip, `sudo pip`, or `--break-system-packages`.
 
-Current verified release identity:
+### Source checkout
 
-- PyPI: [`hermes-agent-iot 0.20.0.post2`](https://pypi.org/project/hermes-agent-iot/0.20.0.post2/)
-- tag: `iot-v0.20.0.post2`
-- source commit: `3f452a74e0a5b66d9a66b97049da5872c61262b6`
-- wheel: `hermes_agent_iot-0.20.0.post2-py3-none-any.whl`
-- SHA-256: `4ea8d7c4a7989c696076297825f9f4a81af05ec9c7632bc44018624760c81cef`
-- release workflow: [GitHub Actions run 31764992208](https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/31764992208)
-
-The PyPI release contains exactly one wheel and no source distribution. PyPI
-publishes Sigstore provenance for the GitHub repository, `publish-pypi.yml`
-workflow, and protected `pypi` environment.
-
-#### Source checkout (complete repository assets)
-
-Use the maintained `pi2-lite` branch when you need the repository's complete
-skills/catalogs, locale files, Dashboard/TUI assets, or source development
-files:
+Use the maintained `pi2-lite` branch when you need the complete repository assets:
 
 ```bash
 git clone --branch pi2-lite --depth 1 \
@@ -98,409 +57,136 @@ hermes setup model
 hermes
 ```
 
-> **Keep the clone directory.** The source installer uses an editable Python
-> installation (`pip install -e`), so the installed `hermes` command continues
-> to reference this checkout. Moving or deleting `hermes-agent-iot` can break
-> the environment.
+> Keep the clone directory. The source installer uses an editable Python installation, so moving or deleting the checkout can break the environment.
 
-The fork may intentionally lag the fast-moving upstream `main` while IoT
-patches, dependency changes and ARMv7 compatibility are reviewed. The version
-number alone does not mean that every newer upstream commit is already present.
+## Install Profiles
 
-#### Install profiles
+| Profile | Intended target |
+| --- | --- |
+| `minimal` | Raspberry Pi 2 / ARMv7 / 1 GB baseline |
+| `iot` | MQTT, Home Assistant, MCP/ACP and related IoT integrations |
+| `rag` | IoT plus Honcho / remote-first RAG |
+| `full` | Stronger Raspberry Pi, ARM64, x86 edge server or VM |
+| `dev` | Contributor and development systems |
 
-Three similarly named concepts are intentionally separate:
-
-- **Install profiles** (`hermes-iot setup --profile ...`) select one packaged
-  configuration template and record the choice; they never run pip or overwrite
-  an existing `~/.hermes/config.yaml`.
-- **PyPI extras** (`hermes-agent-iot[minimal]`, `[iot]`, `[rag]`, `[full]`,
-  `[dev]`) select dependency sets. Install into a virtual environment first,
-  then run `hermes-iot setup --profile NAME`.
-- **Hermes instance profiles** (`hermes profile ...`) are independent runtime
-  homes/configurations and are unrelated to package installation profiles.
-
-For another profile, keep the extra and setup profile aligned. For example,
-install `hermes-agent-iot[iot]==0.20.0.post2`, then run
-`hermes-iot setup --profile iot`. `full` and `dev` target stronger hosts and
-are not suitable for Raspberry Pi 2 / 1 GB systems.
-
-The PyPI wheel contains the Python runtime, CLI entry points, Python
-plugin modules, and the four profile configuration templates. Repository-level
-bundled/optional skills, optional MCP catalogs, Desktop/TUI/Web build artifacts,
-and other source-tree assets are intentionally not copied into the lightweight
-wheel. Use the branch-specific Git clone installer when those assets are
-required. In PyPI terminology, `full` and `dev` describe dependency sets; they
-do not turn the wheel into a Desktop bundle.
-
-Consequently, the wheel does not provide the repository's official skills
-catalog, optional MCP catalog, non-English locale catalog, Dashboard bundle, or
-prebuilt TUI bundle. Catalog browsing/install commands, localized UI,
-Dashboard/TUI startup, and source/frontend development require the `pi2-lite`
-Git checkout. These features are not silently downloaded by `hermes-iot setup`.
-
-Release `0.20.0.post2` passed the GitHub x86_64 build/clean-install gates and a
-separate exact-wheel clean install on physical Raspberry Pi 2/ARMv7 hardware.
-The SHA-256 of the GitHub artifact, Pi2-tested wheel, and public PyPI download
-matched exactly. This verifies the `minimal` baseline; heavier optional extras
-still require hardware appropriate to their dependency set.
-
-Choose the profile that matches the target device and workload:
+Keep the PyPI extra and setup profile aligned. For example:
 
 ```bash
-bash setup-pi2-minimal.sh --profile minimal  # Pi2 / ARMv7 / 1GB RAM baseline
-bash setup-pi2-minimal.sh --profile iot      # MQTT, Home Assistant, MCP/ACP and SMS
-bash setup-pi2-minimal.sh --profile rag      # IoT + Honcho; remote-first RAG
-bash setup-pi2-minimal.sh --profile full     # Stronger Pi, ARM64, x86 edge server or VM
-bash setup-pi2-minimal.sh --profile dev      # Full profile + development/test tooling
+python -m pip install 'hermes-agent-iot[iot]==0.20.0.post2'
+hermes-iot setup --profile iot
 ```
 
-- `minimal`: smallest practical Hermes CLI installation for Raspberry Pi 2.
-- `iot`: adds MQTT, Home Assistant, MCP, ACP and SMS integrations.
-- `rag`: adds Honcho and a remote-first RAG configuration; local heavy embedding
-  stacks are not installed by default.
-- `full`: installs the broader Hermes feature set and is not recommended for
-  Raspberry Pi 2 or other 1 GB systems.
-- `dev`: installs full and developer/test dependencies; intended for contributor
-  machines rather than production edge nodes.
+`full` and `dev` are not recommended for Raspberry Pi 2 / 1 GB systems.
 
-Backward-compatible aliases remain available: `core` → `minimal` and
-`native` → `iot`.
+## Project Status
 
-See [README_PI2.md](README_PI2.md) for the complete dependency matrix,
-configuration templates and safety guidance.
+| Capability | Status |
+| --- | --- |
+| Raspberry Pi 2 / ARMv7 minimal install | ✅ Verified |
+| Public PyPI package | ✅ Available |
+| Minimal dependency profile | ✅ Available |
+| IoT dependency profile | ✅ Available |
+| MQTT integration | ✅ Available |
+| Home Assistant integration | ✅ Available |
+| Remote-first RAG | ✅ Available |
+| Robotics documentation | ✅ Available |
+| GPIO abstraction | 🛠 Roadmap |
+| I2C device layer | 🛠 Roadmap |
+| PWM / servo control | 🛠 Roadmap |
+| Sensor plugin framework | 🛠 Roadmap |
+| ESP32 MQTT bridge | 🛠 Roadmap |
 
-#### Updating a PyPI wheel installation
+## Documentation
 
-Stay in the wheel-specific virtual environment and select the same profile
-extra used for installation:
+- [IoT Project Overview](IOT_PROJECT.md) — project goals, support status, profiles, and roadmap.
+- [Raspberry Pi 2 Quick Start](README_PI2.md) — dependency matrix, configuration profiles, and Pi2 safety guidance.
+- [Raspberry Pi 2 Manual](RASPBERRY_PI2_MANUAL.md) — detailed Pi2 deployment documentation.
+- [Robotics](ROBOTICS.md) — robotics integration notes.
+- [Security Policy](SECURITY.md) — vulnerability reporting and security guidance.
+- [Upstream Hermes Agent documentation](https://hermes-agent.nousresearch.com/docs/) — general Hermes Agent features, providers, gateways, desktop/server usage, and integrations.
 
-```bash
-source ~/.venvs/hermes-iot/bin/activate
-python -m pip install --upgrade 'hermes-agent-iot[minimal]'
-python -m pip check
-hermes-iot profile show
-```
+## Upstream vs Hermes Agent IoT
 
-For reproducible deployments, pin an audited version such as
-`hermes-agent-iot[minimal]==0.20.0.post2`. Do not install the upstream
-`hermes-agent` distribution into the same virtual environment because both
-distributions provide overlapping modules and CLI commands.
+| Area | Upstream Hermes Agent | Hermes Agent IoT |
+| --- | --- | --- |
+| General desktop/server agent | Primary target | Uses upstream foundation |
+| Raspberry Pi 2 / ARMv7 | Not primary target | Primary compatibility target |
+| 1 GB-class minimal profile | General dependency model | Dedicated `minimal` profile |
+| MQTT / Home Assistant deployment | General integrations | Dedicated `iot` profile |
+| Low-resource edge deployment | General runtime | Primary fork focus |
+| Robotics | General agent scope | IoT/robotics-oriented documentation and roadmap |
 
-#### Updating a source-checkout installation
+This fork may intentionally lag upstream `main` while dependency changes, IoT patches, and ARMv7 compatibility are reviewed and validated. For general desktop/server Hermes Agent usage, prefer the upstream project.
 
-The Pi2 installer uses an editable checkout and profile-specific dependency
-sets. The examples below assume the repository was cloned into
-`~/hermes-agent-iot`; if you used another clone directory, replace that path.
-The `hermes` executable is installed in the Pi2 virtual environment created by
-the installer. Opening the repository directory alone does **not** put it on
-`PATH`; activate the environment before running any `hermes` command:
+## Verified Release
+
+Current verified baseline:
+
+- PyPI: [`hermes-agent-iot 0.20.0.post2`](https://pypi.org/project/hermes-agent-iot/0.20.0.post2/)
+- Tag: `iot-v0.20.0.post2`
+- Python: `>=3.11,<3.14`
+- Physical validation: Raspberry Pi 2 Model B Rev 1.1, 32-bit ARMv7, 921 MiB RAM, Python 3.13.5
+
+The `minimal` wheel baseline was clean-installed and smoke-tested on physical Raspberry Pi 2 hardware. Heavier optional extras require hardware appropriate to their dependency set.
+
+## Updating a Pi2 Source Installation
+
+Always keep updates pinned to the `pi2-lite` branch:
 
 ```bash
 cd ~/hermes-agent-iot
 source ~/.hermes-venv/bin/activate
-command -v hermes
-hermes --version
-```
 
-If Bash reports `hermes: command not found`, the virtual environment is not
-active. Run the activation command above. If `~/.hermes-venv/bin/activate`
-does not exist, complete the profile installation first:
-
-```bash
-bash setup-pi2-minimal.sh --profile minimal
-source ~/.hermes-venv/bin/activate
-```
-
-Preview an update with the branch explicitly selected:
-
-```bash
-hermes update --check --branch pi2-lite
-```
-
-The CLI may print the generic message `Run 'hermes update' to install.`
-That message is not branch-safe for this Pi2 fork. Do **not** run the bare
-command; continue to use the explicit `pi2-lite` branch shown below.
-
-For an actual Pi2 update, use the branch-safe git procedure and rerun the same
-profile installer so the low-resource dependency set is restored:
-
-```bash
-cd ~/hermes-agent-iot
-
-# Review local changes first; do not update a dirty checkout blindly.
 git status --short
-
-# Explicitly select the Pi2 branch before fetching or merging.
 git switch pi2-lite
 git fetch origin pi2-lite
 git merge --ff-only origin/pi2-lite
 
-source ~/.hermes-venv/bin/activate
 bash setup-pi2-minimal.sh --profile minimal
-
-# Verify that the checkout stayed on the Pi2 branch.
-test "$(git branch --show-current)" = "pi2-lite"
-git status --short
 ```
 
-Replace `minimal` with the profile originally installed (`iot`, `rag`, `full`
-or `dev`). The generic `hermes update --branch pi2-lite` command is not the
-preferred Pi2 profile update path because Hermes updates reinstall the broader
-dependency group; if you use it, rerun the original profile installer
-afterwards. Never run a bare `hermes update` here: its default target is
-`main`, not `pi2-lite`. Review or preserve local changes before pulling; do not
-use a hard reset as a routine update method.
+Replace `minimal` with the profile originally installed. Do not use a bare `hermes update` for this fork because its default target can be upstream `main` rather than `pi2-lite`.
 
-### Upstream Hermes full installer
+## Roadmap
 
-The installers below install the official `NousResearch/hermes-agent` build.
-Use them for general desktop/server installations; they do **not** install this
-fork's Pi2 profiles or MQTT additions.
+- [x] Raspberry Pi 2 / ARMv7 installation path
+- [x] Low-resource dependency profile
+- [x] IoT dependency profile
+- [x] MQTT / Home Assistant integration path
+- [x] Public PyPI package
+- [x] Physical Raspberry Pi 2 validation
+- [ ] GPIO abstraction
+- [ ] I2C device abstraction
+- [ ] PWM / servo control
+- [ ] Sensor plugin framework
+- [ ] Robotics skill framework
+- [ ] ESP32 MQTT bridge
+- [ ] Raspberry Pi 3 / 4 / 5 validation matrix
 
-### Linux, macOS, WSL2, Termux
+## Upstream Desktop / Server Installation
 
-```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-```
+Hermes Agent IoT is primarily for Raspberry Pi and edge deployments. For general desktop or server use, install the upstream Hermes Agent.
 
-### Windows (native, PowerShell)
-
-> **Heads up:** Native Windows runs Hermes without WSL — CLI, gateway, TUI, and tools all work natively. If you'd rather use WSL2, the Linux/macOS one-liner above works there too. Found a bug? Please [file issues](https://github.com/NousResearch/hermes-agent/issues).
-
-Run this in PowerShell:
+### Windows (native PowerShell)
 
 ```powershell
 iex (irm https://hermes-agent.nousresearch.com/install.ps1)
 ```
 
-The installer handles everything: uv, Python 3.11, Node.js, ripgrep, ffmpeg, **and a portable Git Bash** (MinGit, unpacked to `%LOCALAPPDATA%\hermes\git` — no admin required, completely isolated from any system Git install). Hermes uses this bundled Git Bash to run shell commands.
-
-If you already have Git installed, the installer detects it and uses that instead. Otherwise a ~45MB MinGit download is all you need — it won't touch or interfere with any system Git.
-
-> **Android / Termux:** The tested manual path is documented in the [Termux guide](https://hermes-agent.nousresearch.com/docs/getting-started/termux). On Termux, Hermes installs a curated `.[termux]` extra because the full `.[all]` extra currently pulls Android-incompatible voice dependencies.
->
-> **Windows:** Native Windows is fully supported — the PowerShell one-liner above installs everything. If you'd rather use WSL2, the Linux command works there too. Native Windows install lives under `%LOCALAPPDATA%\hermes`; WSL2 installs under `~/.hermes` as on Linux.
-
-After installation:
-
-```bash
-source ~/.bashrc    # reload shell (or: source ~/.zshrc)
-hermes              # start chatting!
-```
-
-### Troubleshooting
-
-#### Windows Defender or antivirus flags `uv.exe` as malware
-
-If your antivirus (Bitdefender, Windows Defender, etc.) quarantines `uv.exe` from the Hermes `bin` folder (`%LOCALAPPDATA%\hermes\bin\uv.exe`), this is a **false positive**. The file is Astral's `uv` — the Rust Python package manager Hermes bundles to manage its Python environment. ML-based antivirus engines commonly flag unsigned Rust binaries that download and install packages.
-
-**To verify your copy is authentic:**
-
-```powershell
-# Install GitHub CLI if needed
-winget install --id GitHub.cli
-
-# Login to GitHub
-gh auth login
-
-# Run verification
-$uv = "$env:LOCALAPPDATA\hermes\bin\uv.exe"
-$ver = (& $uv --version).Split(' ')[1]
-[Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
-$zip = "$env:TEMP\uv.zip"
-Invoke-WebRequest "https://github.com/astral-sh/uv/releases/download/$ver/uv-x86_64-pc-windows-msvc.zip" -OutFile $zip -UseBasicParsing
-gh attestation verify $zip --repo astral-sh/uv
-Expand-Archive $zip "$env:TEMP\uv_x" -Force
-(Get-FileHash "$env:TEMP\uv_x\uv.exe").Hash -eq (Get-FileHash $uv).Hash
-```
-
-If attestation says "Verification succeeded" and the last line prints `True`, you're good.
-
-**To whitelist Hermes:**
-- **Windows Defender:** Run PowerShell as Admin → `Add-MpPreference -ExclusionPath "$env:LOCALAPPDATA\hermes\bin"`
-- **Bitdefender:** Add an exception in the Bitdefender console (Protection > Antivirus > Settings > Manage Exceptions)
-- Whitelist the **folder**, not the file hash — Hermes updates `uv` and the hash changes every version
-
-For more context, see the upstream Astral reports: [astral-sh/uv#13553](https://github.com/astral-sh/uv/issues/13553), [astral-sh/uv#15011](https://github.com/astral-sh/uv/issues/15011), [astral-sh/uv#10079](https://github.com/astral-sh/uv/issues/10079).
-
----
-
-## Getting Started
-
-```bash
-hermes              # Interactive CLI — start a conversation
-hermes model        # Choose your LLM provider and model
-hermes tools        # Configure which tools are enabled
-hermes config set   # Set individual config values
-hermes config get   # Print individual config values
-hermes gateway      # Start the messaging gateway (Telegram, Discord, etc.)
-hermes setup        # Run the full setup wizard (configures everything at once)
-hermes claw migrate # Migrate from OpenClaw (if coming from OpenClaw)
-hermes update       # Official managed installs; Pi2 fork users: see update instructions above
-hermes doctor       # Diagnose any issues
-```
-
-📖 **[Full documentation →](https://hermes-agent.nousresearch.com/docs/)**
-
----
-
-## Skip the API-key collection — Nous Portal
-
-Hermes works with whatever provider you want — that's not changing. But if you'd rather not collect five separate API keys for the model, web search, image generation, TTS, and a cloud browser, **[Nous Portal](https://portal.nousresearch.com)** covers all of them under one subscription:
-
-- **300+ models** — pick any of them with `/model <name>`
-- **Tool Gateway** — web search (Firecrawl), image generation (FAL), text-to-speech (OpenAI), cloud browser (Browser Use), all routed through your sub. No extra accounts.
-
-One command from a fresh install:
-
-```bash
-hermes setup --portal
-```
-
-That logs you in via OAuth, sets Nous as your provider, and turns on the Tool Gateway. Check what's wired up any time with `hermes portal info`. Full details on the [Tool Gateway docs page](https://hermes-agent.nousresearch.com/docs/user-guide/features/tool-gateway).
-
-You can still bring your own keys per-tool whenever you want — the gateway is per-backend, not all-or-nothing.
-
----
-
-## CLI vs Messaging Quick Reference
-
-Hermes has two entry points: start the terminal UI with `hermes`, or run the gateway and talk to it from Telegram, Discord, Slack, WhatsApp, Signal, or Email. Once you're in a conversation, many slash commands are shared across both interfaces.
-
-| Action                         | CLI                                           | Messaging platforms                                                              |
-| ------------------------------ | --------------------------------------------- | -------------------------------------------------------------------------------- |
-| Start chatting                 | `hermes`                                      | Run `hermes gateway setup` + `hermes gateway start`, then send the bot a message |
-| Start fresh conversation       | `/new` or `/reset`                            | `/new` or `/reset`                                                               |
-| Change model                   | `/model [provider:model]`                     | `/model [provider:model]`                                                        |
-| Set a personality              | `/personality [name]`                         | `/personality [name]`                                                            |
-| Retry or undo the last turn    | `/retry`, `/undo`                             | `/retry`, `/undo`                                                                |
-| Compress context / check usage | `/compress`, `/usage`, `/insights [--days N]` | `/compress`, `/usage`, `/insights [days]`                                        |
-| Browse skills                  | `/skills` or `/<skill-name>`                  | `/<skill-name>`                                                                  |
-| Interrupt current work         | `Ctrl+C` or send a new message                | `/stop` or send a new message                                                    |
-| Platform-specific status       | `/platforms`                                  | `/status`, `/sethome`                                                            |
-
-For the full command lists, see the [CLI guide](https://hermes-agent.nousresearch.com/docs/user-guide/cli) and the [Messaging Gateway guide](https://hermes-agent.nousresearch.com/docs/user-guide/messaging).
-
----
-
-## Documentation
-
-Upstream Hermes documentation lives at **[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)**. This IoT fork adds the local Pi2 and robotics guides listed below.
-
-| Section                                                                                             | What's Covered                                             |
-| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| [Quickstart](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart)                 | Install → setup → first conversation in 2 minutes          |
-| [CLI Usage](https://hermes-agent.nousresearch.com/docs/user-guide/cli)                              | Commands, keybindings, personalities, sessions             |
-| [Configuration](https://hermes-agent.nousresearch.com/docs/user-guide/configuration)                | Config file, providers, models, all options                |
-| [Messaging Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/messaging)                | Telegram, Discord, Slack, WhatsApp, Signal, Home Assistant |
-| [Security](https://hermes-agent.nousresearch.com/docs/user-guide/security)                          | Command approval, DM pairing, container isolation          |
-| [Tools & Toolsets](https://hermes-agent.nousresearch.com/docs/user-guide/features/tools)            | 40+ tools, toolset system, terminal backends               |
-| [Skills System](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)              | Procedural memory, Skills Hub, creating skills             |
-| [Memory](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory)                     | Persistent memory, user profiles, best practices           |
-| [MCP Integration](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp)               | Connect any MCP server for extended capabilities           |
-| [Cron Scheduling](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)              | Scheduled tasks with platform delivery                     |
-| [Context Files](https://hermes-agent.nousresearch.com/docs/user-guide/features/context-files)       | Project context that shapes every conversation             |
-| [Architecture](https://hermes-agent.nousresearch.com/docs/developer-guide/architecture)             | Project structure, agent loop, key classes                 |
-| [Contributing](https://hermes-agent.nousresearch.com/docs/developer-guide/contributing)             | Development setup, PR process, code style                  |
-| [CLI Reference](https://hermes-agent.nousresearch.com/docs/reference/cli-commands)                  | All commands and flags                                     |
-| [Environment Variables](https://hermes-agent.nousresearch.com/docs/reference/environment-variables) | Complete env var reference                                 |
-
-### Raspberry Pi 2 and IoT profiles
-
-This fork also carries opt-in low-resource profiles while preserving the
-upstream Agent, Gateway, tool, plugin, memory, cron, MCP, and ACP architecture:
-
-- [Pi2 quickstart and profile guide](README_PI2.md)
-- [Detailed Raspberry Pi 2 manual](RASPBERRY_PI2_MANUAL.md)
-- [Robotics architecture and safety guidance](ROBOTICS.md)
-
-Start with `bash setup-pi2-minimal.sh --profile minimal`, or select `iot` or
-`rag` for MQTT/Home Assistant and remote-first RAG dependencies. Heavy browser,
-media, local embedding, and desktop surfaces remain opt-in on constrained hosts.
-
----
-
-## Migrating from OpenClaw
-
-If you're coming from OpenClaw, Hermes can automatically import your settings, memories, skills, and API keys.
-
-**During first-time setup:** The setup wizard (`hermes setup`) automatically detects `~/.openclaw` and offers to migrate before configuration begins.
-
-**Anytime after install:**
-
-```bash
-hermes claw migrate              # Interactive migration (full preset)
-hermes claw migrate --dry-run    # Preview what would be migrated
-hermes claw migrate --preset user-data   # Migrate without secrets
-hermes claw migrate --overwrite  # Overwrite existing conflicts
-```
-
-What gets imported:
-
-- **SOUL.md** — persona file
-- **Memories** — MEMORY.md and USER.md entries
-- **Skills** — user-created skills → `~/.hermes/skills/openclaw-imports/`
-- **Command allowlist** — approval patterns
-- **Messaging settings** — platform configs, allowed users, working directory
-- **API keys** — allowlisted secrets (Telegram, OpenRouter, OpenAI, Anthropic, ElevenLabs)
-- **TTS assets** — workspace audio files
-- **Workspace instructions** — AGENTS.md (with `--workspace-target`)
-
-See `hermes claw migrate --help` for all options, or use the `openclaw-migration` skill for an interactive agent-guided migration with dry-run previews.
-
----
-
-## Contributing
-
-We welcome contributions! See the [Contributing Guide](https://hermes-agent.nousresearch.com/docs/developer-guide/contributing) for development setup, code style, and PR process.
-
-Quick start for contributors — use the standard installer, then work from the
-full git checkout it creates at `$HERMES_HOME/hermes-agent` (usually
-`~/.hermes/hermes-agent`). This matches the layout used by `hermes update`, the
-managed venv, lazy dependencies, gateway, and docs tooling.
+### Linux / macOS / WSL2
 
 ```bash
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-cd "${HERMES_HOME:-$HOME/.hermes}/hermes-agent"
-uv pip install -e ".[all,dev]"
-scripts/run_tests.sh
 ```
 
-Manual clone fallback (for throwaway clones/CI where you intentionally do not
-want the managed install layout):
+These upstream installers do not install this fork's Pi2-specific profiles or IoT packaging.
 
-Create the venv outside the cloned source tree — a venv inside the directory
-the agent operates from can be wiped by a relative-path command the agent runs
-against its own checkout, destroying the running runtime mid-session.
+## About Hermes Agent
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv venv ~/.hermes/venvs/hermes-dev --python 3.11
-source ~/.hermes/venvs/hermes-dev/bin/activate
-uv pip install -e ".[all,dev]"
-scripts/run_tests.sh
-```
+Hermes Agent is the self-improving AI agent developed by [Nous Research](https://nousresearch.com). It provides a terminal interface, persistent learning and memory, scheduled automations, subagents, multiple execution backends, messaging gateways, and support for multiple LLM providers.
 
----
+Hermes Agent IoT does not replace the upstream project. It adapts that foundation for Raspberry Pi 2, ARMv7, low-resource edge nodes, MQTT/Home Assistant environments, and future robotics integrations.
 
-## Community
+## License and Attribution
 
-- 💬 [Discord](https://discord.gg/NousResearch)
-- 📚 [Skills Hub](https://agentskills.io)
-- 🐛 [Issues](https://github.com/NousResearch/hermes-agent/issues)
-- 🔌 [computer-use-linux](https://github.com/avifenesh/computer-use-linux) — Linux desktop-control MCP server for Hermes and other MCP hosts, with AT-SPI accessibility trees, Wayland/X11 input, screenshots, and compositor window targeting.
-- 🔌 [HermesClaw](https://github.com/AaronWong1999/hermesclaw) — Community WeChat bridge: Run Hermes Agent and OpenClaw on the same WeChat account.
-
----
-
-## License
-
-MIT — see [LICENSE](LICENSE).
-
-Upstream Hermes Agent is built by [Nous Research](https://nousresearch.com).
-This Raspberry Pi / IoT fork is maintained by
-[matttest0080-prog](https://github.com/matttest0080-prog).
-
-Bundled plugins, skills and third-party components may include their own
-license or notice files; those terms apply to the corresponding components.
+Hermes Agent IoT is derived from [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) and follows this repository's [MIT License](LICENSE). Preserve upstream copyright and attribution when redistributing derived work.
