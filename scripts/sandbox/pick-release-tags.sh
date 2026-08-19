@@ -24,8 +24,9 @@
 # checkout has no tags and this exits non-zero rather than silently emitting an
 # empty matrix.
 #
-# Only vYYYY.M.D[.N] release tags are considered; the repo also carries
-# backup/* and one-off tags that are not releases.
+# Accept upstream calendar releases plus this fork's IoT package and Pi2 image
+# release schemes. Only tags reachable from the checked-out branch are valid
+# update sources; legacy Pi2 history is intentionally unrelated to pi2-lite.
 
 set -euo pipefail
 
@@ -67,14 +68,14 @@ fi
 # sort -V orders v2026.4.8 before v2026.4.13 (numeric), which a plain
 # lexicographic sort gets wrong.
 mapfile -t tags < <(
-  git -C "$REPO" tag --list 'v*' \
-    | grep -E '^v[0-9]{4}\.[0-9]+\.[0-9]+(\.[0-9]+)?$' \
+  git -C "$REPO" tag --merged HEAD --list 'v*' 'iot-v*' \
+    | grep -E '^(v[0-9]{4}\.[0-9]+\.[0-9]+(\.[0-9]+)?|v[0-9]+(\.[0-9]+)+-pi2|iot-v[0-9]+\.[0-9]+\.[0-9]+(\.post[0-9]+)?)$' \
     | sort -V
 )
 
 total="${#tags[@]}"
 if [ "$total" -eq 0 ]; then
-  echo "error: no release tags found in $REPO" >&2
+  echo "error: no reachable release tags found in $REPO" >&2
   echo '       A shallow clone has no tags: fetch with tags (actions/checkout' >&2
   echo '       with fetch-depth: 0, or fetch-tags: true).' >&2
   exit 1
