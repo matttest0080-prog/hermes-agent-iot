@@ -1034,6 +1034,28 @@ class TestGetModelContextLength:
         # The local probe MUST be called exactly once
         mock_local_ctx.assert_called_once()
 
+    def test_local_context_cache_uses_configured_profile_floor(self):
+        from agent.model_metadata import _maybe_cache_local_context_length
+
+        with (
+            patch(
+                "agent.model_metadata.get_minimum_tool_context_length",
+                return_value=2048,
+            ),
+            patch("agent.model_metadata.save_context_length") as mock_save,
+        ):
+            _maybe_cache_local_context_length(
+                "tiny-local",
+                "http://pi2.local:11434/v1",
+                4096,
+            )
+
+        mock_save.assert_called_once_with(
+            "tiny-local",
+            "http://pi2.local:11434/v1",
+            4096,
+        )
+
 
 
 

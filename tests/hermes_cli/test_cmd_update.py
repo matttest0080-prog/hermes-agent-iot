@@ -50,6 +50,13 @@ def mock_args():
 # ``shutil.which`` so the existing test setup keeps working without
 # per-test changes.
 @pytest.fixture(autouse=True)
+def _patch_official_update_default():
+    """This upstream suite exercises official-Hermes main-branch semantics."""
+    with patch("hermes_cli.main._is_iot_install", return_value=False):
+        yield
+
+
+@pytest.fixture(autouse=True)
 def _patch_managed_uv(request):
     """Make managed_uv helpers follow shutil.which mocking in tests."""
     import shutil

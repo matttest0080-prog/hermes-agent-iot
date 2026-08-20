@@ -44,7 +44,7 @@ A paid [Nous Portal](/user-guide/features/tool-gateway) subscription supplies th
 # CLI voice mode (microphone + audio playback)
 cd ~/.hermes/hermes-agent && uv pip install -e ".[voice]"
 
-# Discord + Telegram messaging (includes discord.py[voice] for VC support)
+# Discord + Telegram messaging (includes Discord VC dependencies)
 cd ~/.hermes/hermes-agent && uv pip install -e ".[messaging]"
 
 # Premium TTS (ElevenLabs)
@@ -60,13 +60,13 @@ cd ~/.hermes/hermes-agent && uv pip install -e ".[all]"
 | Extra | Packages | Required For |
 |-------|----------|-------------|
 | `voice` | `sounddevice`, `numpy` | CLI voice mode |
-| `messaging` | `discord.py[voice]`, `python-telegram-bot`, `aiohttp` | Discord & Telegram bots |
+| `messaging` | `discord.py`, patched `PyNaCl`, `davey`, `python-telegram-bot`, `aiohttp` | Discord & Telegram bots |
 | `tts-premium` | `elevenlabs` | ElevenLabs TTS provider |
 
 Optional local TTS provider: install `neutts` separately with `python -m pip install -U neutts[all]`. On first use it downloads the model automatically.
 
 :::info
-`discord.py[voice]` installs **PyNaCl** (for voice encryption) and **opus bindings** automatically. This is required for Discord voice channel support.
+The `messaging` extra explicitly installs **discord.py 2.7.1**, **PyNaCl 1.6.2** (voice encryption), and **davey 0.1.4** (DAVE E2EE). These explicit security pins replace `discord.py[voice]`, whose current dependency range can select a vulnerable PyNaCl release.
 :::
 
 ### System Dependencies

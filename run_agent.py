@@ -869,7 +869,11 @@ class AIAgent:
         from hermes_cli.models import ensure_lmstudio_model_loaded
 
         if config_context_length is None:
-            config_context_length = getattr(self, "_config_context_length", None)
+            config_context_length = getattr(
+                self,
+                "_config_context_length",
+                None,
+            ) or getattr(self, "_minimum_tool_context_length", 64_000)
         return ensure_lmstudio_model_loaded(
             self.model,
             self.base_url,

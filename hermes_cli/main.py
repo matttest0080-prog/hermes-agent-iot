@@ -800,6 +800,7 @@ from hermes_cli.model_setup_flows import (
     _model_flow_qwen_oauth,
     _model_flow_minimax_oauth,
     _model_flow_custom,
+    _model_flow_local_llama,
     _model_flow_azure_foundry,
     _model_flow_named_custom,
     _model_flow_copilot,
@@ -3179,6 +3180,29 @@ def cmd_chat(args):
     # Import and run the CLI
     from cli import main as cli_main
 
+    # --query-file: read the single query from a file (or stdin via '-') so
+    # callers never have to shell-quote message bodies. This is the transport
+    # the Bot Mode DM protocol uses — interpolating arbitrary text into a
+    # double-quoted shell argument truncates on quotes and executes $(...)
+    # (see tools/bot_mode_probe.py).
+    _qfile = getattr(args, "query_file", None)
+    if _qfile:
+        if args.query:
+            print("Error: -q/--query and --query-file are mutually exclusive", file=sys.stderr)
+            sys.exit(2)
+        try:
+            if _qfile == "-":
+                args.query = sys.stdin.read()
+            else:
+                with open(_qfile, "r", encoding="utf-8", errors="replace") as _fh:
+                    args.query = _fh.read()
+        except OSError as _e:
+            print(f"Error: cannot read --query-file {_qfile}: {_e}", file=sys.stderr)
+            sys.exit(2)
+        if not (args.query or "").strip():
+            print(f"Error: --query-file {_qfile} is empty", file=sys.stderr)
+            sys.exit(2)
+
     # Build kwargs from args
     kwargs = {
         "model": args.model,
@@ -3836,6 +3860,7 @@ def select_provider_and_model(args=None):
             ordered.append((key, label, []))
 
     ordered.append(("custom", "Custom endpoint (enter URL manually)", []))
+    ordered.append(("local-llama", "Local AI (llama.cpp / llama-server)", []))
     _has_saved_custom_list = isinstance(config.get("custom_providers"), list) and bool(
         config.get("custom_providers")
     )
@@ -3905,6 +3930,8 @@ def select_provider_and_model(args=None):
         _model_flow_copilot(config, current_model)
     elif selected_provider == "custom":
         _model_flow_custom(config)
+    elif selected_provider == "local-llama":
+        _model_flow_local_llama(config)
     elif (
         selected_provider.startswith("custom:")
         or selected_provider in _custom_provider_map
@@ -9868,15 +9895,55 @@ def _finalize_update_output(state):
             pass
 
 
-def _resolve_update_branch(args) -> str:
-    """Normalize ``args.branch`` into a non-empty branch name.
+def _is_iot_install() -> bool:
+    """Return whether the active source/package is the protected IoT fork.
 
-    Centralizes the "default to main, accept --branch override, treat empty
-    or whitespace-only values as the default" parsing so every consumer of
-    ``--branch`` (check path, git-update path, ZIP-fallback path) agrees on
-    the same answer.
+    Detection is intentionally redundant: editable/source installs expose the
+    fork's pyproject, wheel installs expose distribution metadata, and
+    ``hermes-iot setup`` records the selected profile under HERMES_HOME. A
+    malformed or symlinked record is ignored rather than trusted.
     """
-    return (getattr(args, "branch", None) or "main").strip() or "main"
+    from importlib import metadata as importlib_metadata
+
+    try:
+        importlib_metadata.distribution("hermes-agent-iot")
+        return True
+    except importlib_metadata.PackageNotFoundError:
+        pass
+    except Exception:
+        pass
+
+    home = Path(os.environ.get("HERMES_HOME", "").strip() or Path.home() / ".hermes")
+    record = home / "install-profile.json"
+    try:
+        if record.is_file() and not record.is_symlink():
+            data = json.loads(record.read_text(encoding="utf-8"))
+            if data.get("distribution") == "hermes-agent-iot":
+                return True
+    except (OSError, ValueError, TypeError):
+        pass
+
+    try:
+        import tomllib
+
+        with (PROJECT_ROOT / "pyproject.toml").open("rb") as stream:
+            project = tomllib.load(stream).get("project", {})
+        return project.get("name") == "hermes-agent-iot"
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+def _resolve_update_branch(args) -> str:
+    """Resolve the update branch without detaching IoT installs from Pi2.
+
+    An explicit ``--branch`` always wins. Official Hermes defaults to ``main``;
+    hermes-agent-iot source/wheel/profile installs default to ``pi2-lite`` so a
+    bare update cannot silently follow the fork's stale main or upstream/main.
+    """
+    requested = (getattr(args, "branch", None) or "").strip()
+    if requested:
+        return requested
+    return "pi2-lite" if _is_iot_install() else "main"
 
 
 def _size_delta_label(saved_mb: float) -> str:
@@ -12037,7 +12104,7 @@ def cmd_monitoring(args):
         else:
             print("  OTLP endpoint:  not configured (monitoring.export.otlp)")
         print(f"  OTel SDK:       {'installed' if otlp_exporter.is_available() else 'not installed'} "
-              f"(optional extra: hermes-agent[otlp])")
+              f"(optional extra: hermes-agent-iot[otlp])")
         print("\n  Scope: gateway service health + redacted diagnostics only.")
         print("  No prompts, messages, tool args/results, usage analytics, or traces.")
         return

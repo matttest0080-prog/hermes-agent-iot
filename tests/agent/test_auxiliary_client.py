@@ -4104,6 +4104,15 @@ class TestCompressionFallbackContextFilter:
         assert _task_minimum_context_length("") is None
         assert _task_minimum_context_length(None) is None
 
+    def test_compression_task_uses_configured_profile_floor(self):
+        from agent.auxiliary_client import _task_minimum_context_length
+
+        with patch(
+            "hermes_cli.config.load_config_readonly",
+            return_value={"agent": {"minimum_tool_context_length": 2048}},
+        ):
+            assert _task_minimum_context_length("compression") == 2048
+
 
 class TestCustomEndpointApiKeyInheritance:
     """Issue #9318: when an auxiliary task uses provider=custom with an

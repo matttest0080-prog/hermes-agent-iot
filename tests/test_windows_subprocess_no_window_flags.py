@@ -396,6 +396,65 @@ def test_lazy_deps_uv_install_hides_console_window(monkeypatch):
     assert kwargs["stdin"] == subprocess.DEVNULL
 
 
+def test_lazy_deps_pip_probe_and_install_hide_console_window(monkeypatch):
+    from hermes_cli import managed_uv
+    from tools import lazy_deps
+
+    captured = []
+
+    def fake_run(cmd, **kwargs):
+        captured.append((cmd, kwargs))
+        return _Completed(stdout="ok", returncode=0)
+
+    monkeypatch.delenv(lazy_deps._LAZY_TARGET_ENV, raising=False)
+    monkeypatch.setattr(lazy_deps, "windows_hide_flags", lambda: _CREATE_NO_WINDOW)
+    monkeypatch.setattr(lazy_deps.subprocess, "run", fake_run)
+    monkeypatch.setattr(managed_uv, "resolve_uv", lambda: None)
+    monkeypatch.setattr(lazy_deps.shutil, "which", lambda name: None)
+
+    res = lazy_deps._venv_pip_install(("left-pad",))
+
+    assert res.success
+    assert len(captured) == 2, captured
+    probe, install = captured
+    assert probe[0][-1] == "--version"
+    assert "install" in install[0]
+    for _cmd, kwargs in captured:
+        assert kwargs["creationflags"] == _CREATE_NO_WINDOW
+        assert kwargs["stdin"] == subprocess.DEVNULL
+
+
+def test_lazy_deps_ensurepip_and_fallback_install_hide_console_window(monkeypatch):
+    from hermes_cli import managed_uv
+    from tools import lazy_deps
+
+    captured = []
+
+    def fake_run(cmd, **kwargs):
+        captured.append((cmd, kwargs))
+        if cmd[-1] == "--version":
+            return _Completed(returncode=1)
+        return _Completed(stdout="ok", returncode=0)
+
+    monkeypatch.delenv(lazy_deps._LAZY_TARGET_ENV, raising=False)
+    monkeypatch.setattr(lazy_deps, "windows_hide_flags", lambda: _CREATE_NO_WINDOW)
+    monkeypatch.setattr(lazy_deps.subprocess, "run", fake_run)
+    monkeypatch.setattr(managed_uv, "resolve_uv", lambda: None)
+    monkeypatch.setattr(lazy_deps.shutil, "which", lambda name: None)
+
+    res = lazy_deps._venv_pip_install(("left-pad",))
+
+    assert res.success
+    assert len(captured) == 3, captured
+    probe, ensurepip, install = captured
+    assert probe[0][-1] == "--version"
+    assert "ensurepip" in ensurepip[0]
+    assert "install" in install[0]
+    for _cmd, kwargs in captured:
+        assert kwargs["creationflags"] == _CREATE_NO_WINDOW
+        assert kwargs["stdin"] == subprocess.DEVNULL
+
+
 
 
 

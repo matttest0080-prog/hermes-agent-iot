@@ -24,8 +24,9 @@
 # checkout has no tags and this exits non-zero rather than silently emitting an
 # empty matrix.
 #
-# Only vYYYY.M.D[.N] release tags are considered; the repo also carries
-# backup/* and one-off tags that are not releases.
+# Accept upstream calendar releases plus this fork's IoT package and Pi2 image
+# release schemes. Only tags reachable from the checked-out branch are valid
+# update sources; legacy Pi2 history is intentionally unrelated to pi2-lite.
 
 set -euo pipefail
 
@@ -64,17 +65,19 @@ if [ -z "$REPO" ]; then
   REPO="$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$script_dir")"
 fi
 
-# sort -V orders v2026.4.8 before v2026.4.13 (numeric), which a plain
-# lexicographic sort gets wrong.
+# Release families use incompatible version scales (v11.2-pi2, iot-v0.20.4,
+# v2026.8.18), so version sorting cannot identify the release created most
+# recently. Git's creatordate uses an annotated tag's tagger date and falls
+# back to the commit date for lightweight tags, preserving one chronological
+# oldest-to-newest sequence across all supported families.
 mapfile -t tags < <(
-  git -C "$REPO" tag --list 'v*' \
-    | grep -E '^v[0-9]{4}\.[0-9]+\.[0-9]+(\.[0-9]+)?$' \
-    | sort -V
+  git -C "$REPO" tag --merged HEAD --sort=creatordate --list 'v*' 'iot-v*' \
+    | grep -E '^(v[0-9]{4}\.[0-9]+\.[0-9]+(\.[0-9]+)?|v[0-9]+(\.[0-9]+)+-pi2|iot-v[0-9]+\.[0-9]+\.[0-9]+(\.post[0-9]+)?)$' \
 )
 
 total="${#tags[@]}"
 if [ "$total" -eq 0 ]; then
-  echo "error: no release tags found in $REPO" >&2
+  echo "error: no reachable release tags found in $REPO" >&2
   echo '       A shallow clone has no tags: fetch with tags (actions/checkout' >&2
   echo '       with fetch-depth: 0, or fetch-tags: true).' >&2
   exit 1

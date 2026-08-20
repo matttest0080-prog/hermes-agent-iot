@@ -42,7 +42,7 @@ Hermes Agent 支持在 CLI 和消息平台上进行完整的语音交互。通�
 # CLI 语音模式（麦克风 + 音频播放）
 cd ~/.hermes/hermes-agent && uv pip install -e ".[voice]"
 
-# Discord + Telegram 消息（包含 discord.py[voice] 以支持语音频道）
+# Discord + Telegram 消息（包含 Discord 语音频道依赖）
 cd ~/.hermes/hermes-agent && uv pip install -e ".[messaging]"
 
 # 高级 TTS（ElevenLabs）
@@ -58,13 +58,13 @@ cd ~/.hermes/hermes-agent && uv pip install -e ".[all]"
 | 扩展包 | 包含的包 | 用途 |
 |-------|----------|-------------|
 | `voice` | `sounddevice`、`numpy` | CLI 语音模式 |
-| `messaging` | `discord.py[voice]`、`python-telegram-bot`、`aiohttp` | Discord 和 Telegram 机器人 |
+| `messaging` | `discord.py`、已修补的 `PyNaCl`、`davey`、`python-telegram-bot`、`aiohttp` | Discord 和 Telegram 机器人 |
 | `tts-premium` | `elevenlabs` | ElevenLabs TTS 提供商 |
 
 可选本地 TTS 提供商：使用 `python -m pip install -U neutts[all]` 单独安装 `neutts`。首次使用时会自动下载模型。
 
 :::info
-`discord.py[voice]` 会自动安装 **PyNaCl**（用于语音加密）和 **opus 绑定**。这是 Discord 语音频道支持的必要条件。
+`messaging` extra 会明确安装 **discord.py 2.7.1**、用于语音加密的 **PyNaCl 1.6.2**，以及用于 DAVE 端到端加密的 **davey 0.1.4**。这些明确的安全版本取代了 `discord.py[voice]`，因为后者目前的依赖范围可能选择存在漏洞的 PyNaCl 版本。
 :::
 
 ### 系统依赖

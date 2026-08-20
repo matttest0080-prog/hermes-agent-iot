@@ -1,0 +1,60 @@
+# Hermes Agent full/dev profile for stronger Pi, ARM64, x86, and VM hosts.
+# Installs the broad dependency set without inheriting Pi2 native's low-memory
+# tool disable list or reduced context floor. Sensitive/default-off toolsets
+# remain explicit opt-ins through `hermes tools`.
+
+model: ""
+providers: {}
+fallback_providers: []
+platform_toolsets:
+  cli:
+    - hermes-cli
+
+agent:
+  max_turns: 100
+  gateway_timeout: 1200
+  restart_drain_timeout: 90
+  api_max_retries: 3
+  minimum_tool_context_length: 65536
+  tool_use_enforcement: auto
+  task_completion_guidance: true
+  environment_probe: true
+  coding_context: auto
+  image_input_mode: text
+
+terminal:
+  backend: local
+  cwd: .
+  timeout: 300
+  home_mode: auto
+
+memory:
+  memory_enabled: true
+  user_profile_enabled: true
+  write_approval: false
+  memory_char_limit: 2200
+  user_char_limit: 1375
+  provider: ""
+
+delegation:
+  max_concurrent_children: 3
+  max_async_children: 3
+  max_spawn_depth: 1
+
+display:
+  show_cost: false
+  show_reasoning: false
+
+stt:
+  enabled: false
+
+tts:
+  provider: edge
+
+browser:
+  engine: auto
+
+compression:
+  enabled: true
+  threshold: 0.50
+  target_ratio: 0.25

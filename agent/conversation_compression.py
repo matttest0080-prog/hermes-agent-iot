@@ -5,8 +5,8 @@ Three concerns live here:
 * :func:`check_compression_model_feasibility` — startup probe of the
   configured auxiliary compression model.  Warns when the aux context
   window can't fit the main model's compression threshold; auto-lowers
-  the session threshold when possible; hard-rejects auxes below
-  ``MINIMUM_CONTEXT_LENGTH``.
+  the session threshold when possible; hard-rejects auxes below the
+  active agent profile floor.
 
 * :func:`replay_compression_warning` — re-emit a stored warning through
   the gateway ``status_callback`` once it's wired up (the callback is
@@ -1632,7 +1632,7 @@ def check_compression_model_feasibility(agent: Any) -> None:
             get_text_auxiliary_client,
         )
         from agent.model_metadata import (
-            MINIMUM_CONTEXT_LENGTH,
+            get_minimum_tool_context_length,
             get_model_context_length,
         )
 
@@ -1703,19 +1703,16 @@ def check_compression_model_feasibility(agent: Any) -> None:
             custom_providers=agent._custom_providers,
         )
 
-        # Hard floor: the auxiliary compression model must have at least
-        # MINIMUM_CONTEXT_LENGTH (64K) tokens of context.  The main model
-        # is already required to meet this floor (checked earlier in
-        # __init__), so the compression model must too — otherwise it
-        # cannot summarise a full threshold-sized window of main-model
-        # content.  Mirrors the main-model rejection pattern.
-        if aux_context and aux_context < MINIMUM_CONTEXT_LENGTH:
+        # The auxiliary model must meet the same profile floor as the main
+        # runtime so constrained profiles do not silently reintroduce 64K.
+        minimum_context_length = get_minimum_tool_context_length(agent)
+        if aux_context and aux_context < minimum_context_length:
             raise ValueError(
                 f"Auxiliary compression model {aux_model} has a context "
                 f"window of {aux_context:,} tokens, which is below the "
-                f"minimum {MINIMUM_CONTEXT_LENGTH:,} required by Hermes "
+                f"minimum {minimum_context_length:,} required by Hermes "
                 f"Agent.  Choose a compression model with at least "
-                f"{MINIMUM_CONTEXT_LENGTH // 1000}K context (set "
+                f"{minimum_context_length:,} tokens of context (set "
                 f"auxiliary.compression.model in config.yaml), or set "
                 f"auxiliary.compression.context_length to override the "
                 f"detected value if it is wrong."
@@ -1725,8 +1722,7 @@ def check_compression_model_feasibility(agent: Any) -> None:
         if aux_context < threshold:
             # Auto-correct: lower the live session threshold so
             # compression actually works this session.  The hard floor
-            # above guarantees aux_context >= MINIMUM_CONTEXT_LENGTH,
-            # so the new threshold is always >= 64K.
+            # above guarantees aux_context meets the active profile floor.
             #
             # The compression summariser sends a single user-role
             # prompt (no system prompt, no tools) to the aux model, so
@@ -1761,7 +1757,7 @@ def check_compression_model_feasibility(agent: Any) -> None:
             # trigger recomputation (#67422): _effective_threshold_percent()
             # raises sub-75% values back up for main windows under 512K, and
             # _compute_threshold_tokens() further applies the output-token
-            # reservation, the 64K floor, and the degenerate-window guard.
+            # reservation, the profile floor, and the degenerate-window guard.
             # Recommending a value those would override is silently ignored
             # and this warning would reappear every session — so mirror the
             # compressor's own math and only offer the option when the
@@ -1776,6 +1772,7 @@ def check_compression_model_feasibility(agent: Any) -> None:
                     main_ctx,
                     _CC._effective_threshold_percent(main_ctx, safe_pct / 100),
                     getattr(agent.context_compressor, "max_tokens", None),
+                    minimum_context_length,
                 )
             threshold_suggestion_viable = (
                 recomputed_threshold is None or recomputed_threshold <= aux_context

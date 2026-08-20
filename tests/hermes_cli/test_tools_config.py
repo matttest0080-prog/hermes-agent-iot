@@ -82,6 +82,23 @@ def test_partially_valid_platform_toolsets_no_runtime_warning(caplog):
 
 
 
+def test_mqtt_host_alone_does_not_enable_publish_toolset(monkeypatch):
+    monkeypatch.setenv("MQTT_HOST", "broker.example")
+
+    enabled = _get_platform_tools({}, "cli")
+
+    assert "mqtt" not in enabled
+
+
+def test_mqtt_toolset_requires_explicit_platform_selection(monkeypatch):
+    monkeypatch.setenv("MQTT_HOST", "broker.example")
+    config = {"platform_toolsets": {"cli": ["mqtt"]}}
+
+    enabled = _get_platform_tools(config, "cli", include_default_mcp_servers=False)
+
+    assert "mqtt" in enabled
+
+
 def test_get_platform_tools_homeassistant_toolset_enabled_for_cron_when_hass_token_set(monkeypatch):
     """HA toolset is runtime-gated by check_fn (requires HASS_TOKEN).
 
