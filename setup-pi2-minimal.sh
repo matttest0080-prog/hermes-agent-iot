@@ -25,7 +25,6 @@ PYTHON=${PYTHON:-python3}
 VENV_DIR="$HOME/.hermes-venv"
 PROFILE="minimal"
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-HERMES_HOME_DIR="${HERMES_HOME:-$HOME/.hermes}"
 
 usage() {
   cat <<'EOF'
@@ -89,12 +88,68 @@ case "$PY_VERSION" in
     ;;
 esac
 
-if [[ ! -d "$VENV_DIR" ]]; then
-  echo "==> [Pi2] Creating virtual environment"
-  "$PYTHON" -m venv "$VENV_DIR"
+if [[ -L "$VENV_DIR" ]]; then
+  echo "Refusing symlink virtual environment: $VENV_DIR" >&2
+  exit 1
 fi
-# shellcheck disable=SC1091
-source "$VENV_DIR/bin/activate"
+if [[ -e "$VENV_DIR" && ! -d "$VENV_DIR" ]]; then
+  echo "Refusing non-directory virtual environment path: $VENV_DIR" >&2
+  exit 1
+fi
+if [[ ! -e "$VENV_DIR" ]]; then
+  echo "==> [Pi2] Creating virtual environment"
+  (
+    umask 077
+    mkdir -m 700 -- "$VENV_DIR"
+    "$PYTHON" -m venv "$VENV_DIR"
+  )
+fi
+
+"$PYTHON" - "$VENV_DIR" <<'PY'
+import os
+import stat
+import sys
+from pathlib import Path
+
+venv = Path(sys.argv[1])
+uid = os.geteuid()
+
+def fail(message):
+    raise SystemExit(f"Unsafe virtual environment {venv}: {message}")
+
+def reject_unsafe_mode(path_stat, component):
+    if path_stat.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        fail(f"{component} must not be group/world-writable")
+
+venv_stat = os.lstat(venv)
+if stat.S_ISLNK(venv_stat.st_mode) or not stat.S_ISDIR(venv_stat.st_mode):
+    fail("path must be a real directory, not a symlink")
+if venv_stat.st_uid != uid:
+    fail(f"directory owner uid {venv_stat.st_uid} does not match current uid {uid}")
+reject_unsafe_mode(venv_stat, "venv directory")
+
+for relative, expected_type in (("pyvenv.cfg", stat.S_ISREG), ("bin", stat.S_ISDIR)):
+    path = venv / relative
+    try:
+        path_stat = os.lstat(path)
+    except FileNotFoundError:
+        fail(f"missing {relative}")
+    if stat.S_ISLNK(path_stat.st_mode) or not expected_type(path_stat.st_mode):
+        fail(f"{relative} must not be a symlink and has the wrong file type")
+    if path_stat.st_uid != uid:
+        fail(f"{relative} owner uid {path_stat.st_uid} does not match current uid {uid}")
+    reject_unsafe_mode(path_stat, relative)
+
+python_path = venv / "bin" / "python"
+if not os.path.lexists(python_path):
+    fail("missing bin/python")
+try:
+    resolved_stat = python_path.resolve(strict=True).stat()
+except (OSError, RuntimeError) as exc:
+    fail(f"invalid bin/python: {exc}")
+if not stat.S_ISREG(resolved_stat.st_mode) or not os.access(python_path, os.X_OK):
+    fail("bin/python must resolve to an executable regular file")
+PY
 
 # Use the virtualenv's bundled pip. Editable installation resolves exclusively
 # from this repository's package metadata instead of a second hand-maintained
@@ -103,38 +158,21 @@ source "$VENV_DIR/bin/activate"
 EXTRAS="$PROFILE"
 
 echo "==> [Pi2] Installing Hermes Agent through native package metadata"
-python -m pip install -e "$REPO_DIR[$EXTRAS]"
+LOCK_FILE="$REPO_DIR/requirements/pi2/$PROFILE.lock"
+if [[ ! -f "$LOCK_FILE" || -L "$LOCK_FILE" ]]; then
+  echo "Missing or unsafe profile lock: $LOCK_FILE" >&2
+  exit 1
+fi
+"$VENV_DIR/bin/python" -m pip install --require-hashes -r "$LOCK_FILE"
+"$VENV_DIR/bin/python" -m pip install --no-deps -e "$REPO_DIR[$EXTRAS]"
 
 if [[ "$PROFILE" == "rag" ]]; then
   echo "==> [Pi2] RAG profile uses built-in SQLite/FTS memory and remote-first embeddings"
   echo "    Run document parsing and vector indexing on a central server; no unpinned local packages are installed."
 fi
 
-install -d "$HERMES_HOME_DIR"
-case "$PROFILE" in
-  minimal) TEMPLATE="$REPO_DIR/templates/config.pi2-core.yaml" ;;
-  iot) TEMPLATE="$REPO_DIR/templates/config.pi2-native.yaml" ;;
-  rag) TEMPLATE="$REPO_DIR/templates/config.pi2-rag.yaml" ;;
-  full|dev) TEMPLATE="$REPO_DIR/templates/config.pi2-full.yaml" ;;
-esac
-if [[ ! -f "$TEMPLATE" ]]; then
-  TEMPLATE="$REPO_DIR/templates/config.pi2-core.yaml"
-fi
-
-if [[ ! -f "$HERMES_HOME_DIR/config.yaml" ]]; then
-  cp "$TEMPLATE" "$HERMES_HOME_DIR/config.yaml"
-  chmod 600 "$HERMES_HOME_DIR/config.yaml"
-  echo "==> [Pi2] Created $HERMES_HOME_DIR/config.yaml from $(basename "$TEMPLATE")"
-else
-  echo "==> [Pi2] Existing $HERMES_HOME_DIR/config.yaml left untouched"
-  echo "    To apply the Pi2 profile manually, compare with: $TEMPLATE"
-fi
-
-if [[ ! -f "$HERMES_HOME_DIR/.env" ]]; then
-  touch "$HERMES_HOME_DIR/.env"
-  chmod 600 "$HERMES_HOME_DIR/.env"
-  echo "==> [Pi2] Created empty $HERMES_HOME_DIR/.env"
-fi
+echo "==> [Pi2] Applying profile through the safe no-clobber Python entrypoint"
+"$VENV_DIR/bin/python" -m hermes_cli.iot_cli setup --profile "$PROFILE"
 
 if command -v hermes >/dev/null 2>&1; then
   HERMES_CMD="$(command -v hermes)"

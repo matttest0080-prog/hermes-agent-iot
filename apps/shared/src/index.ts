@@ -1,3 +1,4 @@
+export { backendScopeKey, backendScopePrefix, LOCAL_CONNECTION_ID, registryBackendScopeKey } from './backend-scope'
 export {
   BILLING_REFUSAL_POLICY,
   type BillingRecovery,
@@ -35,13 +36,20 @@ export {
   type SettlementOutcome
 } from './charge-settlement'
 export {
+  createCronTriggerController,
+  type CronTriggerController,
+  type CronTriggerRunResult
+} from './cron-trigger-controller'
+export {
   type ConnectionState,
   type GatewayClientOptions,
   type GatewayEvent,
   type GatewayEventName,
   type GatewayRequestId,
+  type JsonRpcErrorPayload,
   type JsonRpcFrame,
   JsonRpcGatewayClient,
+  JsonRpcGatewayError,
   type WebSocketLike
 } from './json-rpc-gateway'
 export { skillInvocationText } from './skill-scaffold'
@@ -54,6 +62,30 @@ export {
   type SkinColors,
   type SkinColorToken
 } from './skin'
+export {
+  clampIntensity,
+  DEFAULT_GLASS_MATERIAL,
+  DEFAULT_GLASS_SCOPE,
+  GLASS_MATERIALS,
+  GLASS_SCOPES,
+  glassActive,
+  type GlassMaterial,
+  type GlassScope,
+  glassSurfaceKeep,
+  normalizeMaterial,
+  normalizeMode,
+  normalizeScope,
+  normalizeState,
+  TRANSLUCENCY_CURVE,
+  TRANSLUCENCY_MAX,
+  TRANSLUCENCY_MIN,
+  TRANSLUCENCY_OPACITY_FLOOR,
+  TRANSLUCENCY_STEP,
+  type TranslucencyMode,
+  type TranslucencyState,
+  vibrancyFor,
+  windowOpacityFor
+} from './translucency'
 export {
   buildHermesWebSocketUrl,
   type GatewayAuthMode,

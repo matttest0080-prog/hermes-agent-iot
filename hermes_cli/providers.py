@@ -205,6 +205,12 @@ HERMES_OVERLAYS: Dict[str, HermesOverlay] = {
         extra_env_vars=("FIREWORKS_API_KEY",),
         base_url_override="https://api.fireworks.ai/inference/v1",
     ),
+    "actual": HermesOverlay(
+        transport="codex_responses",
+        extra_env_vars=("ACTUAL_API_KEY", "ACTUAL_BASE_URL"),
+        base_url_override="https://api.actual.inc/v1",
+        base_url_env_var="ACTUAL_BASE_URL",
+    ),
     "upstage": HermesOverlay(
         transport="openai_chat",
         extra_env_vars=("UPSTAGE_API_KEY",),
@@ -383,6 +389,11 @@ ALIASES: Dict[str, str] = {
     # upstage
     "solar": "upstage",
 
+    # Actual Computer
+    "actual-computer": "actual",
+    "actualcomputer": "actual",
+    "aci": "actual",
+
     # Local server aliases → virtual "local" concept (resolved via user config)
     "lmstudio": "lmstudio",
     "lm-studio": "lmstudio",
@@ -402,12 +413,13 @@ ALIASES: Dict[str, str] = {
 _LABEL_OVERRIDES: Dict[str, str] = {
     "moa": "Mixture of Agents",
     "nous": "Nous Portal",
-    "openai-codex": "OpenAI Codex",
+    "openai-codex": "ChatGPT or Codex Subscription",
     "copilot-acp": "GitHub Copilot ACP",
     "stepfun": "StepFun Step Plan",
     "xiaomi": "Xiaomi MiMo",
     "gmi": "GMI Cloud",
     "upstage": "Upstage Solar",
+    "actual": "Actual Computer",
     "tencent-tokenhub": "Tencent TokenHub",
     "lmstudio": "LM Studio",
     "local": "Local endpoint",
@@ -605,6 +617,9 @@ def host_mandated_api_mode(base_url: str = "") -> Optional[str]:
     Some hosts only accept one API mode and reject the others outright:
       - api.openai.com only accepts the Responses API for its (reasoning)
         models when tools + reasoning are in play (chat/completions 400s).
+      - api.meta.ai only achieves KV-cache hits on /v1/responses with
+        prompt_cache_retention; /v1/chat/completions returns 0 cached
+        tokens (measured 0% vs 93-99% on /responses with retention).
       - api.anthropic.com / ``…/anthropic`` suffixes speak native Messages.
       - Kimi's ``/coding`` endpoint speaks native Messages.
       - AWS Bedrock runtime hosts speak Converse.
@@ -631,6 +646,11 @@ def host_mandated_api_mode(base_url: str = "") -> Optional[str]:
     # models with tools. Shared predicate keeps this lane in lockstep with
     # catalog filtering and listing authority.
     if is_official_openai_host(base_url):
+        return "codex_responses"
+    # Meta Model API (api.meta.ai) only achieves prompt-cache hits on the
+    # Responses API with prompt_cache_retention; chat/completions stays
+    # cache-cold (0% vs 93-99% measured). Exact-hostname match per #32243.
+    if hostname == "api.meta.ai":
         return "codex_responses"
     if hostname.startswith("bedrock-runtime.") and base_url_host_matches(base_url, "amazonaws.com"):
         return "bedrock_converse"

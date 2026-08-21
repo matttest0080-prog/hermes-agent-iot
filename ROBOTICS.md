@@ -108,11 +108,12 @@ export MQTT_PORT=8883
 # Optional:
 export MQTT_USERNAME=iot-user
 export MQTT_PASSWORD=secret
+export MQTT_CLIENT_ID=robot-edge  # optional prefix; Hermes appends a unique suffix
 export MQTT_TLS=true
 hermes tools enable mqtt
 ```
 
-Hermes refuses to send configured MQTT credentials without TLS. Only isolated, trusted plaintext lab networks should use the explicit `MQTT_ALLOW_INSECURE_CREDENTIALS=true` override. Inbound payloads are bounded before UTF-8 decoding (64 KiB per message and 256 KiB total payload per subscription or command/ACK response); dropped messages are reported rather than retained in memory.
+Hermes rejects a password without a username and refuses to send configured MQTT credentials without TLS. Only isolated, trusted plaintext lab networks should use the explicit `MQTT_ALLOW_INSECURE_CREDENTIALS=true` override. `MQTT_CLIENT_ID` is treated as a prefix; a process/random suffix keeps concurrent tool clients unique. Inbound payloads are bounded before UTF-8 decoding (64 KiB per message and 256 KiB total payload per subscription or command/ACK response); dropped messages are reported rather than retained in memory.
 
 Useful tool patterns:
 

@@ -170,7 +170,9 @@ class TestFallbackChainAdvancement:
         original_client = agent.client
         original_model = agent.model
         original_provider = agent.provider
+        original_requested_provider = agent.requested_provider
         original_pool = agent._credential_pool
+        agent._credential_pool_entry_id = "primary-entry"
         original_compressor_state = dict(vars(agent.context_compressor))
         original_primary_runtime = agent._primary_runtime
         original_transport_cache = {"primary": object()}
@@ -195,8 +197,10 @@ class TestFallbackChainAdvancement:
 
         assert agent.model == original_model
         assert agent.provider == original_provider
+        assert agent.requested_provider == original_requested_provider
         assert agent.client is original_client
         assert agent._credential_pool is original_pool
+        assert agent._credential_pool_entry_id == "primary-entry"
         assert agent._primary_runtime is original_primary_runtime
         assert agent._transport_cache is original_transport_cache
         assert list(agent._transport_cache) == ["primary"]
@@ -208,6 +212,41 @@ class TestFallbackChainAdvancement:
         assert vars(agent.context_compressor) == original_compressor_state
         assert agent._fallback_activated is False
         assert agent._fallback_index == 1
+
+    def test_fallback_prevalidation_honors_entry_context_length(self):
+        fbs = [
+            {
+                "provider": "custom",
+                "model": "tiny-model",
+                "base_url": "http://pi2.local:11434/v1",
+                "context_length": 8192,
+            }
+        ]
+        agent = _make_agent(fallback_model=fbs)
+        agent._minimum_tool_context_length = 2048
+
+        def resolve_context(model, **kwargs):
+            assert model == "tiny-model"
+            assert kwargs["config_context_length"] == 8192
+            return kwargs["config_context_length"]
+
+        with (
+            patch(
+                "agent.auxiliary_client.resolve_provider_client",
+                return_value=(
+                    _mock_client("http://pi2.local:11434/v1"),
+                    "tiny-model",
+                ),
+            ),
+            patch(
+                "agent.model_metadata.get_model_context_length",
+                side_effect=resolve_context,
+            ),
+        ):
+            assert agent._try_activate_fallback() is True
+
+        assert agent._config_context_length == 8192
+        assert agent.context_compressor.context_length == 8192
 
     def test_resolves_key_env_for_fallback_provider(self):
         fbs = [

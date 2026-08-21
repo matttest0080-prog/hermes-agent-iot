@@ -23,6 +23,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
 import os
+import secrets
 import threading
 import time
 from typing import Any, Callable
@@ -46,7 +47,7 @@ def _mqtt_client_factory():
         # the handler reports the concrete ModuleNotFoundError to the caller.
         pass
 
-    import paho.mqtt.client as mqtt
+    import paho.mqtt.client as mqtt  # type: ignore[unresolved-import]
 
     return mqtt.Client
 
@@ -149,7 +150,8 @@ def _bounded_float(value: Any, *, default: float, minimum: float, maximum: float
 
 def _make_client(config: MQTTConfig):
     client_cls = _mqtt_client_factory()
-    client_id = config.client_id or f"hermes-iot-{os.getpid()}-{int(time.time() * 1000)}"
+    prefix = config.client_id or "hermes-iot"
+    client_id = f"{prefix}-{os.getpid()}-{secrets.token_hex(8)}"
     client = client_cls(client_id=client_id)
     if config.username:
         client.username_pw_set(config.username, config.password or None)
@@ -161,6 +163,8 @@ def _make_client(config: MQTTConfig):
 def _connect_client(config: MQTTConfig):
     if not config.host:
         raise ValueError("MQTT_HOST is required")
+    if config.password and not config.username:
+        raise ValueError("MQTT_PASSWORD requires MQTT_USERNAME")
     if (config.username or config.password) and not config.tls and not config.allow_insecure_credentials:
         raise ValueError(
             "MQTT credentials require MQTT_TLS=true; set "

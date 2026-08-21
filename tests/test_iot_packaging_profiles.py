@@ -18,16 +18,21 @@ def metadata():
 def test_distribution_version_scripts_and_aggregate_extras():
     project = metadata()["project"]
     assert project["name"] == "hermes-agent-iot"
-    assert project["version"] == "0.20.0.post2"
+    assert project["version"] == "0.20.4"
     assert project["scripts"]["hermes-iot"] == "hermes_cli.iot_cli:main"
     assert {"hermes", "hermes-agent", "hermes-acp"} <= project["scripts"].keys()
     extras = project["optional-dependencies"]
-    assert extras["minimal"] == ["hermes-agent-iot[cli,pty]==0.20.0.post2"]
-    assert extras["iot"] == ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.20.0.post2"]
-    assert extras["rag"] == ["hermes-agent-iot[iot,honcho]==0.20.0.post2"]
-    assert extras["full"] == ["hermes-agent-iot[all]==0.20.0.post2"]
-    assert "hermes-agent-iot[full]==0.20.0.post2" in extras["dev"]
+    assert extras["minimal"] == ["hermes-agent-iot[cli,pty]==0.20.4"]
+    assert extras["iot"] == ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.20.4"]
+    assert extras["rag"] == ["hermes-agent-iot[iot,honcho]==0.20.4"]
+    assert extras["full"] == ["hermes-agent-iot[all]==0.20.4"]
+    assert "hermes-agent-iot[full]==0.20.4" in extras["dev"]
     assert "pytest==9.1.1" in extras["dev"]
+    # Vercel 0.7.2 requires cbor2>=6, which is incompatible with the patched
+    # pure-Python cbor2 5.9.0 path retained for ARMv7/Pi2 Modal installs.
+    assert "vercel" not in extras
+    from tools.lazy_deps import LAZY_DEPS
+    assert "terminal.vercel" not in LAZY_DEPS
     all_specs = [s for values in extras.values() for s in values]
     assert not any("hermes-agent[" in spec for spec in all_specs)
 
@@ -92,7 +97,7 @@ def test_setup_atomically_creates_private_config_and_secret_free_manifest(tmp_pa
     data = json.loads(manifest.read_text())
     assert data == {
         "distribution": "hermes-agent-iot",
-        "version": "0.20.0.post2",
+        "version": "0.20.4",
         "profile": "iot",
         "template": "config.pi2-native.yaml",
         "environment": str(sys.prefix),
@@ -164,7 +169,7 @@ def test_record_write_failure_keeps_private_config_without_record(tmp_path, monk
     assert not (home / "install-profile.json").exists()
 
 
-def test_existing_record_is_never_overwritten_and_new_config_is_preserved(
+def test_existing_record_is_never_overwritten_and_config_is_not_created(
     tmp_path, monkeypatch
 ):
     from hermes_cli import iot_cli
@@ -179,7 +184,7 @@ def test_existing_record_is_never_overwritten_and_new_config_is_preserved(
     with pytest.raises(FileExistsError, match="left untouched"):
         iot_cli.setup_profile("minimal")
     assert record.read_text(encoding="utf-8") == '{"profile":"legacy"}\n'
-    assert (home / "config.yaml").exists()
+    assert not (home / "config.yaml").exists()
 
 
 def test_atomic_create_never_replaces_existing_entry(tmp_path):
@@ -223,7 +228,67 @@ def test_existing_record_symlink_is_never_followed_or_replaced(tmp_path, monkeyp
 
     assert record.is_symlink()
     assert outside.read_text(encoding="utf-8") == '{"profile":"external"}\n'
-    assert (home / "config.yaml").exists()
+    assert not (home / "config.yaml").exists()
+
+
+@pytest.mark.skipif(os.name == "nt", reason="symlink semantics require POSIX")
+def test_setup_never_follows_dangling_config_or_env_symlinks(
+    tmp_path, monkeypatch, capsys
+):
+    from hermes_cli import iot_cli
+
+    home = tmp_path / "home"
+    home.mkdir()
+    outside_config = tmp_path / "outside-config.yaml"
+    outside_env = tmp_path / "outside.env"
+    (home / "config.yaml").symlink_to(outside_config)
+    (home / ".env").symlink_to(outside_env)
+    monkeypatch.setenv("HERMES_HOME", str(home))
+    monkeypatch.setattr(iot_cli, "_is_virtualenv", lambda: True)
+    monkeypatch.setattr(iot_cli, "_missing_requirements", lambda profile: [])
+
+    assert iot_cli.setup_profile("minimal") == 0
+    output = capsys.readouterr().out
+
+    assert (home / "config.yaml").is_symlink()
+    assert (home / ".env").is_symlink()
+    assert not outside_config.exists()
+    assert not outside_env.exists()
+    assert not (home / "install-profile.json").exists()
+    assert f"Existing {home / '.env'} left untouched" in output
+
+
+@pytest.mark.skipif(os.name == "nt", reason="installer is a POSIX shell script")
+def test_pi_installer_rejects_symlinked_venv_without_sourcing_activate(tmp_path):
+    target = tmp_path / "attacker-venv"
+    (target / "bin").mkdir(parents=True)
+    marker = tmp_path / "activate-was-sourced"
+    (target / "bin" / "activate").write_text(
+        f"touch {marker}\nexit 77\n", encoding="utf-8"
+    )
+    (target / "pyvenv.cfg").write_text("home = /attacker\n", encoding="utf-8")
+    venv = tmp_path / "venv"
+    venv.symlink_to(target, target_is_directory=True)
+
+    result = subprocess.run(
+        [
+            "bash",
+            str(ROOT / "setup-pi2-minimal.sh"),
+            "--profile",
+            "minimal",
+            "--venv",
+            str(venv),
+        ],
+        cwd=ROOT,
+        env={**os.environ, "PYTHON": sys.executable, "HERMES_HOME": str(tmp_path / "home")},
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode != 0
+    assert "symlink" in result.stderr.lower()
+    assert not marker.exists()
 
 
 def test_atomic_create_reports_directory_fsync_failure_without_clobber(tmp_path, monkeypatch):
@@ -296,7 +361,7 @@ def test_profile_show_reports_install_record(tmp_path):
     assert _run_cli(tmp_path, "setup", "--profile", "dev").returncode == 0
     result = _run_cli(tmp_path, "profile", "show")
     assert result.returncode == 0
-    for value in ("hermes-agent-iot", "0.20.0.post2", "dev", "config.pi2-full.yaml", str(sys.prefix)):
+    for value in ("hermes-agent-iot", "0.20.4", "dev", "config.pi2-full.yaml", str(sys.prefix)):
         assert value in result.stdout
 
 

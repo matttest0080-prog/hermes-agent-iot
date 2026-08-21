@@ -17,6 +17,14 @@ def _load_package_data():
     return tool["setuptools"]["package-data"]
 
 
+def test_h2_request_smuggling_floor_is_enforced():
+    """Keep grpclib transitives above GHSA-6hr6-w5qg-qmwg's fixed floor."""
+    pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    with pyproject_path.open("rb") as handle:
+        overrides = tomllib.load(handle)["tool"]["uv"]["override-dependencies"]
+    assert "h2>=4.4.1" in overrides
+
+
 def test_matrix_extra_not_in_all():
     """The [matrix] extra pulls `mautrix[encryption]` -> `python-olm`,
     which has Linux-only wheels and no native build path on Windows or

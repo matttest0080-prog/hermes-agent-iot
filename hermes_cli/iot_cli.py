@@ -125,6 +125,15 @@ def _home() -> Path:
     return Path(os.environ.get("HERMES_HOME", "").strip() or Path.home() / ".hermes")
 
 
+def _ensure_private_env(home: Path) -> None:
+    """Create an empty profile env file without following or replacing entries."""
+    env_path = home / ".env"
+    if _atomic_private_create(env_path, "") is None:
+        print(f"Existing {env_path} left untouched")
+    else:
+        print(f"Created empty {env_path}")
+
+
 def setup_profile(profile: str) -> int:
     if not _is_virtualenv():
         print(
@@ -149,12 +158,18 @@ def setup_profile(profile: str) -> int:
     template = profile_template(profile)
     config = home / "config.yaml"
     record_path = home / "install-profile.json"
-    if os.path.lexists(config):
+    config_exists = os.path.lexists(config)
+    if os.path.lexists(record_path) and not config_exists:
+        raise FileExistsError(
+            f"Existing install-profile record left untouched: {record_path}"
+        )
+    if config_exists:
         print(f"Existing {config} left untouched")
         print(f"Compare it with packaged template: {template}")
         print("Install-profile record left untouched because the active config was not created by this command")
         if config.is_file() and not config.is_symlink() and (config.stat().st_mode & 0o077):
             print(f"Warning: {config} permissions are broader than 0600", file=sys.stderr)
+        _ensure_private_env(home)
         return 0
 
     config_content = template.read_text(encoding="utf-8")
@@ -185,6 +200,7 @@ def setup_profile(profile: str) -> int:
         # the private no-clobber config rather than risk deleting a path that
         # another process replaced between an identity check and unlink.
         raise
+    _ensure_private_env(home)
     return 0
 
 

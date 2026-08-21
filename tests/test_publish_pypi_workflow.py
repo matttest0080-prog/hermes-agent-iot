@@ -43,11 +43,26 @@ def test_build_job_uses_a_real_release_virtualenv_for_all_python_commands():
 
     assert found == guarded_steps
 
+    install_run = next(
+        step["run"] for step in steps
+        if step.get("name") == "Install release test and build dependencies"
+    )
+    assert "uv==0.11.13" in install_run
+    assert "uv sync --frozen --extra dev --extra rag" in install_run
+    assert "pip install --disable-pip-version-check\n-e" not in install_run
+
     release_test_run = next(
         step["run"] for step in steps
         if step.get("name") == "Run release-focused tests"
     )
     assert "tests/test_publish_pypi_workflow.py" in release_test_run
+
+
+def test_publish_jobs_are_gated_to_the_canonical_iot_repository():
+    jobs = workflow_jobs()
+    expected = "github.repository == 'matttest0080-prog/hermes-agent-iot'"
+    assert str(jobs["build"]["if"]) == expected
+    assert str(jobs["publish"]["if"]) == expected
 
 
 def test_publish_job_only_downloads_and_publishes_the_tested_artifact():

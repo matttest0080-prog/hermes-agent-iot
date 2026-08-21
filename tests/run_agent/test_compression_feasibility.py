@@ -135,6 +135,22 @@ def test_rejects_aux_below_minimum_context(mock_get_client, mock_ctx_len):
     assert "below the minimum" in err
 
 
+@patch("agent.model_metadata.get_model_context_length", return_value=32_768)
+@patch("agent.auxiliary_client.get_text_auxiliary_client")
+def test_aux_context_uses_configured_agent_profile_floor(mock_get_client, mock_ctx_len):
+    agent = _make_agent(main_context=40_000, threshold_percent=0.75)
+    agent._minimum_tool_context_length = 2_048
+    mock_client = MagicMock()
+    mock_client.base_url = "http://pi2.local:11434/v1"
+    mock_client.api_key = ""
+    mock_get_client.return_value = (mock_client, "tiny-aux-model")
+    agent._emit_status = lambda msg: None
+
+    agent._check_compression_model_feasibility()
+
+    assert agent.context_compressor.threshold_tokens == 30_000
+
+
 
 
 def test_feasibility_check_passes_live_main_runtime():
