@@ -209,6 +209,7 @@ export MQTT_HOST=192.168.1.10
 export MQTT_PORT=1883
 export MQTT_USERNAME=iot-user
 export MQTT_PASSWORD='replace-me'
+export MQTT_CLIENT_ID=pi2-edge  # 選填 prefix；Hermes 會附加唯一 suffix
 export MQTT_TLS=true
 ```
 
@@ -228,6 +229,8 @@ export MQTT_TLS=true
 - 緊急停止與硬安全不得依賴 MQTT／LLM
 - 避免將 MQTT toolset 啟用於不需要裝置控制的公開 Gateway Session
 - 設定帳號或密碼時，未啟用 TLS 會 fail closed；只有隔離且可信任的明文實驗網路才應明確設定 `MQTT_ALLOW_INSECURE_CREDENTIALS=true`
+- 單獨設定 `MQTT_PASSWORD` 而未設定 `MQTT_USERNAME` 會 fail closed
+- `MQTT_CLIENT_ID` 是 prefix，不是固定 ID；Hermes 會附加 process/random suffix，避免並行 tool call 互相踢線
 - 入站 payload 會在 UTF-8 解碼前限制為單條 64 KiB，且每次訂閱或 command/ACK 回應累計最多 256 KiB；超限訊息會丟棄並在回應中報告
 
 `mqtt_device_command` 會先完成 state/ACK 訂閱，再發布命令，以避免立即 ACK 在訂閱建立前遺失。

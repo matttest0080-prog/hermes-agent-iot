@@ -145,7 +145,10 @@ git merge --ff-only origin/pi2-lite
 bash setup-pi2-minimal.sh --profile minimal
 ```
 
-Replace `minimal` with the profile originally installed. Do not use a bare `hermes update` for this fork because its default target can be upstream `main` rather than `pi2-lite`.
+Replace `minimal` with the profile originally installed. In IoT release 0.20.4
+and later, a bare `hermes update` detects the `hermes-agent-iot` distribution
+and defaults to `pi2-lite`; an explicit `--branch pi2-lite` remains useful in
+automation for auditability. Rerun the profile installer after a source update.
 
 ## Roadmap
 

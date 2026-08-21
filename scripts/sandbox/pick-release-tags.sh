@@ -65,12 +65,14 @@ if [ -z "$REPO" ]; then
   REPO="$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$script_dir")"
 fi
 
-# sort -V orders v2026.4.8 before v2026.4.13 (numeric), which a plain
-# lexicographic sort gets wrong.
+# Release families use incompatible version scales (v11.2-pi2, iot-v0.20.4,
+# v2026.8.18), so version sorting cannot identify the release created most
+# recently. Git's creatordate uses an annotated tag's tagger date and falls
+# back to the commit date for lightweight tags, preserving one chronological
+# oldest-to-newest sequence across all supported families.
 mapfile -t tags < <(
-  git -C "$REPO" tag --merged HEAD --list 'v*' 'iot-v*' \
+  git -C "$REPO" tag --merged HEAD --sort=creatordate --list 'v*' 'iot-v*' \
     | grep -E '^(v[0-9]{4}\.[0-9]+\.[0-9]+(\.[0-9]+)?|v[0-9]+(\.[0-9]+)+-pi2|iot-v[0-9]+\.[0-9]+\.[0-9]+(\.post[0-9]+)?)$' \
-    | sort -V
 )
 
 total="${#tags[@]}"

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -17,12 +18,20 @@ def test_release_picker_checkout_fetches_full_history() -> None:
     assert "fetch-depth: 0" in picker_job
 
 
-def _git(repo: Path, *args: str) -> str:
+def test_release_workflow_triggers_for_iot_and_pi2_tags() -> None:
+    workflow = WORKFLOW.read_text()
+    assert "- 'iot-v*'" in workflow
+    assert "- 'v[0-9]+.[0-9]+-pi2'" in workflow
+    assert "- 'v[0-9]+.[0-9]+.[0-9]+-pi2'" in workflow
+
+
+def _git(repo: Path, *args: str, env: dict[str, str] | None = None) -> str:
     result = subprocess.run(
         ["git", "-C", str(repo), *args],
         check=True,
         capture_output=True,
         text=True,
+        env={**os.environ, **(env or {})},
     )
     return result.stdout.strip()
 
@@ -73,3 +82,32 @@ def test_picker_accepts_reachable_iot_and_pi2_release_tags(tmp_path: Path) -> No
         "v1.2.3-pi2",
         "v2026.8.3",
     ]
+
+
+def test_picker_treats_latest_created_cross_family_tag_as_newest(tmp_path: Path) -> None:
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "--initial-branch=pi2-lite")
+    _git(repo, "config", "user.name", "Release Test")
+    _git(repo, "config", "user.email", "release-test@example.invalid")
+    (repo / "marker").write_text("release\n")
+    _git(repo, "add", "marker")
+    _git(repo, "commit", "-m", "release history")
+    _git(
+        repo,
+        "tag", "-a", "v2026.8.18", "-m", "older calendar release",
+        env={"GIT_COMMITTER_DATE": "2026-08-18T00:00:00+00:00"},
+    )
+    _git(
+        repo,
+        "tag", "-a", "v11.2-pi2", "-m", "newer Pi2 release",
+        env={"GIT_COMMITTER_DATE": "2026-08-20T00:00:00+00:00"},
+    )
+
+    result = subprocess.run(
+        [str(SCRIPT), "--count", "1", "--repo", str(repo)],
+        check=True,
+        capture_output=True,
+        text=True,
+    )
+    assert json.loads(result.stdout) == ["v11.2-pi2"]

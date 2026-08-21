@@ -197,7 +197,10 @@ class MQTTToolTests(unittest.TestCase):
                     "payload": "ON",
                 }))
                 self.assertIn("error", result)
-                self.assertIn("MQTT_TLS", result["error"])
+                expected_setting = (
+                    "MQTT_USERNAME" if credential_key == "MQTT_PASSWORD" else "MQTT_TLS"
+                )
+                self.assertIn(expected_setting, result["error"])
                 self.assertEqual(factory_calls, [])
                 self.assertEqual(FakeClient.connected, [])
                 os.environ.pop(credential_key)
@@ -220,6 +223,40 @@ class MQTTToolTests(unittest.TestCase):
 
         self.assertTrue(result["result"]["success"])
         self.assertEqual(FakeClient.connected, [("broker.local", 1883, 60)])
+
+    def test_password_without_username_fails_before_client_creation(self) -> None:
+        from tools import mqtt_tool
+
+        os.environ.update({
+            "MQTT_HOST": "broker.local",
+            "MQTT_PASSWORD": "secret",
+            "MQTT_TLS": "true",
+        })
+        factory_calls = []
+        mqtt_tool._mqtt_client_factory = lambda: factory_calls.append(True) or FakeClient
+
+        result = json.loads(mqtt_tool._handle_mqtt_publish({
+            "topic": "devices/lamp/cmd",
+            "payload": "ON",
+        }))
+
+        self.assertIn("error", result)
+        self.assertIn("MQTT_USERNAME", result["error"])
+        self.assertEqual(factory_calls, [])
+        self.assertEqual(FakeClient.connected, [])
+
+    def test_configured_client_id_is_a_unique_prefix(self) -> None:
+        from tools import mqtt_tool
+
+        mqtt_tool._mqtt_client_factory = lambda: FakeClient
+        config = mqtt_tool.MQTTConfig(host="broker.local", client_id="edge-node")
+
+        first = mqtt_tool._make_client(config)
+        second = mqtt_tool._make_client(config)
+
+        self.assertRegex(first.client_id, r"^edge-node-[A-Za-z0-9-]+$")
+        self.assertRegex(second.client_id, r"^edge-node-[A-Za-z0-9-]+$")
+        self.assertNotEqual(first.client_id, second.client_id)
 
     def test_subscribe_recent_collects_messages_without_requiring_broker_history(self) -> None:
         from tools import mqtt_tool

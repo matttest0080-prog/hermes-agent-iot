@@ -136,6 +136,23 @@ def check_setup_pi2_minimal(repo: Path, failures: FailureCollector) -> None:
         return
 
     text = setup.read_text(encoding="utf-8")
+    if re.search(r"(?m)^\s*(?:source|\.)\s+.*bin/activate", text):
+        failures.add(
+            "setup-pi2-minimal.sh must not source an untrusted virtualenv activate script"
+        )
+
+    required_security_markers = {
+        "os.lstat(venv)": "lstat validation for the existing virtualenv",
+        "os.path.lexists(python_path)": "lexists validation for virtualenv bin/python",
+        "stat.S_IWGRP | stat.S_IWOTH": "rejection of group/world-writable virtualenv components",
+        'pip install --require-hashes -r "$LOCK_FILE"': "hashed dependency install exported from uv.lock",
+        'pip install --no-deps -e': "metadata-driven project install without dependency re-resolution",
+        'hermes_cli.iot_cli setup --profile "$PROFILE"': "safe no-clobber Python entrypoint for config and .env",
+    }
+    for marker, purpose in required_security_markers.items():
+        if marker not in text:
+            failures.add(f"setup-pi2-minimal.sh is missing {purpose}")
+
     if "sqlite-vec" in text:
         required_markers = ("HERMES_PI2_TRY_SQLITE_VEC", "armv7l", "armv6l")
         missing = [marker for marker in required_markers if marker not in text]

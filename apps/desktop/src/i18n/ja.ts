@@ -68,6 +68,7 @@ export const ja = defineLocale({
       connectingGateway: 'ライブデスクトップゲートウェイに接続中',
       loadingSettings: 'Hermes の設定を読み込み中',
       loadingSessions: '最近のセッションを読み込み中',
+      retryingRemoteBackend: 'リモート Hermes バックエンドに再接続中…',
       startingDesktopConnection: 'デスクトップ接続を開始中',
       startingHermesDesktop: 'Hermes Desktop を起動中…'
     },
@@ -129,7 +130,16 @@ export const ja = defineLocale({
     updateHermes: 'Hermes を更新',
     updateReadyTitle: '更新の準備ができました',
     updateReadyMessage: count => `${count} 件の新しい変更が利用可能です。`,
+    updateReadyMessageUnknown: '新しい更新が利用可能です。',
     seeWhatsNew: '新機能を見る',
+    mcp: {
+      needsAuthTitle: 'MCP サーバーの再認証が必要です',
+      needsAuthMessage: name => `${name} MCP の再認証が必要です。`,
+      errorTitle: 'MCP サーバーに接続できません',
+      errorMessage: name => `${name} MCP のヘルスチェックに失敗しました。`,
+      signIn: 'サインイン',
+      view: '表示'
+    },
     errors: {
       elevenLabsNeedsKey: 'ElevenLabs STT には ELEVENLABS_API_KEY が必要です。',
       elevenLabsRejectedKey: 'ElevenLabs が API キーを拒否しました (401)。',
@@ -316,9 +326,16 @@ export const ja = defineLocale({
       colorModeDesc: '固定モードを選ぶか、Hermes をシステム設定に合わせます。',
       toolViewTitle: 'ツール呼び出しの表示',
       toolViewDesc: 'プロダクト表示は生のツールペイロードを隠し、テクニカル表示は入出力をすべて表示します。',
+      reasoningCollapsedTitle: '思考ブロックをデフォルトで折りたたむ',
+      reasoningCollapsedDesc: 'ストリーミング中の推論を、開くまで折りたたんだまま利用できるようにします。',
       uiScaleTitle: 'UI スケール',
       uiScaleDesc: (percent: number) =>
         `アプリ全体の文字と UI を拡大縮小します。Cmd/Ctrl と +、-、0 でも変更できます。現在: ${percent}%`,
+      sessionDensityTitle: 'セッションリストの密度',
+      sessionDensityDesc: 'サイドバーのセッションタイトルの下に表示する情報量を選びます。',
+      sessionDensityCompact: 'コンパクト',
+      sessionDensityComfortable: '標準',
+      sessionDensityDetailed: '詳細',
       terminalFontTitle: 'ターミナルフォント',
       terminalFontDesc:
         'Desktop のターミナルで使用するインストール済みフォントを選びます。Nerd Font は Powerlevel10k とシェルアイコンを表示できます。空欄では内蔵の JetBrains Mono を使用します。',
@@ -327,11 +344,28 @@ export const ja = defineLocale({
       terminalFontReset: '既定値を使用',
       translucencyTitle: 'ウィンドウの透過',
       translucencyDesc: 'ウィンドウ全体を透過させてデスクトップを表示します。macOS と Windows のみ。',
+      translucencyGlassDesc: 'マットガラス: デスクトップが滑らかなぼかしとして透け、テキストは鮮明なまま。macOS のみ。',
+      translucencyModeClear: 'クリア',
+      translucencyModeGlass: 'ガラス',
+      translucencyFrostTitle: 'くもりの質感',
+      translucencyFrost: {
+        'under-window': '深い',
+        popover: 'やわらか',
+        titlebar: '明るい',
+        header: 'まぶしい'
+      },
+      translucencyScopeTitle: '適用範囲',
+      translucencyScope: {
+        window: 'ウィンドウ全体',
+        sidebar: 'サイドバーのみ'
+      },
       backdropTitle: 'チャット背景',
       backdropDesc: '会話の背後に表示される淡い彫像の画像。',
       reactionsTitle: 'メッセージリアクション',
       reactionsDesc:
         'iMessage風の絵文字タップバック — メッセージにリアクションでき、Hermesもあなたのメッセージにリアクションします。',
+      composerPopoutTitle: 'フローティング入力欄',
+      composerPopoutDesc: '入力欄をドックからドラッグして外せるようにします。オフにすると画面下部に固定されます。',
       embedsTitle: 'インライン埋め込み',
       embedsDesc:
         'リッチプレビューは第三者サイト（YouTube、X など）から読み込まれます。確認は許可するまでプレースホルダーを表示し、常には自動で読み込み、オフはリンクのままにします。',
@@ -625,6 +659,10 @@ export const ja = defineLocale({
       heading: 'Hermes Desktop',
       version: value => `バージョン ${value}`,
       versionUnavailable: 'バージョンを取得できません',
+      bundleOutOfSync: 'アプリのビルドが古くなっています',
+      bundleOutOfSyncDesc:
+        'Hermes ランタイムは更新されましたが、デスクトップアプリ自体は古いビルドのままです。アプリを更新するまで、新しいインターフェース機能(Bot Mode など)は表示されません。下の更新を実行してアプリを再ビルドしてください。それでもこの警告が消えない場合は、最新のデスクトップインストーラーから再インストールしてください。',
+      bundleOutOfSyncAction: 'インストーラーを入手',
       updates: '更新',
       checkNow: '今すぐ確認',
       checking: '確認中…',
@@ -637,6 +675,7 @@ export const ja = defineLocale({
       cantReach: '更新サーバーに接続できませんでした。',
       tapCheck: '更新を探すには「今すぐ確認」を押してください。',
       updateReady: count => `新しい更新の準備ができました (${count} 件の変更を含みます)。`,
+      updateReadyUnknown: '新しい更新の準備ができました。',
       lastChecked: age => `前回確認: ${age}`,
       justNowSuffix: ' · たった今',
       automaticUpdates: '自動更新',
@@ -705,20 +744,13 @@ export const ja = defineLocale({
       title: 'ゲートウェイ接続',
       envOverride: 'env オーバーライド',
       intro:
-        'Hermes Desktop はデフォルトで独自のローカルゲートウェイを起動します。別のマシンや信頼できるプロキシの背後で既に動作している Hermes バックエンドをこのアプリで制御する場合は、リモートゲートウェイを使用してください。以下でプロファイルを選択して、それぞれのリモートホストを設定します。',
-      appliesTo: '適用対象',
-      allProfiles: 'すべてのプロファイル',
-      defaultConnection: '独自のオーバーライドがないすべてのプロファイルのデフォルト接続。',
-      profileConnection: profile =>
-        `"${profile}" がアクティブプロファイルのときのみ使用される接続。「デフォルトゲートウェイを使用」を選ぶとオーバーライドが削除されます。`,
+        'Hermes Desktop はデフォルトで独自のローカルゲートウェイを起動します。別のマシンや信頼できるプロキシの背後で既に動作している Hermes バックエンドをこのアプリで制御する場合は、リモートゲートウェイを使用してください。ゲートウェイ接続はマシン単位の設定で、プロファイルは接続したゲートウェイから検出されます。',
       envOverrideTitle: '環境変数がこのデスクトップセッションを制御しています。',
       envOverrideDesc:
         '保存された設定を使用するには HERMES_DESKTOP_REMOTE_URL と HERMES_DESKTOP_REMOTE_TOKEN の設定を解除してください。',
       localTitle: 'ローカルゲートウェイ',
       localDesc:
         'ローカルホストでプライベートな Hermes バックエンドを起動します。これがデフォルトで、オフラインでも動作します。',
-      inheritTitle: 'デフォルトゲートウェイを使用',
-      inheritDesc: 'このプロファイルのオーバーライドを削除し、デフォルト接続を使用します。',
       remoteTitle: 'リモートゲートウェイ',
       remoteDesc:
         'このデスクトップシェルをリモートの Hermes バックエンドに接続します。ホスト型ゲートウェイは OAuth またはユーザー名とパスワードを使用します。自己ホスト型はセッショントークンを使用する場合があります。',
@@ -746,6 +778,13 @@ export const ja = defineLocale({
       existingToken: value => `既存のトークン ${value}`,
       savedToken: '保存済み',
       pasteSessionToken: 'セッショントークンを貼り付け',
+      plainTextConfirmTitle: 'ゲートウェイトークンを平文で保存しますか？',
+      plainTextConfirmDesc:
+        'このマシンで OS のキーリングサービスが見つからなかったため、トークンはアプリの接続設定ファイルに暗号化されずに保存され、このユーザーとして実行される任意のプロセスから読み取れる状態になります。暗号化して保存するには、GNOME Keyring または KWallet をインストールまたは有効化してください。',
+      plainTextConfirmAction: '平文で保存',
+      plainTextStoredTitle: 'トークンは平文で保存されています',
+      plainTextStoredDesc:
+        'セキュアストレージが利用できないため、保存済みのトークンはこのマシンのアプリの接続設定ファイルに暗号化されずに保存されています。暗号化するには GNOME Keyring または KWallet をインストールまたは有効化してください。',
       testRemote: 'リモートをテスト',
       saveForRestart: '次回起動時のために保存',
       saveAndReconnect: '保存して再接続',
@@ -792,8 +831,6 @@ export const ja = defineLocale({
       sshHermesPathTitle: 'Hermes パス（任意）',
       sshHermesPathDesc: 'リモートの hermes バイナリへのフルパス。空欄 = 自動検出。',
       sshHermesPathPlaceholder: '自動検出',
-      sshRemoteProfileTitle: 'リモートプロファイル（任意）',
-      sshRemoteProfileDesc: 'リモートホスト上のプロファイル名。空欄 = Desktop のプロファイル名を使用。',
       sshTestConnection: 'SSH をテスト',
       sshConnect: '接続',
       sshButtonsHint: '「保存」は次回起動時に適用され、「接続」は今すぐ再接続します。',
@@ -816,6 +853,10 @@ export const ja = defineLocale({
       loading: 'API キーと認証情報を読み込み中...',
       failedLoad: 'API キーの読み込みに失敗しました',
       empty: 'このカテゴリーにはまだ設定がありません。'
+    },
+    profileScope: {
+      appliesTo: '適用対象',
+      editsProfile: profile => `このページの変更は「${profile}」プロファイルに適用されます。`
     },
     mcp: {
       loading: 'MCP サーバーを読み込み中...',
@@ -846,6 +887,9 @@ export const ja = defineLocale({
       saveServer: 'サーバーを保存',
       capabilitySummary: (tools, prompts, resources) =>
         `${[`ツール ${tools} 個`, ...(prompts ? [`プロンプト ${prompts} 個`] : []), ...(resources ? [`リソース ${resources} 個`] : [])].join('、')} を有効化`,
+      costTokens: tokens => `1 呼び出しあたり約 ${tokens} トークン`,
+      usage30d: uses => `過去 30 日で ${uses} 回使用`,
+      unusedPill: '未使用',
       statusConnecting: '接続中…',
       statusNeedsAuth: '認証が必要です',
       statusError: 'エラー',
@@ -858,7 +902,28 @@ export const ja = defineLocale({
       unsavedConnect: '未保存 — 接続するには mcp.json を保存してください。',
       enableTool: tool => `${tool} を有効化`,
       disableTool: tool => `${tool} を無効化`,
-      noOutput: 'まだ出力がありません。'
+      noOutput: 'まだ出力がありません。',
+      deepLinkTitle: 'MCP サーバーを追加しますか？',
+      deepLinkDescription:
+        'リンクがこの MCP サーバーを Hermes に追加するよう要求しました。下の設定はリンク側から来たものです。内容を必ず確認してください。',
+      deepLinkStdioWarning:
+        'このサーバーは下記のコマンドでローカルプロセスを実行します。提供元を信頼できる場合のみ続行してください。',
+      deepLinkConfirm: 'サーバーを追加',
+      deepLinkNameInvalid: '名前は 1〜64 文字の英数字、ドット、ハイフン、アンダースコアです。',
+      deepLinkNameConflict: name =>
+        `${name} という名前のサーバーは既に存在します。別の名前にするかキャンセルしてください。`,
+      deepLinkErrorTitle: 'MCP インストールリンクを拒否しました',
+      deepLinkErrorName: 'リンクのサーバー名が欠落しているか無効です。',
+      deepLinkErrorConfig: 'リンクの設定が有効な base64 エンコード JSON ではありません。',
+      deepLinkErrorShape:
+        '設定は文字列の `url` または `command` フィールドを持つ JSON オブジェクトである必要があります。',
+      deepLinkErrorUrl: 'サーバー URL は http:// と https:// のみ許可されます。',
+      deepLinkErrorTooLarge: '設定ペイロードが 32KB の上限を超えています。',
+      importButton: 'インポート',
+      importPlaceholder: 'mcp.json スニペット、npx/docker コマンド、claude mcp add 行、URL、Cursor リンクを貼り付け…',
+      importNoMatch: '貼り付けたテキストからサーバー設定を認識できませんでした。',
+      importConfirm: 'mcp.json に追加',
+      importConfirmMany: count => `${count} 件のサーバーを mcp.json に追加`
     },
     model: {
       loading: 'モデル設定を読み込み中...',
@@ -1482,6 +1547,13 @@ export const ja = defineLocale({
     close: 'Cron を閉じる',
     title: 'スケジュール済みジョブ',
     count: count => `${count} 件のジョブ`,
+    modelImpact: {
+      title: 'スケジュール済みジョブの確認が必要です',
+      message: count => `モデル設定を確認するまで、${count} 件のスケジュール済みジョブがスキップされます。`,
+      detailMore: (names, remaining) => `${names}、ほか ${remaining} 件`,
+      review: 'スケジュール済みジョブを確認',
+      saveFailed: 'Hermes はモデルの変更を保存しませんでした。'
+    },
     search: 'Cron ジョブを検索...',
     loading: 'Cron ジョブを読み込み中...',
     states: {
@@ -1675,7 +1747,8 @@ export const ja = defineLocale({
       'new-session': '新しいセッション',
       skills: 'スキルとツール',
       messaging: 'メッセージング',
-      artifacts: 'アーティファクト'
+      artifacts: 'アーティファクト',
+      cron: 'スケジュール済みジョブ'
     },
     searchAria: 'セッションを検索',
     searchPlaceholder: 'セッションを検索…',
@@ -1696,6 +1769,7 @@ export const ja = defineLocale({
     noWorkspace: 'ワークスペースなし',
     projectEmpty: 'セッションはまだありません',
     noSessions: 'セッションはまだありません',
+    noFilterMatches: 'このフィルターに一致するセッションはありません',
     projects: {
       sectionLabel: 'プロジェクト',
       home: 'ホーム',
@@ -1739,6 +1813,11 @@ export const ja = defineLocale({
       baseBranchPlaceholder: 'ブランチを検索…',
       baseBranchNone: 'ブランチが見つかりません',
       startWorkFailed: 'ワークツリーを作成できませんでした',
+      worktreeStaleBackend:
+        'このリモート接続でワークツリーを作成するには Hermes バックエンドを更新してください — git ワークツリー API 以前のバージョンです。',
+      worktreeProjectLabel: 'プロジェクト',
+      worktreeProjectPlaceholder: 'プロジェクトを検索…',
+      worktreeProjectNone: 'フォルダのあるプロジェクトがありません',
       convertBranch: 'ブランチを変換…',
       convertBranchTitle: 'ブランチを変換',
       convertBranchDesc: 'チェックアウト済みのブランチを開くか、空いているブランチのワークツリーを作成します。',
@@ -1747,6 +1826,7 @@ export const ja = defineLocale({
       branchOpenExisting: '開く',
       branchSwitchHome: 'ホームを切替',
       branchCreateWorktree: '新しいワークツリー',
+      branchTrackRemote: 'リモートを追跡',
       branchesLoading: 'ブランチを読み込み中…',
       noBranches: 'ブランチが見つかりません',
       removeWorktree: 'ワークツリーを削除',
@@ -1763,15 +1843,21 @@ export const ja = defineLocale({
     loading: '読み込み中…',
     loadMore: 'さらに読み込む',
     loadCount: step => `さらに ${step} 件を読み込む`,
+    messageCount: count => `${count} 件のメッセージ`,
+    toolCallCount: count => `${count} 件のツール呼び出し`,
     row: {
       pin: 'ピン留め',
       unpin: 'ピン留めを解除',
+      markUnread: '未読にする',
+      markRead: '既読にする',
+      unreadFailed: '未読状態を更新できませんでした',
       copyId: 'ID をコピー',
       export: 'エクスポート',
       branchFrom: '分岐',
       rename: '名前を変更',
       archive: 'アーカイブ',
       newWindow: '新しいウィンドウ',
+      openInTerminal: 'ターミナルで開く',
       copyIdFailed: 'セッション ID をコピーできませんでした',
 
       sessionActions: 'セッションアクション',
@@ -1780,6 +1866,7 @@ export const ja = defineLocale({
       waitingForAnswer: '回答を待っています',
       finishedUnread: '完了 — 未読',
       backgroundRunning: 'バックグラウンドタスク実行中',
+      draftSession: '下書き — 未送信',
       handoffOrigin: platform => `${platform} から引き継ぎ`,
       ownedByProfile: profile => `プロファイル: ${profile}`,
       renamed: '名前を変更しました',
@@ -1787,6 +1874,10 @@ export const ja = defineLocale({
       renameTitle: 'セッションの名前を変更',
       renameDesc: '空欄にするとクリアされます。',
       untitledPlaceholder: '無題のセッション',
+      deleteTitle: 'セッションを削除しますか？',
+      deleteDesc: title => `「${title}」を完全に削除します。この操作は元に戻せません。`,
+      deleting: '削除中…',
+      deleted: 'セッションを削除しました',
       untitledChat: id => `セッション ${id}`,
       ageNow: 'たった今',
       ageDay: '日',
@@ -1799,6 +1890,10 @@ export const ja = defineLocale({
       thisWeek: '今週',
       lastWeek: '先週',
       thisMonth: '今月'
+    },
+    statusDivider: {
+      working: '実行中',
+      done: '完了'
     }
   },
 
@@ -1889,6 +1984,7 @@ export const ja = defineLocale({
     editingQueuedInComposer: 'コンポーザーでキュー済みターンを編集中',
     queueEdit: '編集',
     queueSendNext: '次に送信',
+    queueSteer: 'ステア — 現在のターンを今すぐ修正',
     queueSend: '送信',
     queueDelete: '削除',
     queueResume: '再開',
@@ -1983,7 +2079,7 @@ export const ja = defineLocale({
       scopeLastTurn: '前のターン',
       commit: 'コミット',
       commitAndPush: 'コミットしてプッシュ',
-      commitPlaceholder: 'メッセージ（⌘↵ でコミット）',
+      commitPlaceholder: shortcut => `メッセージ（${shortcut} でコミット）`,
       generateCommitMessage: 'コミットメッセージを生成',
       stopGenerating: '生成を停止',
       createPr: 'PR を作成',
@@ -2049,6 +2145,20 @@ export const ja = defineLocale({
     applyingClose: 'このウィンドウは更新中に閉じ、その後 Hermes が自動的に再度開きます。',
     errorTitle: '更新が完了しませんでした',
     errorBody: 'ご安心ください。何も失われていません。今すぐ再試行できます。',
+    blockerTitle: 'Hermes を更新するためにローカルプレビューを閉じますか？',
+    blockerBody:
+      '更新する前に、これらのローカルプレビューを停止する必要があります。ファイルが変更または削除されることはありません。',
+    foreignBlockerTitle: '他のプロセスを閉じて Hermes を更新',
+    foreignBlockerBody:
+      'Hermes はこれらのプロセスを安全に自動終了できません。各プロセスを所有するアプリ、ターミナル、またはサービスを閉じてから、もう一度更新してください。',
+    mixedBlockerBody:
+      'Hermes は以下のローカルプレビューを閉じることができます。更新を続けるには、他のプロセスを手動で閉じる必要があります。',
+    closePreviewsAndUpdate: 'プレビューを閉じて更新',
+    closePreviewsAndCheckAgain: 'プレビューを閉じて再確認',
+    localPreview: 'ローカルプレビュー',
+    portLabel: port => `ポート ${port}`,
+    pidLabel: pid => `PID ${pid}`,
+    technicalDetails: '技術的な詳細',
     notNow: '今は後で',
     applyStatus: {
       preparing: 'バックエンドを更新しています…',
@@ -2274,6 +2384,7 @@ export const ja = defineLocale({
       inferenceNotReady: '推論準備未完了',
       checkingInference: '推論を確認中',
       disconnected: '切断済み',
+      reconnectGateway: 'ゲートウェイに再接続',
       openSystem: 'システムパネルを開く',
       connection: label => `接続: ${label}`,
       recentActivity: '最近のアクティビティ',
@@ -2401,10 +2512,6 @@ export const ja = defineLocale({
 
   preview: {
     tab: 'プレビュー',
-    closeTab: label => `${label} を閉じる`,
-    closeOthers: '他を閉じる',
-    closeToRight: '右側を閉じる',
-    closeAll: 'すべて閉じる',
     closePane: 'プレビューペインを閉じる',
     loading: 'プレビューを読み込み中',
     unavailable: 'プレビューは利用できません',
@@ -2546,6 +2653,7 @@ export const ja = defineLocale({
       thought: '思考済み',
       thoughtBriefly: '少し思考',
       thoughtFor: duration => `${duration} 思考`,
+      turnDuration: duration => `このターンの所要時間: ${duration}`,
       today: time => `今日 ${time}`,
       yesterday: time => `昨日 ${time}`,
       copy: 'コピー',
@@ -2748,6 +2856,7 @@ export const ja = defineLocale({
     stopFailed: '停止に失敗しました',
     regenerateFailed: '再生成に失敗しました',
     editFailed: '編集に失敗しました',
+    editTurnUnavailable: 'このターンはサーバー履歴にありません（圧縮で削除された可能性があります）。',
     resumeFailed: '再開に失敗しました',
     resumeStrandedTitle: 'このセッションを読み込めませんでした',
     resumeStrandedBody:

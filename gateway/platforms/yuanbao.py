@@ -1150,7 +1150,7 @@ class RecallGuardMiddleware(InboundMiddleware):
                     if entry.get("role") == "user" and entry.get("content") == recalled_text:
                         entry["content"] = cls._REDACTED
                         try:
-                            store.rewrite_transcript(sid, transcript)
+                            store.rewrite_transcript(sid, transcript, active_only=True)
                             logger.info("[%s] Recall redact: session %s", adapter.name, session_key[:30])
                         except Exception as exc:
                             logger.warning("[%s] Recall redact failed: %s", adapter.name, exc)
@@ -1210,7 +1210,7 @@ class RecallGuardMiddleware(InboundMiddleware):
         if target is not None:
             target["content"] = cls._REDACTED
             try:
-                store.rewrite_transcript(sid, transcript)
+                store.rewrite_transcript(sid, transcript, active_only=True)
                 logger.info("[%s] Recall: redacted msg_id=%s (%s)", adapter.name, recalled_id, branch_label)
             except Exception as exc:
                 logger.warning("[%s] Recall: rewrite_transcript failed: %s", adapter.name, exc)
@@ -2956,6 +2956,7 @@ class DispatchMiddleware(InboundMiddleware):
             ctx.source,
             group_sessions_per_user=adapter.config.extra.get("group_sessions_per_user", True),
             thread_sessions_per_user=adapter.config.extra.get("thread_sessions_per_user", False),
+            profile=adapter._session_key_profile(ctx.source),
         )
 
         async def _dispatch_inbound_event() -> None:

@@ -200,6 +200,61 @@ class TestScanSkillCommands:
             assert "/telegram-only" in discord_commands
             assert "/discord-only" not in discord_commands
 
+    def test_get_skill_commands_rescans_when_profile_home_changes(self, tmp_path):
+        """Switching profiles must rescan even when the platform is unchanged
+        (#88023): a Desktop session that switches profiles mid-session keeps
+        the same platform scope, so only ``HERMES_HOME`` moves. Each profile
+        declares its own ``skills.external_dirs``, and the previous profile's
+        skill list must not leak into the new one.
+        """
+        import agent.skill_commands as sc_mod
+        from agent.skill_commands import get_skill_commands
+        from hermes_constants import reset_hermes_home_override, set_hermes_home_override
+
+        empty_local_dir = tmp_path / "no-local-skills"
+        empty_local_dir.mkdir()
+
+        profile_a = tmp_path / "profile_a"
+        profile_b = tmp_path / "profile_b"
+        external_a = tmp_path / "external_a"
+        external_b = tmp_path / "external_b"
+        profile_a.mkdir()
+        profile_b.mkdir()
+        _make_skill(external_a, "a-only")
+        _make_skill(external_b, "b-only")
+        (profile_a / "config.yaml").write_text(
+            f"skills:\n  external_dirs:\n    - {external_a}\n"
+        )
+        (profile_b / "config.yaml").write_text(
+            f"skills:\n  external_dirs:\n    - {external_b}\n"
+        )
+
+        with (
+            patch("tools.skills_tool.SKILLS_DIR", empty_local_dir),
+            patch.object(sc_mod, "_skill_commands", {}),
+            patch.object(sc_mod, "_skill_commands_platform", None),
+            patch.object(sc_mod, "_skill_commands_home", None),
+        ):
+            token = set_hermes_home_override(profile_a)
+            try:
+                profile_a_commands = dict(get_skill_commands())
+            finally:
+                reset_hermes_home_override(token)
+
+            assert "/a-only" in profile_a_commands
+            assert "/b-only" not in profile_a_commands
+
+            # Switching profiles without touching the cache directly must
+            # rescan — not keep serving profile_a's stale view.
+            token = set_hermes_home_override(profile_b)
+            try:
+                profile_b_commands = dict(get_skill_commands())
+            finally:
+                reset_hermes_home_override(token)
+
+            assert "/b-only" in profile_b_commands
+            assert "/a-only" not in profile_b_commands
+
     def test_get_skill_commands_rescans_when_leaving_platform_scope(self, tmp_path, monkeypatch):
         """Returning to no-platform-scope (CLI / cron / RL) after a gateway
         session must rescan so the unfiltered view is repopulated (#14536).
@@ -333,6 +388,24 @@ class TestBuildPreloadedSkillsPrompt:
         assert "second-skill" in prompt
         assert "preloaded" in prompt.lower()
 
+    def test_forwards_task_id_to_skill_usage(self, tmp_path):
+        with (
+            patch("tools.skills_tool.SKILLS_DIR", tmp_path),
+            patch("tools.skill_usage.bump_use") as bump_use,
+        ):
+            _make_skill(tmp_path, "preloaded-skill")
+            _prompt, loaded, missing = build_preloaded_skills_prompt(
+                ["preloaded-skill"],
+                task_id="task-preloaded",
+            )
+
+        assert loaded == ["preloaded-skill"]
+        assert missing == []
+        bump_use.assert_called_once_with(
+            "preloaded-skill",
+            task_id="task-preloaded",
+        )
+
 
     def test_skips_disabled_skill(self, tmp_path, monkeypatch):
         """A globally-disabled skill must not be force-loaded via -s /
@@ -360,6 +433,21 @@ class TestBuildPreloadedSkillsPrompt:
 class TestBuildSkillInvocationMessage:
 
 
+
+    def test_forwards_task_id_to_skill_usage(self, tmp_path):
+        with (
+            patch("tools.skills_tool.SKILLS_DIR", tmp_path),
+            patch("tools.skill_usage.bump_use") as bump_use,
+        ):
+            _make_skill(tmp_path, "test-skill")
+            scan_skill_commands()
+            msg = build_skill_invocation_message(
+                "/test-skill",
+                task_id="task-slash",
+            )
+
+        assert msg is not None
+        bump_use.assert_called_once_with("test-skill", task_id="task-slash")
 
 
     def test_uses_shared_skill_loader_for_secure_setup(self, tmp_path, monkeypatch):
@@ -620,6 +708,30 @@ class TestStackedSkillCommands:
 
 
 
+    def test_stacked_message_forwards_task_id_to_each_skill(self, tmp_path):
+        from agent.skill_commands import build_stacked_skill_invocation_message
+
+        with (
+            patch("tools.skills_tool.SKILLS_DIR", tmp_path),
+            patch("tools.skill_usage.bump_use") as bump_use,
+        ):
+            self._setup_three_skills(tmp_path)
+            scan_skill_commands()
+            result = build_stacked_skill_invocation_message(
+                ["/skill-a", "/skill-b"],
+                task_id="task-stacked",
+            )
+
+        assert result is not None
+        assert [call.args[0] for call in bump_use.call_args_list] == [
+            "skill-a",
+            "skill-b",
+        ]
+        assert all(
+            call.kwargs == {"task_id": "task-stacked"}
+            for call in bump_use.call_args_list
+        )
+
     def test_stacked_message_skips_missing_skills(self, tmp_path):
         from agent.skill_commands import build_stacked_skill_invocation_message
         with patch("tools.skills_tool.SKILLS_DIR", tmp_path):
@@ -633,6 +745,3 @@ class TestStackedSkillCommands:
         assert loaded == ["skill-a"]
         assert missing == ["gone"]
         assert "Skills missing (skipped): gone" in msg
-
-
-

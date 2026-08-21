@@ -46,6 +46,8 @@ Examples:
     hermes -c                     Resume the most recent session
     hermes -c "my project"        Resume a session by name (latest in lineage)
     hermes --resume <session_id>  Resume a specific session by ID
+    hermes --resume latest        Resume the most recent session (same as -c)
+    hermes --tui --resume latest --in ./dir   Resume ./dir's latest session in the TUI
     hermes setup                  Run setup wizard
     hermes logout                 Clear stored authentication
     hermes auth add <provider>    Add a pooled credential
@@ -170,13 +172,28 @@ def build_top_level_parser():
         "-r",
         metavar="SESSION",
         default=None,
-        help="Resume a previous session by ID or title",
+        help=(
+            "Resume a previous session by ID or title, or pass 'latest' for "
+            "the most recent session (workspace-scoped, like -c with no name)"
+        ),
     )
     parser.add_argument(
         "--no-restore-cwd",
         action="store_true",
         default=False,
         help="Don't cd into a resumed session's recorded working directory.",
+    )
+    parser.add_argument(
+        "--in",
+        dest="in_dir",
+        metavar="DIR",
+        default=None,
+        help=(
+            "Change into DIR before starting or resuming. Combined with "
+            "'--resume latest' or -c, the most recent session for DIR's "
+            "workspace is picked, and the session stays in DIR (skips the "
+            "recorded-cwd restore)."
+        ),
     )
     parser.add_argument(
         "--continue",
@@ -283,8 +300,19 @@ def build_top_level_parser():
         help="Interactive chat with the agent",
         description="Start an interactive chat session with Hermes Agent",
     )
-    chat_parser.add_argument(
+    query_group = chat_parser.add_mutually_exclusive_group()
+    query_group.add_argument(
         "-q", "--query", help="Single query (non-interactive mode)"
+    )
+    query_group.add_argument(
+        "--query-file",
+        metavar="PATH",
+        help=(
+            "Read the single query from a file instead of the command line "
+            "('-' reads stdin). Safe for arbitrary text: nothing is shell-"
+            "interpreted, so quotes, $(...), and backticks are preserved "
+            "verbatim. Mutually exclusive with -q."
+        ),
     )
     chat_parser.add_argument(
         "--image", help="Optional local image path to attach to a single query"
@@ -358,13 +386,26 @@ def build_top_level_parser():
         "-r",
         metavar="SESSION_ID",
         default=argparse.SUPPRESS,
-        help="Resume a previous session by ID (shown on exit)",
+        help=(
+            "Resume a previous session by ID (shown on exit), or 'latest' "
+            "for the most recent session"
+        ),
     )
     chat_parser.add_argument(
         "--no-restore-cwd",
         action="store_true",
         default=argparse.SUPPRESS,
         help="Don't cd into a resumed session's recorded working directory.",
+    )
+    chat_parser.add_argument(
+        "--in",
+        dest="in_dir",
+        metavar="DIR",
+        default=argparse.SUPPRESS,
+        help=(
+            "Change into DIR before starting or resuming (scopes "
+            "'--resume latest' / -c lookups to DIR's workspace)."
+        ),
     )
     chat_parser.add_argument(
         "--continue",
@@ -375,6 +416,17 @@ def build_top_level_parser():
         default=argparse.SUPPRESS,
         metavar="SESSION_NAME",
         help="Resume a session by name, or the most recent if no name given",
+    )
+    chat_parser.add_argument(
+        "--create-if-missing",
+        action="store_true",
+        default=argparse.SUPPRESS,
+        help=(
+            "With -c/--continue <name>: if no session matches the name, "
+            "create a new session with that title and proceed (instead of "
+            "failing with a not-found error). Programmatic callers that "
+            "want 'send to this named thread, making it if needed'."
+        ),
     )
     chat_parser.add_argument(
         "--worktree",

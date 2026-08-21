@@ -182,9 +182,11 @@ Preview an update with the branch explicitly selected:
 hermes update --check --branch pi2-lite
 ```
 
-The CLI may print the generic message `Run 'hermes update' to install.`
-That message is not branch-safe for this Pi2 fork. Do **not** run the bare
-command; continue to use the explicit `pi2-lite` branch shown below.
+In IoT release 0.20.4 and later, the updater detects the
+`hermes-agent-iot` source, installed distribution, or install-profile record
+and defaults a bare `hermes update` to `pi2-lite`. Keeping the branch explicit
+in automation is still recommended because it makes the intended target
+auditable.
 
 For an actual Pi2 update, pull the selected branch and rerun the same profile
 installer. This preserves the intended `minimal`, `iot`, or `rag` dependency
@@ -210,18 +212,18 @@ git status --short
 ```
 
 Replace `minimal` with the profile originally installed (`iot`, `rag`, `full`,
-or `dev`). If you deliberately use the Hermes updater, the branch must still
-be explicit and the profile installer must be rerun afterwards:
+or `dev`). If you use the Hermes updater, the profile installer must be rerun
+afterwards; specifying the branch explicitly remains the safest scripted form:
 
 ```bash
 hermes update --branch pi2-lite --backup
 bash setup-pi2-minimal.sh --profile minimal
 ```
 
-The generic updater reinstalls the broader dependency group and is therefore
-not the preferred Pi2 profile update path. Do **not** run a bare `hermes update`
-on a Pi2 installation: the updater defaults to `main` and may switch the
-checkout away from the ARMv7-compatible Pi2 branch.
+The generic updater can reinstall a broader dependency group and is therefore
+not the preferred Pi2 profile update path. The IoT-aware default prevents a
+bare update from switching to `main`, but production Pi2 nodes should still use
+the explicit source-update sequence above and rerun their selected profile.
 
 Before and after updating, verify the branch and installation:
 
@@ -259,6 +261,7 @@ export MQTT_PORT=8883
 # Optional:
 export MQTT_USERNAME=iot-user
 export MQTT_PASSWORD=secret
+export MQTT_CLIENT_ID=pi2-edge  # optional prefix; Hermes appends a unique suffix
 export MQTT_TLS=true
 hermes tools enable mqtt
 ```
@@ -269,7 +272,7 @@ Available MQTT tools:
 - `mqtt_subscribe_recent`: listen briefly for retained/new messages on a topic filter
 - `mqtt_device_command`: publish a command and optionally wait for a state/ack topic
 
-MQTT brokers do not provide history by default. `mqtt_subscribe_recent` returns retained messages and messages published while the tool is listening. Credentials fail closed unless TLS is enabled. For an isolated, trusted plaintext lab network only, `MQTT_ALLOW_INSECURE_CREDENTIALS=true` is the explicit override. To protect Pi2 memory, inbound messages larger than 64 KiB and messages that would push one tool response past 256 KiB of payload data are dropped and reported in the response.
+MQTT brokers do not provide history by default. `mqtt_subscribe_recent` returns retained messages and messages published while the tool is listening. A password without a username fails closed, and credentials fail closed unless TLS is enabled. For an isolated, trusted plaintext lab network only, `MQTT_ALLOW_INSECURE_CREDENTIALS=true` is the explicit override. `MQTT_CLIENT_ID` is a prefix, not a fixed ID: Hermes adds a process/random suffix so concurrent tool calls do not disconnect each other. To protect Pi2 memory, inbound messages larger than 64 KiB and messages that would push one tool response past 256 KiB of payload data are dropped and reported in the response.
 
 Use a dedicated broker account with TLS and topic ACLs. Grant sensor topics read-only access and restrict actuator command topics to the smallest required prefix. Hard real-time and emergency-stop paths must remain in the MCU/PLC/ROS controller.
 

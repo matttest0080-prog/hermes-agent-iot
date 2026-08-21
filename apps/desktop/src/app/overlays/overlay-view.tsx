@@ -1,8 +1,8 @@
 import { type CSSProperties, type ReactNode, useEffect } from 'react'
 
 import { TITLEBAR_HEIGHT } from '@/app/shell/titlebar'
+import { TitlebarIcon } from '@/app/shell/titlebar-icon'
 import { Button } from '@/components/ui/button'
-import { Codicon } from '@/components/ui/codicon'
 import { translateNow } from '@/i18n'
 import { ESCAPE_PRIORITY, isTopEscapeLayer, pushEscapeLayer } from '@/lib/escape-layers'
 import { triggerHaptic } from '@/lib/haptics'
@@ -98,6 +98,10 @@ export function OverlayView({
           'relative flex h-full min-h-0 flex-col overflow-hidden rounded-xl border border-(--ui-stroke-secondary) bg-(--ui-chat-surface-background) shadow-md',
           rootClassName
         )}
+        // Marks the card as a RAISED surface for window glass: while the field
+        // behind it thins to show the desktop, this card stays near-opaque
+        // (see the [data-glass-raised] rules in styles.css). Inert otherwise.
+        data-glass-raised=""
       >
         <div className="pointer-events-none absolute inset-x-0 top-0 z-10 h-[calc(var(--titlebar-height)+0.1875rem)] [-webkit-app-region:drag]">
           {headerContent && (
@@ -113,7 +117,7 @@ export function OverlayView({
             size="icon-titlebar"
             variant="ghost"
           >
-            <Codicon name="close" size="1rem" />
+            <TitlebarIcon name="close" />
           </Button>
         </div>
 

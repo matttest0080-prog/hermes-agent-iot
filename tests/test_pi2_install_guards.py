@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 import tempfile
@@ -46,7 +47,12 @@ exec "$SCRIPT_DIR/setup-pi2-minimal.sh" "$@"
     (root / "setup-pi2-minimal.sh").write_text(
         """
 #!/usr/bin/env bash
-python -m pip install -e "$REPO_DIR[$EXTRAS]"
+os.lstat(venv)
+os.path.lexists(python_path)
+stat.S_IWGRP | stat.S_IWOTH
+pip install --require-hashes -r "$LOCK_FILE"
+pip install --no-deps -e "$REPO_DIR[$EXTRAS]"
+"$VENV_DIR/bin/python" -m hermes_cli.iot_cli setup --profile "$PROFILE"
 """.strip()
         + "\n",
         encoding="utf-8",
@@ -79,6 +85,86 @@ class Pi2InstallGuardTests(unittest.TestCase):
             capture_output=True,
         )
 
+    def run_installer(self, venv: Path) -> subprocess.CompletedProcess[str]:
+        script = Path(__file__).resolve().parents[1] / "setup-pi2-minimal.sh"
+        return subprocess.run(
+            ["bash", str(script), "--venv", str(venv)],
+            check=False,
+            text=True,
+            capture_output=True,
+            env={**os.environ, "PYTHON": sys.executable},
+        )
+
+    def test_existing_venv_rejects_group_or_world_writable_security_components(self) -> None:
+        cases = (
+            ("venv directory", Path("."), 0o720),
+            ("venv directory", Path("."), 0o702),
+            ("bin", Path("bin"), 0o720),
+            ("bin", Path("bin"), 0o702),
+            ("pyvenv.cfg", Path("pyvenv.cfg"), 0o620),
+            ("pyvenv.cfg", Path("pyvenv.cfg"), 0o602),
+        )
+        for label, relative, mode in cases:
+            with self.subTest(component=label, mode=oct(mode)), tempfile.TemporaryDirectory() as tmp:
+                venv = Path(tmp) / "venv"
+                (venv / "bin").mkdir(parents=True)
+                (venv / "pyvenv.cfg").write_text("home = /usr/bin\n", encoding="utf-8")
+                python_path = venv / "bin" / "python"
+                python_path.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+                python_path.chmod(0o700)
+                venv.chmod(0o700)
+                (venv / "bin").chmod(0o700)
+                (venv / "pyvenv.cfg").chmod(0o600)
+                (venv / relative).chmod(mode)
+
+                result = self.run_installer(venv)
+
+            self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+            self.assertIn("Unsafe virtual environment", result.stderr)
+            self.assertIn(label, result.stderr)
+            self.assertIn("group/world-writable", result.stderr)
+
+    def test_new_venv_creation_uses_safe_modes_with_permissive_caller_umask(self) -> None:
+        source_script = Path(__file__).resolve().parents[1] / "setup-pi2-minimal.sh"
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            script = repo / "setup-pi2-minimal.sh"
+            script.write_text(source_script.read_text(encoding="utf-8"), encoding="utf-8")
+            lock_dir = repo / "requirements" / "pi2"
+            lock_dir.mkdir(parents=True)
+            (lock_dir / "minimal.lock").write_text("", encoding="utf-8")
+            fake_python = repo / "fake-python"
+            fake_python.write_text(
+                "#!/usr/bin/env bash\n"
+                "set -euo pipefail\n"
+                "if [[ $# -eq 1 && $1 == - ]]; then printf '3.11\\n'; exit 0; fi\n"
+                f"if [[ $1 == - ]]; then exec {sys.executable!s} \"$@\"; fi\n"
+                "if [[ $1 == -m && $2 == venv ]]; then\n"
+                "  mkdir -p \"$3/bin\"\n"
+                "  printf 'home = /usr/bin\\n' > \"$3/pyvenv.cfg\"\n"
+                "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/python\"\n"
+                "  printf '#!/bin/sh\\nexit 0\\n' > \"$3/bin/hermes\"\n"
+                "  chmod 700 \"$3/bin/python\" \"$3/bin/hermes\"\n"
+                "  exit 0\n"
+                "fi\n"
+                "exit 2\n",
+                encoding="utf-8",
+            )
+            fake_python.chmod(0o700)
+            venv = repo / "venv"
+
+            result = subprocess.run(
+                ["bash", "-c", 'umask 0002; exec bash "$1" --venv "$2"', "test", str(script), str(venv)],
+                check=False,
+                text=True,
+                capture_output=True,
+                env={**os.environ, "PYTHON": str(fake_python)},
+            )
+
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            for component in (venv, venv / "bin", venv / "pyvenv.cfg"):
+                self.assertEqual(component.stat().st_mode & 0o022, 0, component)
+
     def test_pi2_install_guard_accepts_lightweight_profile(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             repo = Path(tmp)
@@ -98,6 +184,21 @@ class Pi2InstallGuardTests(unittest.TestCase):
 
         self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("Pi2 install guard checks passed", result.stdout)
+
+    def test_pi2_install_guard_requires_venv_permission_validation(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            write_minimal_repo(repo)
+            setup = repo / "setup-pi2-minimal.sh"
+            setup.write_text(
+                setup.read_text(encoding="utf-8").replace("stat.S_IWGRP | stat.S_IWOTH\n", ""),
+                encoding="utf-8",
+            )
+
+            result = self.run_guard(repo)
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("group/world-writable virtualenv components", result.stdout)
 
     def test_pi2_install_guard_blocks_uvicorn_standard(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
@@ -185,6 +286,25 @@ class Pi2InstallGuardTests(unittest.TestCase):
         self.assertEqual(result.returncode, 1)
         self.assertIn("HERMES_PI2_TRY_SQLITE_VEC", result.stdout)
 
+    def test_pi2_install_guard_rejects_untrusted_activate_and_shell_config_writes(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            repo = Path(tmp)
+            write_minimal_repo(repo)
+            (repo / "setup-pi2-minimal.sh").write_text(
+                "#!/usr/bin/env bash\n"
+                'source "$VENV_DIR/bin/activate"\n'
+                'python -m pip install -e "$REPO_DIR[$EXTRAS]"\n'
+                'cp "$TEMPLATE" "$HERMES_HOME_DIR/config.yaml"\n'
+                'touch "$HERMES_HOME_DIR/.env"\n',
+                encoding="utf-8",
+            )
+
+            result = self.run_guard(repo)
+
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("untrusted virtualenv activate", result.stdout)
+        self.assertIn("safe no-clobber Python entrypoint", result.stdout)
+
     def test_real_pi2_templates_use_active_cli_platform_toolsets(self) -> None:
         import yaml
 
@@ -211,9 +331,10 @@ class Pi2InstallGuardTests(unittest.TestCase):
 
         setup_text = (repo / "setup-pi2-minimal.sh").read_text(encoding="utf-8")
         self.assertIn(
-            'full|dev) TEMPLATE="$REPO_DIR/templates/config.pi2-full.yaml"',
+            'hermes_cli.iot_cli setup --profile "$PROFILE"',
             setup_text,
         )
+        self.assertNotIn('source "$VENV_DIR/bin/activate"', setup_text)
     def test_low_resource_profiles_have_local_llama_fallback(self) -> None:
         import yaml
 

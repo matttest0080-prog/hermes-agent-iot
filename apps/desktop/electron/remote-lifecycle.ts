@@ -27,6 +27,8 @@
 
 import crypto from 'node:crypto'
 
+import { parseRemoteProfileListing } from './connection-registry'
+
 const LOCKFILE_SCHEMA_VERSION = 2
 // Bumped when the desktop<->dashboard reuse contract changes in a way that makes
 // an old running dashboard unsafe to reattach to (token handling, readiness/spawn
@@ -37,6 +39,11 @@ const REMOTE_LOCK_DIR = '~/.hermes/desktop-ssh'
 const SUPPORTED_REMOTE_OS = new Set(['Linux', 'Darwin'])
 const DEFAULT_READY_TIMEOUT_MS = 45_000
 const READY_POLL_INTERVAL_MS = 750
+// macOS sshd starts non-interactive shells with a 256-FD soft limit even when
+// the hard limit is unlimited. A Desktop backend can legitimately exceed that
+// while serving several profiles/tools, so raise only the child process limit.
+// Keep startup portable: restricted hosts retain their existing limit.
+const REMOTE_NOFILE_SOFT_LIMIT = 65_536
 
 function mintToken() {
   return crypto.randomBytes(32).toString('hex')
@@ -128,24 +135,15 @@ function expandRemotePath(p) {
 // non-login `ssh host cmd` PATH misses user installs), then known install paths.
 async function locateHermes(ssh, remoteHermesPath) {
   const resolveLauncher = async (candidate: string) => {
-    const script =
-      'import os,shlex,sys\n' +
-      `p=os.path.expanduser(${shq(candidate)})\n` +
-      'out=p\n' +
-      'try:\n' +
-      ' data=open(p,"r",encoding="utf-8",errors="ignore").read(4096)\n' +
-      ' for line in data.splitlines():\n' +
-      '  words=shlex.split(line)\n' +
-      '  if len(words)>1 and words[0]=="exec":\n' +
-      '   target=os.path.expanduser(words[1])\n' +
-      '   if os.path.isabs(target) and os.access(target,os.X_OK):out=target\n' +
-      '   break\n' +
-      'except (OSError,ValueError):pass\n' +
-      'print(out)'
-
-    const resolved = (await ssh.exec(`python3 -c ${shq(script)}`)).trim()
-
-    return resolved || candidate
+    // Return the candidate path directly. The hermes binary or wrapper script
+    // is executable and handles argument forwarding (e.g. `exec <python> <script> "$@"`)
+    // correctly on its own. Previously, this function followed `exec` wrappers and
+    // returned only the python interpreter, which broke:
+    //   - version checking: `<python> --version` printed "Python x.y.z" instead of
+    //     the Hermes version, and
+    //   - capability probing: `<python> serve --help` failed entirely.
+    // See https://github.com/NousResearch/hermes-agent/issues/74411
+    return candidate
   }
 
   const isExecutable = async (candidate: string) => {
@@ -256,6 +254,35 @@ async function probeRemoteHermesHome(ssh) {
     error.cause = cause
     throw error
   }
+}
+
+async function listRemoteHermesProfiles(ssh) {
+  const home = assertSafeRemoteHome(await probeRemoteHermesHome(ssh))
+  const dir = expandRemotePath(`${home}/profiles`)
+  let listing = ''
+
+  try {
+    listing = await ssh.exec(`if [ -d ${dir} ]; then ls -1 ${dir}; fi`)
+  } catch (cause) {
+    const error: any = new Error('Could not list remote Hermes profiles.')
+    error.kind = 'transient-transport-error'
+    error.cause = cause
+    throw error
+  }
+
+  return parseRemoteProfileListing(listing)
+}
+
+function assertSafeRemoteHome(home) {
+  const value = String(home || '').trim()
+
+  if (!/^(\/|~\/)[A-Za-z0-9._/+-]+$/.test(value) || value.includes('..')) {
+    const error: any = new Error('Unsafe remote Hermes home.')
+    error.kind = 'unsafe-path'
+    throw error
+  }
+
+  return value.replace(/\/+$/, '')
 }
 
 async function readLockfile(ssh, ownershipId) {
@@ -383,7 +410,11 @@ async function pidIsOurDashboard(ssh, pid, spawnNonce, hermesPath = '') {
       ' raw=open(f"/proc/{pid}/cmdline","rb").read()\n' +
       ' args=[x.decode("utf-8","surrogateescape") for x in raw.split(b"\\0") if x]\n' +
       'except OSError:\n' +
-      ' line=subprocess.check_output(["ps","-o","command=","-p",str(pid)],text=True).strip()\n' +
+      ' try:\n' +
+      '  line=subprocess.check_output(["ps","-o","command=","-p",str(pid)],text=True).strip()\n' +
+      ' except subprocess.CalledProcessError:\n' +
+      '  # pid already gone — a dead process is FOREIGN, not a transport error\n' +
+      '  print("FOREIGN");sys.exit(0)\n' +
       ' args=shlex.split(line)\n' +
       'ok=False\n' +
       'try:\n' +
@@ -451,7 +482,10 @@ function buildSpawnCommand(hermesPath, profile, opts: any = {}) {
   const tokenArg = tokenFilePath ? ` --ssh-session-token-file ${expandRemotePath(tokenFilePath)}` : ''
   const ownerArg = opts.spawnNonce ? ` --ssh-owner-nonce ${validateSpawnNonce(opts.spawnNonce)}` : ''
   const subCmd = `serve --isolated --host 127.0.0.1 --port 0${tokenArg}${ownerArg}`
-  const dashCmd = `env HERMES_DESKTOP=1 ${hermes} ${profileArgs}${subCmd}`
+
+  const dashCmd =
+    `ulimit -n ${REMOTE_NOFILE_SOFT_LIMIT} 2>/dev/null || true; ` +
+    `exec env HERMES_DESKTOP=1 ${hermes} ${profileArgs}${subCmd}`
 
   return (
     `mkdir -p "$(dirname ${logPath})" && ` +
@@ -880,6 +914,7 @@ export {
   expandRemotePath,
   fingerprintToken,
   isForwardBindCollision,
+  listRemoteHermesProfiles,
   locateHermes,
   LOCKFILE_SCHEMA_VERSION,
   lockfilePath,
