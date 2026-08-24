@@ -311,6 +311,12 @@ TOOLSETS = {
         "includes": []
     },
 
+    "mqtt": {
+        "description": "MQTT IoT sensor and device control tools (publish, subscribe recent messages, command devices)",
+        "tools": ["mqtt_publish", "mqtt_subscribe_recent", "mqtt_device_command"],
+        "includes": []
+    },
+
     "kanban": {
         "description": (
             "Kanban multi-agent coordination — only active when the agent "

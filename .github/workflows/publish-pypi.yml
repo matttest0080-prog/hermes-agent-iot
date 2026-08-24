@@ -1,0 +1,119 @@
+name: Publish hermes-agent-iot to PyPI
+
+on:
+  push:
+    tags:
+      - "iot-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    if: github.repository == 'matttest0080-prog/hermes-agent-iot'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_PYTHON: .release-venv/bin/python
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Verify tag ancestry
+        env:
+          TAGGED_SHA: ${{ github.sha }}
+        run: |
+          git fetch --no-tags origin \
+            +refs/heads/pi2-lite:refs/remotes/origin/pi2-lite
+          bash scripts/check_release_ancestry.sh \
+            "$TAGGED_SHA" refs/remotes/origin/pi2-lite
+      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.12"
+      - name: Create isolated release virtual environment
+        run: python -m venv .release-venv
+      - name: Install release test and build dependencies
+        env:
+          UV_PROJECT_ENVIRONMENT: .release-venv
+        run: |
+          "$RELEASE_PYTHON" -m pip install --disable-pip-version-check uv==0.11.13
+          "$RELEASE_PYTHON" -m uv sync --frozen --extra dev --extra rag
+      - name: Run release-focused tests
+        run: >-
+          "$RELEASE_PYTHON" -m pytest
+          tests/test_iot_packaging_profiles.py
+          tests/test_packaging_build_guard.py
+          tests/test_packaging_metadata.py
+          tests/test_project_metadata.py
+          tests/test_publish_pypi_workflow.py
+          tests/test_pi2_install_guards.py
+          tests/test_termux_all_extra_compat.py
+          tests/agent/test_bedrock_integration.py
+          -o addopts= -q
+      - name: Validate tag, distribution name, and version
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          "$RELEASE_PYTHON" - <<'PY'
+          import os, tomllib
+          from pathlib import Path
+          project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
+          assert project["name"] == "hermes-agent-iot", project["name"]
+          assert os.environ["TAG"] == f"iot-v{project['version']}", (os.environ["TAG"], project["version"])
+          PY
+      - name: Build and check artifacts
+        env:
+          HERMES_IOT_RELEASE_BUILD: "1"
+        run: |
+          "$RELEASE_PYTHON" -m build --wheel
+          "$RELEASE_PYTHON" -m twine check --strict dist/*
+      - name: Clean wheel smoke test
+        env:
+          TAG: ${{ github.ref_name }}
+        run: |
+          python -m venv /tmp/hermes-iot-smoke
+          shopt -s nullglob
+          wheels=(dist/hermes_agent_iot-*.whl)
+          if (( ${#wheels[@]} != 1 )); then
+            printf 'Expected exactly one wheel, found %s\n' "${#wheels[@]}" >&2
+            exit 1
+          fi
+          wheel="${wheels[0]}"
+          test -f "$wheel"
+          /tmp/hermes-iot-smoke/bin/python -m pip install "${wheel}[minimal]"
+          /tmp/hermes-iot-smoke/bin/python -m pip check
+          /tmp/hermes-iot-smoke/bin/hermes-iot --help
+          /tmp/hermes-iot-smoke/bin/hermes --help
+          /tmp/hermes-iot-smoke/bin/python - <<'PY'
+          import os
+          from importlib import metadata, resources
+          assert metadata.version("hermes-agent-iot") == os.environ["TAG"].removeprefix("iot-v")
+          extras = set(metadata.metadata("hermes-agent-iot").get_all("Provides-Extra") or [])
+          assert {"minimal", "iot", "rag", "full", "dev"} <= extras
+          root = resources.files("hermes_cli").joinpath("resources").joinpath("profiles")
+          assert sorted(p.name for p in root.iterdir()) == [
+              "config.pi2-core.yaml", "config.pi2-full.yaml",
+              "config.pi2-native.yaml", "config.pi2-rag.yaml",
+          ]
+          PY
+      - uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5
+        with:
+          name: hermes-agent-iot-dist
+          path: dist/*.whl
+          if-no-files-found: error
+
+  publish:
+    if: github.repository == 'matttest0080-prog/hermes-agent-iot'
+    needs: build
+    runs-on: ubuntu-latest
+    environment: pypi
+    permissions:
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6
+        with:
+          name: hermes-agent-iot-dist
+          path: dist/
+      - uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          packages-dir: dist/

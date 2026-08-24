@@ -849,8 +849,8 @@ class AIAgent:
             and runtime is None
         ):
             return None
-        if runtime is not None and explicit is not None:
-            return min(runtime, explicit)
+        # A verified management response describes the context actually loaded
+        # by LM Studio and is authoritative over the user's lower preload hint.
         return runtime if runtime is not None else explicit
 
     @staticmethod
@@ -874,8 +874,17 @@ class AIAgent:
 
         from hermes_cli.models import ensure_lmstudio_model_loaded
 
-        if config_context_length is None:
-            config_context_length = getattr(self, "_config_context_length", None)
+        from agent.model_metadata import get_minimum_tool_context_length
+
+        explicit = config_context_length
+        if not isinstance(explicit, int) or isinstance(explicit, bool) or explicit <= 0:
+            explicit = getattr(self, "_config_context_length", None)
+        if not isinstance(explicit, int) or isinstance(explicit, bool) or explicit <= 0:
+            explicit = None
+        config_context_length = max(
+            explicit or 0,
+            get_minimum_tool_context_length(self),
+        )
         return ensure_lmstudio_model_loaded(
             self.model,
             self.base_url,

@@ -1801,6 +1801,17 @@ def init_agent(
         )
     except Exception as _tlg_err:
         _ra().logger.warning("Tool loop guardrail config ignored: %s", _tlg_err)
+    _runtime_agent_cfg = _agent_cfg.get("agent", {}) if isinstance(_agent_cfg, dict) else {}
+    _min_ctx_cfg = (
+        _runtime_agent_cfg.get("minimum_tool_context_length")
+        if isinstance(_runtime_agent_cfg, dict)
+        else None
+    )
+    agent._minimum_tool_context_length = _min_ctx_cfg
+    from agent.model_metadata import get_minimum_tool_context_length
+
+    agent._minimum_tool_context_length = get_minimum_tool_context_length(agent)
+
     # Cache only the derived auxiliary compression context override that is
     # needed later by the startup feasibility check.  Avoid exposing a
     # broad pseudo-public config object on the agent instance.
@@ -2742,6 +2753,7 @@ def init_agent(
             proactive_prune_min_reclaim_tokens=compression_proactive_prune_min_reclaim,
             min_tail_user_messages=compression_min_tail_users,
             tail_mode=compression_tail_mode,
+            minimum_context_length=agent._minimum_tool_context_length,
         )
     _bind_session_state = getattr(agent.context_compressor, "bind_session_state", None)
     if callable(_bind_session_state):
@@ -2769,25 +2781,16 @@ def init_agent(
         compression_idle_compact_after_seconds
     )
 
-    # Reject models whose context window is below the minimum required
-    # for reliable tool-calling workflows (64K tokens).
+    # Reject models whose context window is below the configured tool-workflow
+    # floor. The default remains Hermes' 64K safety floor; constrained profiles
+    # may explicitly lower it together with a reduced tool surface.
     _ctx = getattr(agent.context_compressor, "context_length", 0)
-    _allow_lmstudio_explicit_below_floor = (
-        str(getattr(agent, "provider", "") or "").strip().lower() == "lmstudio"
-        and isinstance(agent._config_context_length, int)
-        and not isinstance(agent._config_context_length, bool)
-        and agent._config_context_length > 0
-    )
-    if _ctx and _ctx < MINIMUM_CONTEXT_LENGTH and not _allow_lmstudio_explicit_below_floor:
-        raise ValueError(
-            f"Model {agent.model} has a context window of {_ctx:,} tokens, "
-            f"which is below the minimum {MINIMUM_CONTEXT_LENGTH:,} required "
-            f"by Hermes Agent.  Choose a model with at least "
-            f"{MINIMUM_CONTEXT_LENGTH // 1000}K context.  If your server "
-            f"reports a window smaller than the model's true window, set "
-            f"model.context_length in config.yaml to the real value "
-            f"(this must be at least {MINIMUM_CONTEXT_LENGTH // 1000}K)."
-        )
+    from agent.model_metadata import get_minimum_tool_context_length, validate_tool_context_length
+
+    _minimum_ctx = get_minimum_tool_context_length(agent)
+
+    validate_tool_context_length(agent.model, _ctx, _minimum_ctx)
+
 
     # Nous Hermes 3/4 are chat models, not tool-call-tuned. The interactive
     # CLI already warns via cli.py show_banner() (richer output + /model hint),

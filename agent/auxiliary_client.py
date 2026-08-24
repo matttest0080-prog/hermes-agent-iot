@@ -161,7 +161,7 @@ def aux_probe_mode():
         _aux_probe_state.active = prev
 
 from agent.credential_pool import load_pool
-from agent.model_metadata import MINIMUM_CONTEXT_LENGTH, get_model_context_length
+from agent.model_metadata import get_minimum_tool_context_length, get_model_context_length
 from hermes_cli.config import get_hermes_home
 from hermes_constants import OPENROUTER_BASE_URL
 from utils import base_url_host_matches, base_url_hostname, env_float, is_truthy_value, model_forces_max_completion_tokens, normalize_proxy_env_vars
@@ -5542,8 +5542,8 @@ def _try_main_agent_model_fallback(
 def _task_minimum_context_length(task: Optional[str]) -> Optional[int]:
     """Return the minimum context length required for an auxiliary task.
 
-    Only ``compression`` carries an explicit minimum today (the same
-    ``MINIMUM_CONTEXT_LENGTH`` (64K) floor that
+    Only ``compression`` carries an explicit minimum today (the same active
+    profile floor that
     ``check_compression_model_feasibility`` already enforces at startup).
     Other tasks (``vision``, ``title_generation``, ``web_extract``,
     ``skills_hub``, ``mcp``, ``session_search``) return ``None`` — they
@@ -5556,7 +5556,7 @@ def _task_minimum_context_length(task: Optional[str]) -> Optional[int]:
     if not task:
         return None
     if task == "compression":
-        return MINIMUM_CONTEXT_LENGTH
+        return get_minimum_tool_context_length()
     return None
 
 

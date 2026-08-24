@@ -93,6 +93,26 @@ class TestLowContextWarning:
         warning_calls = [c for c in calls if "too low" in c]
         assert len(warning_calls) == 0
 
+    def test_profile_floor_allows_context_above_constrained_minimum(self, cli_obj):
+        cli_obj.agent._minimum_tool_context_length = 2_048
+        cli_obj.agent.context_compressor.context_length = 4_096
+
+        cli_obj.show_banner()
+
+        calls = [str(c) for c in cli_obj.console.print.call_args_list]
+        assert not [c for c in calls if "too low" in c]
+
+    def test_profile_floor_warning_uses_instance_minimum(self, cli_obj):
+        cli_obj.agent._minimum_tool_context_length = 8_192
+        cli_obj.agent.context_compressor.context_length = 4_096
+
+        cli_obj.show_banner()
+
+        calls = [str(c) for c in cli_obj.console.print.call_args_list]
+        warning_calls = [c for c in calls if "too low" in c]
+        assert len(warning_calls) == 1
+        assert "8,192" in warning_calls[0]
+
     def test_ollama_specific_hint(self, cli_obj):
         """Ollama-specific fix shown when port 11434 detected."""
         cli_obj.agent.context_compressor.context_length = 4096

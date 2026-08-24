@@ -115,7 +115,7 @@ let
           # variable, not a devShell variable: ``nix develop -c uv build``
           # must remain blocked.
           (final: prev: {
-            hermes-agent = prev.hermes-agent.overrideAttrs (_old: {
+            hermes-agent-iot = prev.hermes-agent-iot.overrideAttrs (_old: {
               HERMES_NIX_BUILD = "1";
             });
           })
@@ -138,7 +138,7 @@ let
     lib.composeManyExtensions [
       editableOverlay
       (final: prev: {
-        hermes-agent = prev.hermes-agent.overrideAttrs (old: {
+        hermes-agent-iot = prev.hermes-agent-iot.overrideAttrs (old: {
           # point straight at the real source instead of the filtered nix store copy
           src = workspaceRoot;
           nativeBuildInputs = old.nativeBuildInputs ++ final.resolveBuildSystem { editables = [ ]; };
@@ -149,9 +149,9 @@ let
 in
 {
   venv = pythonSet.mkVirtualEnv "hermes-agent-env" {
-    hermes-agent = dependency-groups;
+    hermes-agent-iot = dependency-groups;
   };
   editableVenv = editableSet.mkVirtualEnv "hermes-agent-editable-env" {
-    hermes-agent = dependency-groups;
+    hermes-agent-iot = dependency-groups;
   };
 }

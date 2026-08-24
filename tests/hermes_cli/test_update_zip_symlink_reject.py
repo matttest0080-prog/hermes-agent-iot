@@ -16,6 +16,12 @@ from unittest.mock import patch
 import pytest
 
 
+@pytest.fixture(autouse=True)
+def _official_update_default():
+    with patch("hermes_cli.main._is_iot_install", return_value=False):
+        yield
+
+
 def _build_zip_with_symlink_member(zip_path: str, link_name: str, target: str) -> None:
     """Write a ZIP containing a single member with S_IFLNK mode bits set."""
     with zipfile.ZipFile(zip_path, "w") as zf:

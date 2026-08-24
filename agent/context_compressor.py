@@ -2226,7 +2226,10 @@ class ContextCompressor(ContextEngine):
             # if the percentage would suggest a lower value (#14690 handles
             # the degenerate small-window case inside the helper).
             self._threshold_tokens = self._compute_threshold_tokens(
-                _ctx, self.threshold_percent, self.max_tokens,
+                _ctx,
+                self.threshold_percent,
+                self.max_tokens,
+                getattr(self, "minimum_context_length", MINIMUM_CONTEXT_LENGTH),
             )
             # Apply absolute token cap (compression.threshold_tokens) —
             # takes the lower of the ratio-based threshold and the cap.
@@ -2796,7 +2799,10 @@ class ContextCompressor(ContextEngine):
         if max_tokens is not None:
             self.max_tokens = self._coerce_max_tokens(max_tokens)
         self.threshold_tokens = self._compute_threshold_tokens(
-            context_length, self.threshold_percent, self.max_tokens,
+            context_length,
+            self.threshold_percent,
+            self.max_tokens,
+            getattr(self, "minimum_context_length", MINIMUM_CONTEXT_LENGTH),
         )
         # Re-apply the absolute token cap so it survives model switches
         # and fallback activations. The cap is a first-class config value
@@ -2934,7 +2940,10 @@ class ContextCompressor(ContextEngine):
 
     @staticmethod
     def _compute_threshold_tokens(
-        context_length: int, threshold_percent: float, max_tokens: int | None = None,
+        context_length: int,
+        threshold_percent: float,
+        max_tokens: int | None = None,
+        minimum_context_length: int = MINIMUM_CONTEXT_LENGTH,
     ) -> int:
         """Compute the compaction trigger threshold in tokens.
 
@@ -2964,7 +2973,7 @@ class ContextCompressor(ContextEngine):
         if effective_window <= 0:
             effective_window = context_length
         pct_value = int(effective_window * threshold_percent)
-        floored = max(pct_value, MINIMUM_CONTEXT_LENGTH)
+        floored = max(pct_value, minimum_context_length)
         # If flooring pushed the threshold to/over the effective window it can
         # never be reached. Trigger at 85% of the effective input budget so a
         # minimum-context model rides most of its budget before compacting
@@ -2996,12 +3005,20 @@ class ContextCompressor(ContextEngine):
         proactive_prune_min_reclaim_tokens: int = 4096,
         min_tail_user_messages: int = 1,
         tail_mode: str = "legacy",
+        minimum_context_length: int = MINIMUM_CONTEXT_LENGTH,
     ):
         self.model = model
         self.base_url = base_url
         self.api_key = api_key
         self.provider = provider
         self.api_mode = api_mode
+        try:
+            configured_minimum = int(minimum_context_length)
+        except (TypeError, ValueError):
+            configured_minimum = MINIMUM_CONTEXT_LENGTH
+        self.minimum_context_length = (
+            configured_minimum if configured_minimum > 0 else MINIMUM_CONTEXT_LENGTH
+        )
         # Lean tail mode (#compaction-v2): "lean" = small clamped recency
         # tail + verbatim-user-message summary section + recovery pointers;
         # "legacy" = 0.20*window tail (shipping behavior).

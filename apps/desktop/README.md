@@ -74,6 +74,10 @@ HERMES_HOME=/tmp/throwaway npm run dev
 npm run dev:fake-boot   # exercise the startup overlay with deterministic delays
 ```
 
+`concurrently` is pinned at `10.0.4`. Its resolved dependency tree uses the
+patched `shell-quote` 1.9.0; keep that patched transitive version when updating
+the desktop dependency graph.
+
 ### Building installers
 
 ```bash

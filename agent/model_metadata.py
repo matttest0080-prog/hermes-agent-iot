@@ -49,6 +49,46 @@ def __getattr__(name: str):
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
 
 
+def get_minimum_tool_context_length(agent: Any = None) -> int:
+    """Return the active profile's tool-context floor, defaulting to 64K."""
+    value = None
+    if agent is not None:
+        value = getattr(agent, "_minimum_tool_context_length", None)
+    else:
+        try:
+            from hermes_cli.config import load_config_readonly
+
+            config = load_config_readonly()
+            agent_config = config.get("agent", {}) if isinstance(config, dict) else {}
+            if isinstance(agent_config, dict):
+                value = agent_config.get("minimum_tool_context_length")
+        except Exception:
+            value = None
+    if value is None or isinstance(value, bool):
+        return MINIMUM_CONTEXT_LENGTH
+    try:
+        value = int(value)
+    except (TypeError, ValueError):
+        return MINIMUM_CONTEXT_LENGTH
+    return value if value > 0 else MINIMUM_CONTEXT_LENGTH
+
+
+def validate_tool_context_length(
+    model: str,
+    context_length: int | None,
+    minimum_context_length: int,
+) -> None:
+    """Reject a known model context window below the active tool profile floor."""
+    if context_length and context_length < minimum_context_length:
+        raise ValueError(
+            f"Model {model} has a context window of {context_length:,} tokens, "
+            f"which is below the configured minimum {minimum_context_length:,} required "
+            f"by Hermes Agent. Choose a model with at least {minimum_context_length:,} "
+            f"tokens of context, or set model.context_length in config.yaml "
+            f"to the server's real value (it must be at least {minimum_context_length:,})."
+        )
+
+
 def _resolve_requests_verify(base_url: str = "") -> bool | str:
     """Resolve SSL verify setting for `requests` calls.
 
@@ -859,7 +899,7 @@ def _maybe_cache_local_context_length(
     minimum-context guidance — they must not be normalized into the on-disk cache
     as if they were valid operating limits.
     """
-    if length >= MINIMUM_CONTEXT_LENGTH:
+    if length >= get_minimum_tool_context_length():
         save_context_length(model, base_url, length)
 
 
@@ -876,17 +916,18 @@ def _reconcile_local_cached_context_length(
     reported window over a stale disk entry; when the probe fails (offline tests,
     network blip), keep the cached value.
 
-    Live probes below :data:`MINIMUM_CONTEXT_LENGTH` invalidate stale cache
-    entries but are not persisted — startup should reject them, not bless a
-    sub-64K window as config.
+    Live probes below the active profile floor invalidate stale cache entries
+    but are not persisted — startup should reject them, not bless an invalid
+    runtime window as config.
     """
     live_ctx = _query_local_context_length(model, base_url, api_key=api_key)
     if live_ctx and live_ctx > 0 and live_ctx != cached:
-        if live_ctx < MINIMUM_CONTEXT_LENGTH:
+        minimum_context_length = get_minimum_tool_context_length()
+        if live_ctx < minimum_context_length:
             logger.info(
                 "Live local probe for %s@%s reports %s (< minimum %s); "
                 "invalidating stale cache — agent init should reject",
-                model, base_url, f"{live_ctx:,}", f"{MINIMUM_CONTEXT_LENGTH:,}",
+                model, base_url, f"{live_ctx:,}", f"{minimum_context_length:,}",
             )
             _invalidate_cached_context_length(model, base_url)
             return live_ctx

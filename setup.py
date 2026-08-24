@@ -1,14 +1,18 @@
 """
 setup.py — wheel/sdist build guard.
 
-pip/PyPI and Homebrew are no longer supported distribution methods for
-Hermes Agent (see website/docs/getting-started/platform-support.md). The
-wheel would ship without bundled assets (locales, skills, optional-mcps,
-web_dist, tui_dist, plugin manifests) since those are resolved at runtime
-via env-var overrides set by the nix wrapper or the source-checkout layout.
+The upstream distribution remains unavailable as a generic wheel. This IoT
+fork may additionally build its separately named ``hermes-agent-iot``
+distribution only with an explicit release marker. That marker prevents
+accidental local artifact creation; it is not an authorization boundary.
+Release authorization is enforced by protected Git tags, the GitHub ``pypi``
+environment, Trusted Publisher OIDC claims, and immutable Action SHAs.
+The lightweight wheel intentionally omits repository-level bundled assets
+(skills, optional-skills, optional-mcps, and Desktop/TUI/Web build artifacts),
+as documented in README.md and README_PI2.md.
 
 This file overrides the ``bdist_wheel`` and ``sdist`` setuptools commands
-to raise an error when run outside a Nix build. The PEP 517
+to raise an error unless running in Nix or an explicit IoT release build. The PEP 517
 ``build_wheel`` / ``build_sdist`` hooks in
 ``setuptools.build_meta`` call these commands internally, so the guard
 fires for ``uv build``, ``pip wheel``, ``python -m build``, and direct
@@ -30,11 +34,13 @@ from setuptools import setup
 from setuptools.command.sdist import sdist
 
 _IN_NIX_BUILD = os.environ.get("HERMES_NIX_BUILD") == "1"
+_IN_IOT_RELEASE_BUILD = os.environ.get("HERMES_IOT_RELEASE_BUILD") == "1"
+_BUILD_ALLOWED = _IN_NIX_BUILD or _IN_IOT_RELEASE_BUILD
 
 _BLOCK_MESSAGE = (
-    "Building wheels or sdists for hermes-agent is not supported.\n"
-    "Hermes is distributed via the shell installer, Docker image, or Nix.\n"
-    "See: https://hermes-agent.nousresearch.com/docs/getting-started/installation\n"
+    "Building wheels or sdists for hermes-agent-iot is disabled by default.\n"
+    "Official IoT release automation must explicitly set HERMES_IOT_RELEASE_BUILD=1.\n"
+    "Nix builds remain supported with HERMES_NIX_BUILD=1.\n"
     "\n"
     "If you are developing, use an editable install instead:\n"
     "  uv sync          # or: uv pip install -e .\n"
@@ -46,7 +52,7 @@ _BLOCK_MESSAGE = (
 
 class _GuardedSdist(sdist):
     def run(self, *args, **kwargs):
-        if not _IN_NIX_BUILD:
+        if not _BUILD_ALLOWED:
             raise RuntimeError(_BLOCK_MESSAGE)
         return super().run(*args, **kwargs)
 
@@ -63,7 +69,7 @@ try:
 
     class _GuardedBdistWheel(bdist_wheel):
         def run(self, *args, **kwargs):
-            if not _IN_NIX_BUILD:
+            if not _BUILD_ALLOWED:
                 raise RuntimeError(_BLOCK_MESSAGE)
             return super().run(*args, **kwargs)
 
