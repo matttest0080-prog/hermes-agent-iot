@@ -36,7 +36,7 @@ Hermes Agent IoT requires Python `>=3.11,<3.14`. Use a virtual environment.
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.20.4.post1'
+python -m pip install 'hermes-agent-iot[minimal]==0.20.5.post2'
 python -m pip check
 
 hermes-iot setup --profile minimal
