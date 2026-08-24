@@ -531,7 +531,7 @@ sudo swapoff /swapfile
 sudo rm -f /swapfile
 ```
 
-## 10. 驗證與維護
+## 9. 驗證與維護
 
 ```bash
 source ~/.hermes-venv/bin/activate
