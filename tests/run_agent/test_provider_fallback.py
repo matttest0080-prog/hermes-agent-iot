@@ -213,6 +213,30 @@ class TestFallbackChainAdvancement:
         assert agent._fallback_activated is False
         assert agent._fallback_index == 1
 
+    def test_rejected_candidate_restores_preconstruction_mutations_and_closes_owned_client(self):
+        fbs = [{"provider": "openai", "model": "tiny-context"}]
+        agent = _make_agent(fallback_model=fbs)
+        agent._minimum_tool_context_length = 2_048
+        agent._reasoning_echo_flag = True
+        candidate = _mock_client("https://tiny.example/v1")
+
+        def construct_candidate(*_args, **_kwargs):
+            agent._reasoning_echo_flag = False
+            return candidate, "tiny-context"
+
+        with (
+            patch(
+                "agent.auxiliary_client.resolve_provider_client",
+                side_effect=construct_candidate,
+            ),
+            patch("agent.model_metadata.get_model_context_length", return_value=1_024),
+        ):
+            assert agent._try_activate_fallback() is False
+
+        assert agent._reasoning_echo_flag is True
+        candidate.close.assert_called_once_with()
+        assert agent._fallback_index == 1
+
     def test_fallback_prevalidation_honors_entry_context_length(self):
         fbs = [
             {

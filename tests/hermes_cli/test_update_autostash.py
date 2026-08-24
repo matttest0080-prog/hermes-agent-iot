@@ -59,6 +59,10 @@ def _setup_update_mocks(monkeypatch, tmp_path):
     """Common setup for cmd_update tests."""
     (tmp_path / ".git").mkdir()
     monkeypatch.setattr(hermes_main, "PROJECT_ROOT", tmp_path)
+    # These tests exercise stash semantics, not fork branch selection.  Keep the
+    # historical main-branch fixture stable; IoT branch selection has dedicated
+    # coverage in test_iot_update_branch.py.
+    monkeypatch.setattr(hermes_main, "_resolve_update_branch", lambda args: "main")
     monkeypatch.setattr(hermes_main, "_stash_local_changes_if_needed", lambda *a, **kw: None)
     monkeypatch.setattr(hermes_main, "_restore_stashed_changes", lambda *a, **kw: True)
     monkeypatch.setattr(hermes_config, "get_missing_env_vars", lambda required_only=True: [])
@@ -67,6 +71,12 @@ def _setup_update_mocks(monkeypatch, tmp_path):
     monkeypatch.setattr(hermes_config, "migrate_config", lambda **kw: {"env_added": [], "config_added": []})
     monkeypatch.setattr(hermes_main, "_upgrade_pip_before_lazy_refresh", lambda *a, **kw: None)
     monkeypatch.setattr(hermes_main, "_refresh_active_lazy_features", lambda *a, **kw: True)
+    # The real post-pull purge intentionally reloads hermes_cli.main.  In this
+    # mocked update flow that would discard the branch/gateway monkeypatches
+    # while no code was actually pulled, making the test hit the live machine.
+    monkeypatch.setattr(
+        hermes_main, "_purge_stale_hermes_modules", lambda *a, **kw: None
+    )
 
 
 
@@ -227,6 +237,104 @@ def _setup_setting_test(monkeypatch, tmp_path, mode):
     side_effect, recorded = _make_update_side_effect()
     monkeypatch.setattr(hermes_main.subprocess, "run", side_effect)
     return restore_calls, discard_calls, recorded
+
+
+# ---------------------------------------------------------------------------
+# --keep-stash (desktop updater): stash for the update, never re-apply.
+# ---------------------------------------------------------------------------
+
+def _setup_keep_stash_test(monkeypatch, tmp_path):
+    """Wiring for --keep-stash tests: stash returns a ref; restore, discard,
+    and park are all recorded."""
+    _setup_update_mocks(monkeypatch, tmp_path)
+    monkeypatch.setattr("shutil.which", lambda name: "/usr/bin/uv" if name == "uv" else None)
+    monkeypatch.setattr(
+        hermes_main, "_stash_local_changes_if_needed",
+        lambda *a, **kw: "abc123deadbeef",
+    )
+    restore_calls = []
+    discard_calls = []
+    park_calls = []
+    monkeypatch.setattr(
+        hermes_main, "_restore_stashed_changes",
+        lambda *a, **kw: restore_calls.append(1) or True,
+    )
+    monkeypatch.setattr(
+        hermes_main, "_discard_stashed_changes",
+        lambda *a, **kw: discard_calls.append(1) or True,
+    )
+    monkeypatch.setattr(
+        hermes_main, "_park_stashed_changes",
+        lambda *a, **kw: park_calls.append(a) or None,
+    )
+    # Keep the update flow away from the real gateway fleet on this machine —
+    # a live gateway PID would trip the test-suite kill guard and turn the
+    # run into exit 1 (gateway_fleet_restart_incomplete).
+    monkeypatch.setattr(
+        "hermes_cli.gateway.find_gateway_pids", lambda **kw: [], raising=False
+    )
+    return restore_calls, discard_calls, park_calls
+
+
+def test_update_keep_stash_parks_instead_of_restoring(monkeypatch, tmp_path):
+    """--keep-stash: after a successful update, the autostash is parked (left
+    in git stash) — never re-applied, never discarded."""
+    restore_calls, discard_calls, park_calls = _setup_keep_stash_test(monkeypatch, tmp_path)
+    side_effect, _ = _make_update_side_effect()
+    monkeypatch.setattr(hermes_main.subprocess, "run", side_effect)
+
+    hermes_main.cmd_update(SimpleNamespace(yes=True, keep_stash=True))
+
+    assert len(park_calls) == 1
+    assert park_calls[0][0] == "abc123deadbeef"
+    assert restore_calls == []
+    assert discard_calls == []
+
+
+def test_update_without_keep_stash_still_restores(monkeypatch, tmp_path):
+    """Regression guard: default behavior (no --keep-stash) is unchanged —
+    the autostash is auto-restored under --yes."""
+    restore_calls, discard_calls, park_calls = _setup_keep_stash_test(monkeypatch, tmp_path)
+    side_effect, _ = _make_update_side_effect()
+    monkeypatch.setattr(hermes_main.subprocess, "run", side_effect)
+
+    hermes_main.cmd_update(SimpleNamespace(yes=True, keep_stash=False))
+
+    assert restore_calls == [1]
+    assert park_calls == []
+    assert discard_calls == []
+
+
+def test_update_keep_stash_failure_path_still_preserves(monkeypatch, tmp_path, capsys):
+    """--keep-stash + failed update: neither restore nor park runs; the
+    existing preserved-in-stash message fires (working tree unknown)."""
+    restore_calls, discard_calls, park_calls = _setup_keep_stash_test(monkeypatch, tmp_path)
+    side_effect, _ = _make_update_side_effect(ff_only_fails=True, reset_fails=True)
+    monkeypatch.setattr(hermes_main.subprocess, "run", side_effect)
+
+    with pytest.raises(SystemExit, match="1"):
+        hermes_main.cmd_update(SimpleNamespace(yes=True, keep_stash=True))
+
+    assert restore_calls == []
+    assert park_calls == []
+    assert discard_calls == []
+    assert "preserved in stash" in capsys.readouterr().out
+
+
+def test_update_parser_accepts_keep_stash():
+    """The flag parses and defaults off."""
+    import argparse
+
+    from hermes_cli.subcommands.update import build_update_parser
+
+    parser = argparse.ArgumentParser()
+    subparsers = parser.add_subparsers()
+    build_update_parser(subparsers, cmd_update=lambda args: None)
+
+    args = parser.parse_args(["update", "--keep-stash"])
+    assert args.keep_stash is True
+    args = parser.parse_args(["update"])
+    assert args.keep_stash is False
 
 
 

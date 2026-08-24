@@ -1,5 +1,6 @@
 """Regression tests for packaging metadata in pyproject.toml."""
 
+import json
 from pathlib import Path
 import tomllib
 
@@ -23,6 +24,15 @@ def test_h2_request_smuggling_floor_is_enforced():
     with pyproject_path.open("rb") as handle:
         overrides = tomllib.load(handle)["tool"]["uv"]["override-dependencies"]
     assert "h2>=4.4.1" in overrides
+
+
+def test_website_postcss_override_preserves_current_version_and_pins_nanoid():
+    root = Path(__file__).resolve().parents[1]
+    package = json.loads((root / "website" / "package.json").read_text(encoding="utf-8"))
+    assert package["overrides"]["postcss"] == {
+        ".": "8.5.25",
+        "nanoid": "3.3.18",
+    }
 
 
 def test_matrix_extra_not_in_all():

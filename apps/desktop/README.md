@@ -74,9 +74,9 @@ HERMES_HOME=/tmp/throwaway npm run dev
 npm run dev:fake-boot   # exercise the startup overlay with deterministic delays
 ```
 
-`concurrently` is intentionally held at `^9.2.4`. Version 10.0.3 depends on
-`shell-quote<=1.8.4`, which is affected by GHSA-395f-4hp3-45gv. Do not restore
-the 10.x range until its dependency tree contains a patched `shell-quote`.
+`concurrently` is pinned at `10.0.4`. Its resolved dependency tree uses the
+patched `shell-quote` 1.9.0; keep that patched transitive version when updating
+the desktop dependency graph.
 
 ### Building installers
 
@@ -186,7 +186,9 @@ Changing profiles or connection modes is a soft workspace switch, not another
 cold boot. The shell and current management overlay remain mounted while
 gateway-bound nanostores are wiped, query-backed data is invalidated, and the
 new connection repopulates skeletons. This prevents rows or transcripts from
-the previous gateway bleeding into the next one.
+the previous gateway bleeding into the next one. Switching changes only the
+foreground view and request route: it does not cancel turns or stop a backend,
+and retained background sockets continue receiving events from running jobs.
 
 ### Verification
 

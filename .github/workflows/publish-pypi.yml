@@ -18,6 +18,15 @@ jobs:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
           persist-credentials: false
+          fetch-depth: 0
+      - name: Verify tag ancestry
+        env:
+          TAGGED_SHA: ${{ github.sha }}
+        run: |
+          git fetch --no-tags origin \
+            +refs/heads/pi2-lite:refs/remotes/origin/pi2-lite
+          bash scripts/check_release_ancestry.sh \
+            "$TAGGED_SHA" refs/remotes/origin/pi2-lite
       - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
         with:
           python-version: "3.12"

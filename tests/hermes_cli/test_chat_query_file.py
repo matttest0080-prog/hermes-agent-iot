@@ -51,6 +51,7 @@ def test_query_file_reads_hostile_text_verbatim(tmp_path, monkeypatch):
 
 
 def test_query_and_query_file_mutually_exclusive(tmp_path, capsys):
+    """argparse rejects -q + --query-file at parse time (exit 2), no env needed."""
     f = tmp_path / "dm.txt"
     f.write_text("hello", encoding="utf-8")
     with pytest.raises(SystemExit) as exc_info:

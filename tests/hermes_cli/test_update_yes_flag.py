@@ -25,7 +25,8 @@ def _official_update_default():
 
 @pytest.fixture(autouse=True)
 def _isolate_gateway_discovery():
-    with patch("hermes_cli.gateway.find_gateway_pids", return_value=[]), \
+    with patch("hermes_cli.main._purge_stale_hermes_modules", return_value=None), \
+         patch("hermes_cli.gateway.find_gateway_pids", return_value=[]), \
          patch("hermes_cli.gateway.supports_systemd_services", return_value=False), \
          patch("hermes_cli.gateway.find_profile_gateway_processes", return_value=[]):
         yield

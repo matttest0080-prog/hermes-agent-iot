@@ -100,6 +100,12 @@ def _patch_update_deps(monkeypatch, tmp_path, run_side_effect):
     monkeypatch.setattr(
         hermes_main, "_resume_windows_gateways_after_update", lambda *a, **k: None
     )
+    # Keep the simulated pull from re-importing hermes_cli.main and thereby
+    # losing the test's branch and gateway safety patches.  Production purge
+    # behavior is covered by the dedicated update-module reload tests.
+    monkeypatch.setattr(
+        hermes_main, "_purge_stale_hermes_modules", lambda *a, **k: None
+    )
     # Short-circuit the long tail: dependency install + desktop build.
     monkeypatch.setattr(hermes_main, "_write_update_incomplete_marker", lambda: None)
     monkeypatch.setattr(hermes_main, "_clear_update_incomplete_marker", lambda: None)

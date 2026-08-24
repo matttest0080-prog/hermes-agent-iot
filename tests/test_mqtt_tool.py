@@ -4,6 +4,7 @@ import json
 import os
 import sys
 import unittest
+from unittest.mock import MagicMock
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -292,7 +293,7 @@ class MQTTToolTests(unittest.TestCase):
         old_single = mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES
         old_total = mqtt_tool._MAX_INBOUND_RESPONSE_BYTES
         mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES = 4
-        mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = 6
+        mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = 200
         try:
             result = json.loads(mqtt_tool._handle_mqtt_subscribe_recent({
                 "topic_filter": "sensors/#",
@@ -341,7 +342,7 @@ class MQTTToolTests(unittest.TestCase):
         old_single = mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES
         old_total = mqtt_tool._MAX_INBOUND_RESPONSE_BYTES
         mqtt_tool._MAX_INBOUND_PAYLOAD_BYTES = 4
-        mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = 6
+        mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = 200
         try:
             result = json.loads(mqtt_tool._handle_mqtt_device_command({
                 "command_topic": "devices/lamp/cmd",
@@ -377,6 +378,106 @@ class MQTTToolTests(unittest.TestCase):
         self.assertEqual(FakeClient.published, [])
         self.assertIn("loop_stop", FakeClient.events)
         self.assertEqual(FakeClient.disconnected, 1)
+
+    def test_tool_argument_parsers_reject_ambiguous_or_non_finite_values(self) -> None:
+        from tools import mqtt_tool
+
+        for value in (
+            True, False, 1.5, float("nan"), float("inf"), float("-inf")
+        ):
+            with self.subTest(integer=value), self.assertRaises(ValueError):
+                mqtt_tool._bounded_int(value, default=0, minimum=0, maximum=2, name="qos")
+        for value in (True, False, float("nan"), float("inf"), float("-inf")):
+            with self.subTest(number=value), self.assertRaises(ValueError):
+                mqtt_tool._bounded_float(
+                    value, default=1.0, minimum=0.01, maximum=30.0,
+                    name="timeout_seconds",
+                )
+        for value in ("false", "0", 0, 1, None):
+            with self.subTest(boolean=value), self.assertRaises(ValueError):
+                mqtt_tool._strict_bool(value, default=False, name="retain")
+        self.assertFalse(mqtt_tool._strict_bool(False, default=True, name="retain"))
+        self.assertTrue(mqtt_tool._strict_bool(True, default=False, name="retain"))
+
+    def test_publish_rejects_string_retain_instead_of_treating_it_as_true(self) -> None:
+        from tools import mqtt_tool
+
+        mqtt_tool._mqtt_client_factory = lambda: FakeClient
+        os.environ["MQTT_HOST"] = "broker.local"
+        result = json.loads(mqtt_tool._handle_mqtt_publish({
+            "topic": "devices/lamp/cmd", "payload": "ON", "retain": "false",
+        }))
+        self.assertIn("error", result)
+        self.assertEqual(FakeClient.published, [])
+
+    def test_publish_rejects_non_finite_json_payloads(self) -> None:
+        from tools import mqtt_tool
+
+        mqtt_tool._mqtt_client_factory = lambda: FakeClient
+        os.environ["MQTT_HOST"] = "broker.local"
+        payloads = (
+            float("nan"),
+            float("inf"),
+            float("-inf"),
+            {"reading": float("nan")},
+            [1, {"reading": float("inf")}],
+        )
+        for payload in payloads:
+            with self.subTest(payload=payload):
+                FakeClient.published.clear()
+                result = json.loads(mqtt_tool._handle_mqtt_publish({
+                    "topic": "devices/sensor/reading", "payload": payload,
+                }))
+                self.assertIn("error", result)
+                self.assertIn("JSON", result["error"])
+                self.assertEqual(FakeClient.published, [])
+
+    def test_connect_failure_closes_client_without_masking_original_error(self) -> None:
+        from tools import mqtt_tool
+
+        class BrokenConnectClient(FakeClient):
+            def connect(self, host: str, port: int, keepalive: int = 60) -> None:
+                raise RuntimeError("connect boom")
+
+            def disconnect(self) -> None:
+                type(self).disconnected += 1
+                raise RuntimeError("disconnect boom")
+
+        mqtt_tool._mqtt_client_factory = lambda: BrokenConnectClient
+        os.environ["MQTT_HOST"] = "broker.local"
+        result = json.loads(mqtt_tool._handle_mqtt_publish({
+            "topic": "devices/lamp/cmd", "payload": "ON",
+        }))
+        self.assertIn("connect boom", result["error"])
+        self.assertEqual(BrokenConnectClient.disconnected, 1)
+
+    def test_subscribe_budget_includes_broker_controlled_topic_and_json_overhead(self) -> None:
+        from tools import mqtt_tool
+
+        mqtt_tool._mqtt_client_factory = lambda: FakeClient
+        os.environ["MQTT_HOST"] = "broker.local"
+        FakeClient.queued_messages = [
+            FakeMessage("sensors/" + "x" * 64, DecodeBomb(b"1"))
+        ]
+        old_total = mqtt_tool._MAX_INBOUND_RESPONSE_BYTES
+        mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = 32
+        try:
+            result = json.loads(mqtt_tool._handle_mqtt_subscribe_recent({
+                "topic_filter": "sensors/#", "timeout_seconds": 0.01,
+                "max_messages": 1,
+            }))
+        finally:
+            mqtt_tool._MAX_INBOUND_RESPONSE_BYTES = old_total
+        self.assertEqual(result["result"]["messages"], [])
+        self.assertEqual(result["result"]["dropped_messages"], 1)
+
+    def test_subscription_rejection_ignores_non_boolean_is_failure_proxy(self) -> None:
+        from tools import mqtt_tool
+
+        code = MagicMock()
+        code.is_failure = MagicMock()
+        code.value = 0
+        self.assertIsNone(mqtt_tool._subscription_rejection([code]))
 
     def test_mqtt_toolset_is_resolvable(self) -> None:
         from toolsets import resolve_toolset

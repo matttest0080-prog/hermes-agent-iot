@@ -1,8 +1,0 @@
-
-[[IgnoredVulns]]
-id = "CVE-2025-71329"
-reason = "Reviewed 2026-08-11; review again by 2026-09-11. GitHub Advisory and npm registry report image-size 2.0.2 as latest with no patched release. Docusaurus uses it only during the website build; untrusted pull requests can therefore at worst exhaust the isolated Docs Site Checks job, which has a 20-minute timeout and read-only contents permission, not a production-server process. Accept this bounded CI-availability risk temporarily; remove this exact exception when image-size publishes a patched release or Docusaurus removes the dependency."
-
-[[IgnoredVulns]]
-id = "CVE-2025-71330"
-reason = "Reviewed 2026-08-11; review again by 2026-09-11. GitHub Advisory and npm registry report image-size 2.0.2 as latest with no patched release. Docusaurus uses it only during the website build; untrusted pull requests can therefore at worst exhaust the isolated Docs Site Checks job, which has a 20-minute timeout and read-only contents permission, not a production-server process. Accept this bounded CI-availability risk temporarily; remove this exact exception when image-size publishes a patched release or Docusaurus removes the dependency."

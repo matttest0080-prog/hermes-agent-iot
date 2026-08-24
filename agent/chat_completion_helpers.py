@@ -2442,6 +2442,7 @@ _FALLBACK_RUNTIME_FIELDS = (
     "_client_kwargs",
     "_use_prompt_caching",
     "_use_native_cache_layout",
+    "_reasoning_echo_flag",
     "reasoning_config",
     "_cached_system_prompt",
     "_pending_fallback_notice",
@@ -2502,6 +2503,28 @@ def _restore_fallback_runtime(agent, snapshot: dict) -> None:
         if compressor is not None and compressor_state is not None:
             vars(compressor).clear()
             vars(compressor).update(compressor_state)
+
+
+def _close_candidate_clients(snapshot: dict, *clients: Any) -> None:
+    """Close candidate-owned clients once, never pre-existing runtime clients."""
+    preexisting = {
+        snapshot["fields"].get("client"),
+        snapshot["fields"].get("_anthropic_client"),
+    }
+    closed: set[int] = set()
+    for client in clients:
+        if client is None or client is _FALLBACK_MISSING or client in preexisting:
+            continue
+        identity = id(client)
+        if identity in closed:
+            continue
+        closed.add(identity)
+        close = getattr(client, "close", None)
+        if callable(close):
+            try:
+                close()
+            except Exception:
+                logger.debug("Failed to close rejected fallback client", exc_info=True)
 
 
 def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool:
@@ -2609,7 +2632,10 @@ def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool
     # Use centralized router for client construction.
     # raw_codex=True because the main agent needs direct responses.stream()
     # access for Codex providers.
-    runtime_snapshot = None
+    # Snapshot before candidate construction: provider routers and native-client
+    # factories are allowed to touch live state and must remain transactional.
+    runtime_snapshot = _snapshot_fallback_runtime(agent)
+    fb_client = None
     try:
         from agent.auxiliary_client import resolve_provider_client
         # Pass base_url and api_key from fallback config so custom
@@ -2662,6 +2688,7 @@ def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool
                 "Fallback to %s failed: provider not configured",
                 fb_provider)
             unavailable.add(fb_key)
+            _restore_fallback_runtime(agent, runtime_snapshot)
             return agent._try_activate_fallback(reason)  # try next in chain
         try:
             from hermes_cli.model_normalize import normalize_model_for_provider
@@ -2757,9 +2784,10 @@ def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool
             )
         except ValueError as exc:
             logger.warning("Fallback skip: %s", exc)
+            _restore_fallback_runtime(agent, runtime_snapshot)
+            _close_candidate_clients(runtime_snapshot, fb_client)
             return agent._try_activate_fallback(reason)
 
-        runtime_snapshot = _snapshot_fallback_runtime(agent)
         old_model = agent.model
         old_provider = agent.provider
 
@@ -2771,6 +2799,10 @@ def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool
         agent.requested_provider = fb_provider
         agent.base_url = fb_base_url
         agent.api_mode = fb_api_mode
+        # Per-provider reasoning_content echo opt-in (see _reasoning_echo_opt_in).
+        # Read from the fallback entry so the flag travels with the active
+        # provider; restore_primary_runtime will revert it from the snapshot.
+        agent._reasoning_echo_flag = bool(fb.get("reasoning_echo", False))
         if hasattr(agent, "_transport_cache"):
             agent._transport_cache.clear()
         agent._fallback_activated = True
@@ -2828,6 +2860,9 @@ def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool
             agent._anthropic_client = build_anthropic_client(
                 effective_key, agent._anthropic_base_url, timeout=_fb_timeout,
             )
+            # The router's preliminary OpenAI-shaped client is superseded by
+            # the native Anthropic client and is no longer runtime-owned.
+            _close_candidate_clients(runtime_snapshot, fb_client)
             agent._is_anthropic_oauth = _is_oauth_token(effective_key) if fb_provider == "anthropic" else False
             agent.client = None
             agent._client_kwargs = {}
@@ -2942,8 +2977,15 @@ def try_activate_fallback(agent, reason: "FailoverReason | None" = None) -> bool
         _reset_stale_streak(agent)
         return True
     except Exception as e:
-        if runtime_snapshot is not None:
-            _restore_fallback_runtime(agent, runtime_snapshot)
+        candidate_client = getattr(agent, "client", None)
+        candidate_anthropic_client = getattr(agent, "_anthropic_client", None)
+        _restore_fallback_runtime(agent, runtime_snapshot)
+        _close_candidate_clients(
+            runtime_snapshot,
+            fb_client,
+            candidate_client,
+            candidate_anthropic_client,
+        )
         if fb_provider == "nous":
             unavailable.add(fb_key)
         logger.error("Failed to activate fallback %s: %s", fb_model, e)
@@ -4249,8 +4291,9 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                 agent._fire_reasoning_delta(reasoning_text)
 
             # Accumulate text content — fire callback only when no tool calls
-            if delta and delta.content:
-                content_parts.append(delta.content)
+            delta_content = getattr(delta, "content", None)
+            if delta_content:
+                content_parts.append(delta_content)
                 if not tool_calls_acc:
                     if pending_text_parts or _provider_stream_text_may_be_sse(delta.content):
                         pending_text_parts.append(delta.content)
@@ -4260,7 +4303,7 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                         _flush_pending_stream_text()
                         continue
                     _fire_first_delta()
-                    agent._fire_stream_delta(delta.content)
+                    agent._fire_stream_delta(delta_content)
                     deltas_were_sent["yes"] = True
                 # Tool calls suppress regular content streaming (avoids
                 # displaying chatty "I'll use the tool..." text alongside
@@ -4275,17 +4318,19 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                 # box is already closed (tool boundary flush).
                 elif agent.stream_delta_callback:
                     try:
-                        agent.stream_delta_callback(delta.content)
-                        agent._record_streamed_assistant_text(delta.content)
+                        agent.stream_delta_callback(delta_content)
+                        agent._record_streamed_assistant_text(delta_content)
                     except Exception:
                         pass
 
             # Accumulate tool call deltas — notify display on first name
-            if delta and delta.tool_calls:
+            delta_tool_calls = getattr(delta, "tool_calls", None)
+            if delta_tool_calls:
                 _flush_pending_stream_text()
-                for tc_delta in delta.tool_calls:
-                    raw_idx = tc_delta.index if tc_delta.index is not None else 0
-                    delta_id = tc_delta.id or ""
+                for tc_delta in delta_tool_calls:
+                    raw_index = getattr(tc_delta, "index", None)
+                    raw_idx = raw_index if raw_index is not None else 0
+                    delta_id = getattr(tc_delta, "id", None) or ""
 
                     # Ollama fix: detect a new tool call reusing the same
                     # raw index (different id) and redirect to a fresh slot.
@@ -4304,7 +4349,7 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
 
                     if idx not in tool_calls_acc:
                         # Poolside may send integer id instead of string
-                        _tc_id = tc_delta.id
+                        _tc_id = getattr(tc_delta, "id", None)
                         if isinstance(_tc_id, int):
                             _tc_id = str(_tc_id)
                         tool_calls_acc[idx] = {
@@ -4314,14 +4359,17 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                             "extra_content": None,
                         }
                     entry = tool_calls_acc[idx]
-                    if tc_delta.id is not None:
-                        _new_id = tc_delta.id
+                    tc_id = getattr(tc_delta, "id", None)
+                    if tc_id is not None:
+                        _new_id = tc_id
                         if isinstance(_new_id, int):
                             _new_id = str(_new_id)
                         if _new_id:
                             entry["id"] = _new_id
-                    if tc_delta.function:
-                        if tc_delta.function.name:
+                    tc_function = getattr(tc_delta, "function", None)
+                    if tc_function:
+                        function_name = getattr(tc_function, "name", None)
+                        if function_name:
                             # Use assignment, not +=.  Function names are
                             # atomic identifiers delivered complete in the
                             # first chunk (OpenAI spec).  Some providers
@@ -4330,9 +4378,10 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                             # produce "read_fileread_file".  Assignment
                             # (matching the OpenAI Node SDK / LiteLLM /
                             # Vercel AI patterns) is immune to this.
-                            entry["function"]["name"] = tc_delta.function.name
-                        if tc_delta.function.arguments:
-                            entry["function"]["arguments"] += tc_delta.function.arguments
+                            entry["function"]["name"] = function_name
+                        function_arguments = getattr(tc_function, "arguments", None)
+                        if function_arguments:
+                            entry["function"]["arguments"] += function_arguments
                     extra = getattr(tc_delta, "extra_content", None)
                     if extra is None and hasattr(tc_delta, "model_extra"):
                         extra = (tc_delta.model_extra if isinstance(tc_delta.model_extra, dict) else {}).get("extra_content")
@@ -4358,8 +4407,9 @@ def interruptible_streaming_api_call(agent, api_kwargs: dict, *, on_first_delta=
                         # discarding the attempted action.
                         result["partial_tool_names"].append(name)
 
-            if chunk.choices[0].finish_reason:
-                finish_reason = chunk.choices[0].finish_reason
+            chunk_finish_reason = getattr(chunk.choices[0], "finish_reason", None)
+            if chunk_finish_reason:
+                finish_reason = chunk_finish_reason
 
             # Usage in the final chunk
             if hasattr(chunk, "usage") and chunk.usage:

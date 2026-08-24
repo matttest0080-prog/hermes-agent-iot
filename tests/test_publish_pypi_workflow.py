@@ -1,3 +1,4 @@
+import subprocess
 from pathlib import Path
 
 import yaml
@@ -75,3 +76,54 @@ def test_publish_job_only_downloads_and_publishes_the_tested_artifact():
     assert any(value.startswith("actions/download-artifact@") for value in uses)
     assert any(value.startswith("pypa/gh-action-pypi-publish@") for value in uses)
     assert not any("run" in step for step in publish["steps"])
+
+
+def _git(repo, *args):
+    return subprocess.run(
+        ["git", *args], cwd=repo, text=True, capture_output=True, check=True
+    ).stdout.strip()
+
+
+def test_release_ancestry_gate_accepts_current_and_ancestor_but_rejects_off_branch(tmp_path):
+    script = ROOT / "scripts" / "check_release_ancestry.sh"
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _git(repo, "init", "-q")
+    _git(repo, "config", "user.email", "release@example.invalid")
+    _git(repo, "config", "user.name", "Release Test")
+    (repo / "tracked").write_text("base\n")
+    _git(repo, "add", "tracked")
+    _git(repo, "commit", "-qm", "base")
+    ancestor = _git(repo, "rev-parse", "HEAD")
+    (repo / "tracked").write_text("tip\n")
+    _git(repo, "commit", "-qam", "tip")
+    tip = _git(repo, "rev-parse", "HEAD")
+    _git(repo, "update-ref", "refs/remotes/origin/pi2-lite", tip)
+
+    for accepted in (ancestor, tip):
+        result = subprocess.run(
+            ["bash", str(script), accepted], cwd=repo, text=True, capture_output=True
+        )
+        assert result.returncode == 0, result.stderr
+
+    _git(repo, "checkout", "-qb", "off-branch", ancestor)
+    (repo / "other").write_text("off\n")
+    _git(repo, "add", "other")
+    _git(repo, "commit", "-qm", "off")
+    off_branch = _git(repo, "rev-parse", "HEAD")
+    rejected = subprocess.run(
+        ["bash", str(script), off_branch], cwd=repo, text=True, capture_output=True
+    )
+    assert rejected.returncode != 0
+    assert "not an ancestor" in rejected.stderr
+
+
+def test_workflow_fetches_authoritative_pi2_lite_and_runs_ancestry_gate_before_build():
+    steps = workflow_jobs()["build"]["steps"]
+    gate_index = next(i for i, step in enumerate(steps) if step.get("name") == "Verify tag ancestry")
+    gate = steps[gate_index]
+    assert "git fetch --no-tags origin" in gate["run"]
+    assert "refs/remotes/origin/pi2-lite" in gate["run"]
+    assert "scripts/check_release_ancestry.sh" in gate["run"]
+    build_index = next(i for i, step in enumerate(steps) if step.get("name") == "Build and check artifacts")
+    assert gate_index < build_index

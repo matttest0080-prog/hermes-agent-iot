@@ -108,8 +108,9 @@ _DEFAULT_PROVIDER_MODELS = {
     "minimax-cn": ["MiniMax-M2.7", "MiniMax-M2.5", "MiniMax-M2.1", "MiniMax-M2"],
     "ai-gateway": ["anthropic/claude-opus-4.6", "anthropic/claude-sonnet-4.6", "openai/gpt-5", "google/gemini-3-flash"],
     "kilocode": ["anthropic/claude-sonnet-5", "anthropic/claude-opus-4.6", "anthropic/claude-sonnet-4.6", "openai/gpt-5.4", "google/gemini-3-pro-preview", "google/gemini-3-flash-preview"],
-    "opencode-zen": ["gpt-5.4", "gpt-5.3-codex", "claude-sonnet-5", "claude-sonnet-4-6", "gemini-3-flash", "glm-5", "kimi-k2.5", "minimax-m2.7"],
-    "opencode-go": ["kimi-k3", "kimi-k2.6", "kimi-k2.5", "glm-5.1", "glm-5", "mimo-v2.5-pro", "mimo-v2.5", "mimo-v2-pro", "mimo-v2-omni", "minimax-m2.7", "minimax-m2.5", "qwen3.7-max", "qwen3.6-plus", "qwen3.5-plus"],
+    "opencode-zen": ["x-preview-f-free", "gpt-5.6-sol", "gpt-5.4", "gpt-5.3-codex", "claude-opus-5", "claude-sonnet-5", "gemini-3.7-flash", "glm-5.2", "kimi-k3", "minimax-m3"],
+    "opencode-free": ["x-preview-f-free", "hy3-free", "laguna-s-2.1-free", "nemotron-3-ultra-free", "nemotron-3.5-lightning-free", "muse-spark-1.2-contributor-free"],
+    "opencode-go": ["kimi-k3", "kimi-k2.7-code", "kimi-k2.6", "gpt-5.6-luna", "grok-4.5", "glm-5.3", "glm-5.2", "mimo-v2.5-pro", "mimo-v2.5", "minimax-m3", "minimax-m2.7", "qwen3.8-max", "qwen3.7-max", "deepseek-v4-pro", "hy3"],
     "huggingface": [
         "Qwen/Qwen3.5-397B-A17B", "Qwen/Qwen3-235B-A22B-Thinking-2507",
         "Qwen/Qwen3-Coder-480B-A35B-Instruct", "deepseek-ai/DeepSeek-R1-0528",
@@ -210,7 +211,9 @@ def prompt(question: str, default: str = None, password: bool = False) -> str:
         if password:
             value = masked_secret_prompt(color(display, Colors.YELLOW))
         else:
-            value = input(color(display, Colors.YELLOW))
+            from hermes_cli.cli_output import line_input
+
+            value = line_input(color(display, Colors.YELLOW))
 
         cleaned = _sanitize_pasted_input(value)
         return cleaned.strip() or default or ""
@@ -1555,7 +1558,7 @@ def setup_terminal_backend(config: dict):
     elif selected_backend == "vercel_sandbox":
         print_success("Terminal backend: Vercel Sandbox")
         print_info("Cloud microVM sandboxes with snapshot-backed filesystem persistence.")
-        print_info("Requires the optional SDK: python -m pip install vercel")
+        print_info("Requires the optional SDK: python -m pip install vercel==0.7.2")
 
         try:
             __import__("vercel")
@@ -1573,20 +1576,20 @@ def setup_terminal_backend(config: dict):
             uv_bin = ensure_uv()
             if uv_bin:
                 result = subprocess.run(
-                    [uv_bin, "pip", "install", "--python", sys.executable, "vercel"],
+                    [uv_bin, "pip", "install", "--python", sys.executable, "vercel==0.7.2"],
                     capture_output=True,
                     text=True,
                 )
             else:
                 result = subprocess.run(
-                    [sys.executable, "-m", "pip", "install", "vercel"],
+                    [sys.executable, "-m", "pip", "install", "vercel==0.7.2"],
                     capture_output=True,
                     text=True,
                 )
             if result.returncode == 0:
                 print_success("vercel SDK installed")
             else:
-                print_warning("Install failed — run manually: python -m pip install vercel")
+                print_warning("Install failed — run manually: python -m pip install vercel==0.7.2")
                 if result.stderr:
                     print_info(f"  Error: {result.stderr.strip().splitlines()[-1]}")
 

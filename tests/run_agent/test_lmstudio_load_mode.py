@@ -80,3 +80,25 @@ def test_lmstudio_explicit_preload_uses_instance_profile_floor(monkeypatch, prof
     AIAgent._ensure_lmstudio_runtime_loaded(cast(Any, agent))
 
     assert calls[0][0][3] == profile_floor
+
+
+def test_lmstudio_explicit_preload_uses_maximum_of_pin_and_profile_floor(monkeypatch):
+    calls = []
+    agent = _agent("explicit")
+    agent._minimum_tool_context_length = 8_192
+    agent._config_context_length = 2_048
+
+    def fake_ensure(*args, **kwargs):
+        calls.append((args, kwargs))
+        return 8_192
+
+    monkeypatch.setattr("hermes_cli.models.ensure_lmstudio_model_loaded", fake_ensure)
+
+    result = AIAgent._ensure_lmstudio_runtime_loaded(cast(Any, agent), 2_048)
+
+    assert calls[0][0][3] == 8_192
+    assert result == 8_192
+
+
+def test_lmstudio_verified_runtime_context_is_authoritative_over_lower_pin():
+    assert AIAgent._effective_lmstudio_context_length(2_048, 8_192) == 8_192

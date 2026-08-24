@@ -22,6 +22,7 @@ from collections import deque
 from dataclasses import dataclass
 from datetime import datetime, timezone
 import json
+import math
 import os
 import secrets
 import threading
@@ -116,7 +117,12 @@ def _payload_to_text(payload: Any) -> str:
     if isinstance(payload, str):
         text = payload
     elif isinstance(payload, (dict, list, int, float, bool)) or payload is None:
-        text = json.dumps(payload, ensure_ascii=False, separators=(",", ":"))
+        text = json.dumps(
+            payload,
+            ensure_ascii=False,
+            separators=(",", ":"),
+            allow_nan=False,
+        )
     else:
         text = str(payload)
     if len(text.encode("utf-8")) > _MAX_PAYLOAD_BYTES:
@@ -127,6 +133,8 @@ def _payload_to_text(payload: Any) -> str:
 def _bounded_int(value: Any, *, default: int, minimum: int, maximum: int, name: str) -> int:
     if value in (None, ""):
         return default
+    if isinstance(value, bool) or (isinstance(value, float) and not value.is_integer()):
+        raise ValueError(f"{name} must be an integer")
     try:
         parsed = int(value)
     except (TypeError, ValueError) as exc:
@@ -139,13 +147,21 @@ def _bounded_int(value: Any, *, default: int, minimum: int, maximum: int, name: 
 def _bounded_float(value: Any, *, default: float, minimum: float, maximum: float, name: str) -> float:
     if value in (None, ""):
         return default
+    if isinstance(value, bool):
+        raise ValueError(f"{name} must be a number")
     try:
         parsed = float(value)
     except (TypeError, ValueError) as exc:
         raise ValueError(f"{name} must be a number") from exc
-    if parsed < minimum or parsed > maximum:
+    if not math.isfinite(parsed) or parsed < minimum or parsed > maximum:
         raise ValueError(f"{name} must be between {minimum} and {maximum}")
     return parsed
+
+
+def _strict_bool(value: Any, *, default: bool, name: str) -> bool:
+    if value is None or type(value) is not bool:
+        raise ValueError(f"{name} must be a boolean")
+    return value
 
 
 def _make_client(config: MQTTConfig):
@@ -171,8 +187,24 @@ def _connect_client(config: MQTTConfig):
             "MQTT_ALLOW_INSECURE_CREDENTIALS=true only for trusted plaintext networks"
         )
     client = _make_client(config)
-    client.connect(config.host, config.port, keepalive=60)
+    try:
+        client.connect(config.host, config.port, keepalive=60)
+    except Exception:
+        _safe_close_client(client)
+        raise
     return client
+
+
+def _safe_close_client(client: Any) -> None:
+    """Best-effort cleanup that never masks the primary MQTT error."""
+    try:
+        client.loop_stop()
+    except Exception:
+        pass
+    try:
+        client.disconnect()
+    except Exception:
+        pass
 
 
 def _inbound_payload_size(msg: Any) -> int:
@@ -180,6 +212,13 @@ def _inbound_payload_size(msg: Any) -> int:
     if isinstance(raw_payload, (bytes, bytearray, memoryview)):
         return len(raw_payload)
     return len(str(raw_payload).encode("utf-8"))
+
+
+def _inbound_topic_size(msg: Any) -> int:
+    topic = getattr(msg, "topic", "")
+    if isinstance(topic, str):
+        return len(topic.encode("utf-8"))
+    return len(str(topic).encode("utf-8"))
 
 
 def _message_to_dict(msg: Any) -> dict[str, Any]:
@@ -199,6 +238,12 @@ def _message_to_dict(msg: Any) -> dict[str, Any]:
     }
 
 
+def _serialized_message_size(message: dict[str, Any]) -> int:
+    return len(
+        json.dumps(message, ensure_ascii=False, separators=(",", ":")).encode("utf-8")
+    )
+
+
 def _publish(topic: str, payload: str, *, qos: int, retain: bool) -> dict[str, Any]:
     config = _get_config()
     client = _connect_client(config)
@@ -213,11 +258,7 @@ def _publish(topic: str, payload: str, *, qos: int, retain: bool) -> dict[str, A
             raise RuntimeError("MQTT publish did not complete before timeout")
         return {"success": True, "topic": topic, "qos": qos, "retain": retain, "bytes": len(payload.encode("utf-8"))}
     finally:
-        try:
-            client.loop_stop()
-        except Exception:
-            pass
-        client.disconnect()
+        _safe_close_client(client)
 
 
 def _subscription_rejection(reason_codes: Any) -> str | None:
@@ -226,7 +267,7 @@ def _subscription_rejection(reason_codes: Any) -> str | None:
     for code in codes:
         if code is None:
             continue
-        if bool(getattr(code, "is_failure", False)):
+        if getattr(code, "is_failure", False) is True:
             return str(code)
         value = getattr(code, "value", code)
         try:
@@ -251,15 +292,23 @@ def _subscribe_recent(topic_filter: str, *, timeout_seconds: float, max_messages
     def on_message(client_obj, userdata, msg):  # noqa: ANN001 - paho callback signature
         nonlocal accepted_bytes, dropped_messages, dropped_bytes
         payload_bytes = _inbound_payload_size(msg)
-        if (
-            payload_bytes > _MAX_INBOUND_PAYLOAD_BYTES
-            or accepted_bytes + payload_bytes > _MAX_INBOUND_RESPONSE_BYTES
-        ):
+        if payload_bytes > _MAX_INBOUND_PAYLOAD_BYTES:
             dropped_messages += 1
             dropped_bytes += payload_bytes
             return
-        messages.append(_message_to_dict(msg))
-        accepted_bytes += payload_bytes
+        controlled_bytes = payload_bytes + _inbound_topic_size(msg)
+        if accepted_bytes + controlled_bytes > _MAX_INBOUND_RESPONSE_BYTES:
+            dropped_messages += 1
+            dropped_bytes += payload_bytes
+            return
+        message = _message_to_dict(msg)
+        message_bytes = _serialized_message_size(message)
+        if accepted_bytes + message_bytes > _MAX_INBOUND_RESPONSE_BYTES:
+            dropped_messages += 1
+            dropped_bytes += payload_bytes
+            return
+        messages.append(message)
+        accepted_bytes += message_bytes
 
     def on_connect(client_obj, userdata, flags, reason_code, properties=None):  # noqa: ANN001
         rc = getattr(reason_code, "value", reason_code)
@@ -304,11 +353,7 @@ def _subscribe_recent(topic_filter: str, *, timeout_seconds: float, max_messages
             result["warning"] = "One or more MQTT messages were dropped by inbound payload safety limits."
         return result
     finally:
-        try:
-            client.loop_stop()
-        except Exception:
-            pass
-        client.disconnect()
+        _safe_close_client(client)
 
 
 def _command_and_wait(
@@ -333,15 +378,23 @@ def _command_and_wait(
     def on_message(client_obj, userdata, msg):  # noqa: ANN001
         nonlocal accepted_bytes, dropped_messages, dropped_bytes
         payload_bytes = _inbound_payload_size(msg)
-        if (
-            payload_bytes > _MAX_INBOUND_PAYLOAD_BYTES
-            or accepted_bytes + payload_bytes > _MAX_INBOUND_RESPONSE_BYTES
-        ):
+        if payload_bytes > _MAX_INBOUND_PAYLOAD_BYTES:
             dropped_messages += 1
             dropped_bytes += payload_bytes
             return
-        messages.append(_message_to_dict(msg))
-        accepted_bytes += payload_bytes
+        controlled_bytes = payload_bytes + _inbound_topic_size(msg)
+        if accepted_bytes + controlled_bytes > _MAX_INBOUND_RESPONSE_BYTES:
+            dropped_messages += 1
+            dropped_bytes += payload_bytes
+            return
+        message = _message_to_dict(msg)
+        message_bytes = _serialized_message_size(message)
+        if accepted_bytes + message_bytes > _MAX_INBOUND_RESPONSE_BYTES:
+            dropped_messages += 1
+            dropped_bytes += payload_bytes
+            return
+        messages.append(message)
+        accepted_bytes += message_bytes
 
     def on_connect(client_obj, userdata, flags, reason_code, properties=None):  # noqa: ANN001
         rc = getattr(reason_code, "value", reason_code)
@@ -397,11 +450,7 @@ def _command_and_wait(
             result["warning"] = "One or more MQTT messages were dropped by inbound payload safety limits."
         return result
     finally:
-        try:
-            client.loop_stop()
-        except Exception:
-            pass
-        client.disconnect()
+        _safe_close_client(client)
 
 
 def _handle_mqtt_publish(args: dict, **kw) -> str:
@@ -409,7 +458,11 @@ def _handle_mqtt_publish(args: dict, **kw) -> str:
         topic = _validate_topic(args.get("topic", ""), allow_wildcards=False)
         payload = _payload_to_text(args.get("payload", ""))
         qos = _bounded_int(args.get("qos"), default=0, minimum=0, maximum=2, name="qos")
-        retain = bool(args.get("retain", False))
+        retain = _strict_bool(
+            args["retain"] if "retain" in args else False,
+            default=False,
+            name="retain",
+        )
         return json.dumps({"result": _publish(topic, payload, qos=qos, retain=retain)})
     except Exception as exc:
         return tool_error(str(exc))
@@ -432,7 +485,11 @@ def _handle_mqtt_device_command(args: dict, **kw) -> str:
         command_topic = _validate_topic(args.get("command_topic", ""), allow_wildcards=False)
         payload = _payload_to_text(args.get("payload", ""))
         qos = _bounded_int(args.get("qos"), default=0, minimum=0, maximum=2, name="qos")
-        retain = bool(args.get("retain", False))
+        retain = _strict_bool(
+            args["retain"] if "retain" in args else False,
+            default=False,
+            name="retain",
+        )
         state_filter = (args.get("state_topic_filter") or "").strip()
         if state_filter:
             validated_filter = _validate_topic(state_filter, allow_wildcards=True)

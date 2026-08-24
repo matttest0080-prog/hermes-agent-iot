@@ -16,8 +16,16 @@ let
   workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = pythonSrc; };
   hacks = callPackage pyproject-nix.build.hacks { };
 
+  # uv.lock records modal and vercel as mutually exclusive because their
+  # cbor2 requirements cannot coexist on ARMv7. uv2nix requires exactly one
+  # branch while constructing an overlay, even when neither lazy extra is
+  # installed. Modal-specific package variants choose Modal; every other
+  # variant uses Vercel's patched cbor2>=6 branch.
+  conflictResolution = if lib.elem "modal" dependency-groups then "modal" else "vercel";
+
   overlay = workspace.mkPyprojectOverlay {
     sourcePreference = "wheel";
+    dependencies = { hermes-agent-iot = dependency-groups ++ [ conflictResolution ]; };
   };
 
   isAarch64Darwin = stdenv.hostPlatform.system == "aarch64-darwin";

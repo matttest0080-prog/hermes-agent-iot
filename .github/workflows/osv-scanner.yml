@@ -85,7 +85,6 @@ jobs:
         with:
           name: OSV Scanner SARIF file
           path: /tmp/osv-results
-        continue-on-error: true
 
       - name: Emit review_status
         id: emit
@@ -93,51 +92,22 @@ jobs:
           set -euo pipefail
           STATUS="[]"
 
-          if [ -f /tmp/osv-results/results.sarif ]; then
-            # Count vulnerabilities from the SARIF file
-            VULN_COUNT=$(python3 -c "
-          import json, sys
-          try:
-              with open('/tmp/osv-results/results.sarif') as f:
-                  data = json.load(f)
-              count = 0
-              vulns = []
-              for run in data.get('runs', []):
-                  for result in run.get('results', []):
-                      count += 1
-                      rule_id = result.get('ruleId', 'unknown')
-                      message = result.get('message', {}).get('text', '')
-                      loc = result.get('locations', [{}])[0].get('physicalLocation', {}).get('artifactLocation', {}).get('uri', '')
-                      vulns.append(f'- {rule_id} in {loc}: {message}')
-              print(count)
-              if vulns:
-                  print('\n'.join(vulns[:20]), file=sys.stderr)
-          except Exception:
-              print(0)
-          ")
+          SARIF=/tmp/osv-results/osv-results.sarif
+          if [ ! -f "$SARIF" ]; then
+            echo "::error::OSV SARIF result is missing; refusing to report a clean scan"
+            exit 1
+          fi
 
-            VULN_DETAIL=""
-            if [ "$VULN_COUNT" -gt 0 ] 2>/dev/null; then
-              VULN_PLURAL=$([ "$VULN_COUNT" -eq 1 ] && echo "y" || echo "ies")
-              VULN_DETAIL=$(python3 -c "
-          import json, sys
-          try:
-              with open('/tmp/osv-results/results.sarif') as f:
-                  data = json.load(f)
-              vulns = []
-              for run in data.get('runs', []):
-                  for result in run.get('results', []):
-                      rule_id = result.get('ruleId', 'unknown')
-                      loc = result.get('locations', [{}])[0].get('physicalLocation', {}).get('artifactLocation', {}).get('uri', '')
-                      vulns.append(f'- {rule_id} in {loc}')
-              print(json.dumps('\n'.join(vulns[:20])))
-          except Exception:
-              print(json.dumps(''))
-          ")
-              STATUS="[{\"source\":\"osv scan\",\"results\":[{\"kind\":\"warning\",\"title\":\"OSV vulnerability scan\",\"summary\":\"${VULN_COUNT} known vulnerabilit${VULN_PLURAL} found in pinned dependencies.\",\"detail\":${VULN_DETAIL},\"how_to_fix\":\"Review the findings in the [Security tab](../../security/code-scanning). Update the affected dependencies if a patched version is available.\"}]}]"
-            else
-              STATUS="[]"
-            fi
+          # Validate the SARIF schema subset required by this workflow before
+          # counting. Missing version/runs/results must fail closed instead of
+          # being translated into a zero-vulnerability status.
+          VULN_COUNT=$(python3 scripts/osv_sarif_summary.py "$SARIF")
+
+          VULN_DETAIL=""
+          if [ "$VULN_COUNT" -gt 0 ] 2>/dev/null; then
+            VULN_PLURAL=$([ "$VULN_COUNT" -eq 1 ] && echo "y" || echo "ies")
+            VULN_DETAIL=$(python3 scripts/osv_sarif_summary.py --details-json "$SARIF")
+            STATUS="[{\"source\":\"osv scan\",\"results\":[{\"kind\":\"warning\",\"title\":\"OSV vulnerability scan\",\"summary\":\"${VULN_COUNT} known vulnerabilit${VULN_PLURAL} found in pinned dependencies.\",\"detail\":${VULN_DETAIL},\"how_to_fix\":\"Review the findings in the [Security tab](../../security/code-scanning). Update the affected dependencies if a patched version is available.\"}]}]"
           fi
 
           echo "review_status=${STATUS}" >> "$GITHUB_OUTPUT"
