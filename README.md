@@ -32,7 +32,7 @@ python3 --version
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.20.4.post1'
+python -m pip install 'hermes-agent-iot[minimal]==0.20.5.post2'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -72,7 +72,7 @@ hermes
 Keep the PyPI extra and setup profile aligned. For example:
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.20.4.post1'
+python -m pip install 'hermes-agent-iot[iot]==0.20.5.post2'
 hermes-iot setup --profile iot
 ```
 
@@ -122,8 +122,8 @@ This fork may intentionally lag upstream `main` while dependency changes, IoT pa
 
 Current verified baseline:
 
-- PyPI: [`hermes-agent-iot 0.20.4.post1`](https://pypi.org/project/hermes-agent-iot/0.20.4.post1/)
-- Tag: `iot-v0.20.4.post1`
+- PyPI: [`hermes-agent-iot 0.20.5.post2`](https://pypi.org/project/hermes-agent-iot/0.20.5.post2/)
+- Tag: `iot-v0.20.5.post2`
 - Python: `>=3.11,<3.14`
 - Physical validation: Raspberry Pi 2 Model B Rev 1.1, 32-bit ARMv7, 921 MiB RAM, Python 3.13.5
 
