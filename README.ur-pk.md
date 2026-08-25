@@ -1,53 +1,214 @@
 <div dir="rtl">
 
 <p align="center">
-  <img src="assets/banner.png" alt="Hermes Agent" width="100%">
+  <img src="assets/banner.png" alt="Hermes Agent IoT" width="100%">
 </p>
 
-# ہرمیس ایجنٹ ☤ (Hermes Agent)
+# ہرمیس ایجنٹ IoT (Hermes Agent IoT)
+
+> Raspberry Pi 2 / ARMv7، MQTT، Home Assistant، روبوٹکس اور کم وسائل والے edge AI کے لیے ہلکا پھلکا Hermes Agent۔
 
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
-  <a href="https://discord.gg/NousResearch"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/NousResearch/hermes-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://nousresearch.com"><img src="https://img.shields.io/badge/Built%20by-Nous%20Research-blueviolet?style=for-the-badge" alt="Built by Nous Research"></a>
+  <a href="https://pypi.org/project/hermes-agent-iot/"><img src="https://img.shields.io/badge/PyPI-hermes--agent--iot-blue?style=for-the-badge" alt="PyPI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/NousResearch/hermes-agent"><img src="https://img.shields.io/badge/Upstream-NousResearch%2Fhermes--agent-blueviolet?style=for-the-badge" alt="Upstream Hermes Agent"></a>
+  <a href="README_PI2.md"><img src="https://img.shields.io/badge/Raspberry%20Pi%202-ARMv7-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white" alt="Raspberry Pi 2"></a>
+</p>
+
+<p align="center">
   <a href="README.md"><img src="https://img.shields.io/badge/Lang-English-lightgrey?style=for-the-badge" alt="English"></a>
+  <a href="README.es.md"><img src="https://img.shields.io/badge/Lang-Español-orange?style=for-the-badge" alt="Español"></a>
+  <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
   <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
 </p>
 
-**[نوس ریسرچ (Nous Research)](https://nousresearch.com) کا تیار کردہ خود کو بہتر بنانے والا اے آئی (AI) ایجنٹ۔** یہ واحد ایجنٹ ہے جس میں سیکھنے کا عمل (learning loop) پہلے سے موجود ہے — یہ اپنے تجربات سے نئی مہارتیں (skills) بناتا ہے، استعمال کے دوران ان کو بہتر کرتا ہے، معلومات کو محفوظ رکھنے کے لیے خود کو یاد دہانی کرواتا ہے، اپنی پرانی بات چیت کو تلاش کر سکتا ہے، اور مختلف سیشنز کے دوران آپ کے بارے میں ایک گہری سمجھ پیدا کرتا ہے۔ اسے $5 والے VPS پر چلائیں، GPU کلسٹر پر، یا سرور لیس (serverless) انفراسٹرکچر پر جس کی قیمت استعمال نہ ہونے پر تقریباً صفر ہے۔ یہ آپ کے لیپ ٹاپ تک محدود نہیں ہے — آپ ٹیلی گرام (Telegram) سے اس کے ساتھ بات چیت کر سکتے ہیں جبکہ یہ کلاؤڈ VM پر کام کر رہا ہو۔
+ہرمیس ایجنٹ IoT [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) کا ایک IoT/روبوٹکس پر مرکوز فورک ہے۔ مینٹین شدہ `pi2-lite` برانچ محدود Raspberry Pi اور edge تعیناتیوں پر توجہ مرکوز کرتی ہے جبکہ upstream Hermes Agent کے رن ٹائم اور ایکو سسٹم کو محفوظ رکھتی ہے۔
 
-آپ اپنی مرضی کا کوئی بھی ماڈل استعمال کر سکتے ہیں — [Nous Portal](https://portal.nousresearch.com)، [OpenRouter](https://openrouter.ai) (200 سے زائد ماڈلز)، [NovitaAI](https://novita.ai) (ماڈل API، ایجنٹ سینڈ باکس، اور GPU کلاؤڈ کے لیے اے آئی مقامی کلاؤڈ)، [NVIDIA NIM](https://build.nvidia.com) (Nemotron)، [Xiaomi MiMo](https://platform.xiaomimimo.com)، [z.ai/GLM](https://z.ai)، [Kimi/Moonshot](https://platform.moonshot.ai)، [MiniMax](https://www.minimax.io)، [Hugging Face](https://huggingface.co)، OpenAI، یا اپنا حسب ضرورت اینڈ پوائنٹ (endpoint) استعمال کریں۔ ماڈل تبدیل کرنے کے لیے صرف `hermes model` استعمال کریں — کسی کوڈ کو تبدیل کرنے کی ضرورت نہیں، کوئی پابندی نہیں۔
+## ہرمیس ایجنٹ IoT کیوں؟
 
-<table>
-<tr><td><b>حقیقی ٹرمینل انٹرفیس</b></td><td>مکمل TUI جس میں ملٹی لائن ایڈیٹنگ، سلیش-کمانڈ آٹو کمپلیٹ، بات چیت کی ہسٹری، انٹرپٹ اور ری ڈائریکٹ، اور سٹریمنگ ٹول آؤٹ پٹ شامل ہے۔</td></tr>
-<tr><td><b>یہ وہاں موجود ہے جہاں آپ ہیں</b></td><td>ٹیلی گرام، ڈسکارڈ (Discord)، سلیک (Slack)، واٹس ایپ (WhatsApp)، سگنل (Signal)، اور CLI — سب ایک ہی گیٹ وے پروسیس سے کام کرتے ہیں۔ وائس میمو (Voice memo) ٹرانسکرپشن، کراس پلیٹ فارم بات چیت کا تسلسل۔</td></tr>
-<tr><td><b>سیکھنے کا ایک مکمل عمل</b></td><td>ایجنٹ کی اپنی ترتیب دی گئی میموری، جس میں وہ خود کو وقتاً فوقتاً یاد دہانی کرواتا ہے۔ پیچیدہ کاموں کے بعد خود کار طریقے سے مہارت (skill) کی تخلیق۔ استعمال کے دوران مہارتوں میں بہتری۔ LLM سمرائزیشن کے ساتھ FTS5 سیشن سرچ تاکہ پرانے سیشنز کی یاددہانی کی جا سکے۔ <a href="https://github.com/plastic-labs/honcho">Honcho</a> کے ذریعے صارف کی ماڈلنگ۔ <a href="https://agentskills.io">agentskills.io</a> اوپن سٹینڈرڈ کے ساتھ مکمل مطابقت۔</td></tr>
-<tr><td><b>شیڈول کی گئی خودکار کارروائیاں</b></td><td>بلٹ ان (Built-in) کرون (cron) شیڈیولر جو کسی بھی پلیٹ فارم پر ڈیلیوری کے لیے استعمال ہو سکتا ہے۔ روزانہ کی رپورٹس، رات کے بیک اپس، ہفتہ وار آڈٹس — یہ سب کچھ قدرتی زبان (natural language) میں اور بغیر کسی نگرانی کے کام کرتا ہے۔</td></tr>
-<tr><td><b>کام کی تقسیم اور متوازی عمل</b></td><td>متوازی (parallel) کاموں کے لیے الگ سے ذیلی ایجنٹس (subagents) بنائیں۔ پائتھون (Python) سکرپٹس لکھیں جو RPC کے ذریعے ٹولز کو استعمال کریں، تاکہ کئی مراحل پر مشتمل کاموں کو بغیر کسی سیاق و سباق (context) کے خرچ کے، ایک ہی باری میں انجام دیا جا سکے۔</td></tr>
-<tr><td><b>کہیں بھی چلائیں، صرف اپنے لیپ ٹاپ پر نہیں</b></td><td>چھ (Six) ٹرمینل بیک اینڈز — لوکل، Docker، SSH، Singularity، Modal، اور Daytona۔ ڈیٹونا (Daytona) اور موڈل (Modal) سرور لیس (serverless) فعالیت پیش کرتے ہیں — جب آپ کا ایجنٹ فارغ ہوتا ہے تو اس کا ماحول سلیپ (hibernate) ہو جاتا ہے اور ضرورت پڑنے پر خود بخود جاگ جاتا ہے، جس کی وجہ سے سیشنز کے درمیان لاگت تقریباً صفر رہتی ہے۔ اسے $5 والے VPS یا GPU کلسٹر پر چلائیں۔</td></tr>
-<tr><td><b>تحقیق کے لیے تیار</b></td><td>بیچ (Batch) ٹریجیکٹری (trajectory) جنریشن، اگلی نسل کے ٹول کالنگ ماڈلز کی تربیت کے لیے ٹریجیکٹری کمپریشن۔</td></tr>
-</table>
+- **Raspberry Pi 2 / ARMv7:** 1 GB کلاس ہارڈویئر کے لیے تصدیق شدہ کم وسائل والا انسٹالیشن طریقہ۔
+- **IoT پروفائلز:** MQTT، Home Assistant، MCP/ACP اور remote-first RAG کے لیے ڈیپینڈنسی پروفائلز۔
+- **Edge-first تعیناتی:** بھاری AI انفرینس کو ریموٹ رکھیں جبکہ Raspberry Pi ایجنٹ آرکیسٹریشن اور ڈیوائس انٹیگریشن سنبھالے۔
+- **روبوٹکس کی سمت:** GPIO، I2C، PWM، سینسرز، ایکچویٹرز اور روبوٹکس سکلز کی بنیاد۔
+- **Upstream سے آگاہ:** IoT اور ARMv7 کمپیٹیبلٹی تبدیلیوں کا جائزہ تیز رفتار upstream ڈیولپمنٹ سے الگ رکھا جاتا ہے۔
 
----
+## فوری آغاز — Raspberry Pi 2
 
-## فوری انسٹالیشن (Quick Install)
-
-### لینکس (Linux)، میک او ایس (macOS)، ڈبلیو ایس ایل ٹو (WSL2)، ٹرمکس (Termux)
+ہرمیس ایجنٹ IoT کو Python `>=3.11,<3.14` کی ضرورت ہے۔ اسے ورچوئل انوائرمنٹ میں انسٹال کریں:
 
 <div dir="ltr">
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+python3 --version
+python3 -m venv ~/.venvs/hermes-iot
+source ~/.venvs/hermes-iot/bin/activate
+python -m pip install --upgrade pip
+python -m pip install 'hermes-agent-iot[minimal]==0.20.5.post2'
+python -m pip check
+
+hermes-iot setup --profile minimal
+hermes-iot profile show
+hermes setup model
+hermes
 ```
 
 </div>
 
-### ونڈوز (نیٹو، پاور شیل)
+> سسٹم pip، `sudo pip` یا `--break-system-packages` استعمال نہ کریں۔
 
-> **توجہ فرمائیں:** مقامی ونڈوز (Native Windows) پر ہرمیس بغیر WSL کے چلتا ہے — CLI، گیٹ وے، TUI، اور ٹولز سب مقامی طور پر کام کرتے ہیں۔ اگر آپ WSL2 استعمال کرنا پسند کرتے ہیں، تو اوپر دی گئی لینکس/میک او ایس کی کمانڈ وہاں بھی کام کرے گی۔ کوئی مسئلہ نظر آیا؟ براہ کرم [مسائل (issues) درج کریں](https://github.com/NousResearch/hermes-agent/issues)۔
+### سورس چیک آؤٹ
 
-اسے پاور شیل (PowerShell) میں چلائیں:
+جب آپ کو ریپوزٹری کے مکمل وسائل درکار ہوں تو مینٹین شدہ `pi2-lite` برانچ استعمال کریں:
+
+<div dir="ltr">
+
+```bash
+git clone --branch pi2-lite --depth 1 \
+  https://github.com/matttest0080-prog/hermes-agent-iot.git
+cd hermes-agent-iot
+bash setup-pi2-minimal.sh --profile minimal
+source ~/.hermes-venv/bin/activate
+hermes setup model
+hermes
+```
+
+</div>
+
+> کلون ڈائریکٹری کو محفوظ رکھیں۔ سورس انسٹالر قابل تدوین (editable) Python انسٹالیشن استعمال کرتا ہے، اس لیے چیک آؤٹ کو منتقل یا حذف کرنے سے انوائرمنٹ خراب ہو سکتا ہے۔
+
+## انسٹالیشن پروفائلز
+
+<div dir="ltr">
+
+| پروفائل | مطلوبہ ہدف |
+| --- | --- |
+| `minimal` | Raspberry Pi 2 / ARMv7 / 1 GB بیس لائن |
+| `iot` | MQTT، Home Assistant، MCP/ACP اور متعلقہ IoT انٹیگریشنز |
+| `rag` | IoT کے علاوہ Honcho / remote-first RAG |
+| `full` | زیادہ طاقتور Raspberry Pi، ARM64، x86 edge سرور یا VM |
+| `dev` | کنٹریبیوٹر اور ڈیولپمنٹ سسٹمز |
+
+</div>
+
+PyPI extra اور setup پروفائل کو یکساں رکھیں۔ مثال کے طور پر:
+
+<div dir="ltr">
+
+```bash
+python -m pip install 'hermes-agent-iot[iot]==0.20.5.post2'
+hermes-iot setup --profile iot
+```
+
+</div>
+
+`full` اور `dev` Raspberry Pi 2 / 1 GB سسٹمز کے لیے تجویز نہیں کیے جاتے۔
+
+## پروجیکٹ کی حیثیت
+
+<div dir="ltr">
+
+| صلاحیت | حیثیت |
+| --- | --- |
+| Raspberry Pi 2 / ARMv7 minimal انسٹالیشن | ✅ تصدیق شدہ |
+| عوامی PyPI پیکج | ✅ دستیاب |
+| کم سے کم ڈیپینڈنسی پروفائل | ✅ دستیاب |
+| IoT ڈیپینڈنسی پروفائل | ✅ دستیاب |
+| MQTT انٹیگریشن | ✅ دستیاب |
+| Home Assistant انٹیگریشن | ✅ دستیاب |
+| Remote-first RAG | ✅ دستیاب |
+| روبوٹکس دستاویزات | ✅ دستیاب |
+| GPIO ایبسٹریکشن | 🛠 روڈ میپ |
+| I2C ڈیوائس لیئر | 🛠 روڈ میپ |
+| PWM / سروو کنٹرول | 🛠 روڈ میپ |
+| سینسر پلگ ان فریم ورک | 🛠 روڈ میپ |
+| ESP32 MQTT برج | 🛠 روڈ میپ |
+
+</div>
+
+## دستاویزات
+
+- [IoT پروجیکٹ کا جائزہ](IOT_PROJECT.md) — پروجیکٹ کے اہداف، سپورٹ کی حیثیت، پروفائلز اور روڈ میپ۔
+- [Raspberry Pi 2 فوری آغاز](README_PI2.md) — ڈیپینڈنسی میٹرکس، کنفیگریشن پروفائلز اور Pi2 حفاظتی رہنمائی۔
+- [Raspberry Pi 2 مینوئل](RASPBERRY_PI2_MANUAL.md) — Pi2 تعیناتی کی تفصیلی دستاویزات۔
+- [روبوٹکس](ROBOTICS.md) — روبوٹکس انٹیگریشن نوٹس۔
+- [سیکیورٹی پالیسی](SECURITY.md) — کمزوری کی اطلاع اور حفاظتی رہنمائی۔
+- [Upstream Hermes Agent دستاویزات](https://hermes-agent.nousresearch.com/docs/) — عمومی Hermes Agent فیچرز، پرووائیڈرز، گیٹ ویز، ڈیسک ٹاپ/سرور استعمال اور انٹیگریشنز۔
+
+## Upstream بمقابلہ Hermes Agent IoT
+
+<div dir="ltr">
+
+| شعبہ | Upstream Hermes Agent | Hermes Agent IoT |
+| --- | --- | --- |
+| عمومی ڈیسک ٹاپ/سرور ایجنٹ | بنیادی ہدف | upstream بنیاد استعمال کرتا ہے |
+| Raspberry Pi 2 / ARMv7 | بنیادی ہدف نہیں | بنیادی کمپیٹیبلٹی ہدف |
+| 1 GB کلاس minimal پروفائل | عمومی ڈیپینڈنسی ماڈل | مخصوص `minimal` پروفائل |
+| MQTT / Home Assistant تعیناتی | عمومی انٹیگریشنز | مخصوص `iot` پروفائل |
+| کم وسائل والی edge تعیناتی | عمومی رن ٹائم | فورک کا بنیادی فوکس |
+| روبوٹکس | عمومی ایجنٹ دائرہ | IoT/روبوٹکس پر مبنی دستاویزات اور روڈ میپ |
+
+</div>
+
+یہ فورک جان بوجھ کر upstream `main` سے پیچھے رہ سکتا ہے جب تک ڈیپینڈنسی تبدیلیوں، IoT پیچز اور ARMv7 کمپیٹیبلٹی کا جائزہ لے کر تصدیق نہیں ہو جاتی۔ عمومی ڈیسک ٹاپ/سرور استعمال کے لیے upstream پروجیکٹ کو ترجیح دیں۔
+
+## تصدیق شدہ ریلیز
+
+موجودہ تصدیق شدہ بیس لائن:
+
+- PyPI: [`hermes-agent-iot 0.20.5.post2`](https://pypi.org/project/hermes-agent-iot/0.20.5.post2/)
+- Tag: `iot-v0.20.5.post2`
+- Python: `>=3.11,<3.14`
+- فزیکل تصدیق: Raspberry Pi 2 Model B Rev 1.1، 32-bit ARMv7، 921 MiB RAM، Python 3.13.5
+
+`minimal` وہیل بیس لائن کو فزیکل Raspberry Pi 2 ہارڈویئر پر کلین انسٹال اور smoke test کیا گیا۔ بھاری اختیاری extras کو اپنے ڈیپینڈنسی سیٹ کے مطابق ہارڈویئر درکار ہوتا ہے۔
+
+## Pi2 سورس انسٹالیشن کو اپ ڈیٹ کرنا
+
+اپ ڈیٹس کو ہمیشہ `pi2-lite` برانچ پر مقید رکھیں:
+
+<div dir="ltr">
+
+```bash
+cd ~/hermes-agent-iot
+source ~/.hermes-venv/bin/activate
+
+git status --short
+git switch pi2-lite
+git fetch origin pi2-lite
+git merge --ff-only origin/pi2-lite
+
+bash setup-pi2-minimal.sh --profile minimal
+```
+
+</div>
+
+`minimal` کو اصل میں انسٹال کردہ پروفائل سے بدلیں۔ IoT release 0.20.4 اور بعد میں، بغیر آرگیومنٹ والا `hermes update` `hermes-agent-iot` ڈسٹری بیوشن کو پہچان کر `pi2-lite` کو ڈیفالٹ کرتا ہے؛ آٹومیشن میں آڈٹ ایبلٹی کے لیے واضح `--branch pi2-lite` اب بھی مفید ہے۔ سورس اپ ڈیٹ کے بعد پروفائل انسٹالر دوبارہ چلائیں۔
+
+## روڈ میپ
+
+<div dir="ltr">
+
+- [x] Raspberry Pi 2 / ARMv7 انسٹالیشن طریقہ
+- [x] کم وسائل والا ڈیپینڈنسی پروفائل
+- [x] IoT ڈیپینڈنسی پروفائل
+- [x] MQTT / Home Assistant انٹیگریشن طریقہ
+- [x] عوامی PyPI پیکج
+- [x] فزیکل Raspberry Pi 2 تصدیق
+- [ ] GPIO ایبسٹریکشن
+- [ ] I2C ڈیوائس ایبسٹریکشن
+- [ ] PWM / سروو کنٹرول
+- [ ] سینسر پلگ ان فریم ورک
+- [ ] روبوٹکس سکل فریم ورک
+- [ ] ESP32 MQTT برج
+- [ ] Raspberry Pi 3 / 4 / 5 تصدیقی میٹرکس
+
+</div>
+
+## Upstream ڈیسک ٹاپ / سرور انسٹالیشن
+
+ہرمیس ایجنٹ IoT بنیادی طور پر Raspberry Pi اور edge تعیناتیوں کے لیے ہے۔ عمومی ڈیسک ٹاپ یا سرور استعمال کے لیے upstream Hermes Agent انسٹال کریں۔
+
+### Windows (مقامی PowerShell)
 
 <div dir="ltr">
 
@@ -57,205 +218,26 @@ iex (irm https://hermes-agent.nousresearch.com/install.ps1)
 
 </div>
 
-انسٹالر سب کچھ خود سنبھالتا ہے: uv، Python 3.11، Node.js، ripgrep، ffmpeg، **اور ایک پورٹ ایبل (portable) گٹ بیش (Git Bash)** (یعنی MinGit، جو `%LOCALAPPDATA%\hermes\git` میں ان پیک ہوتا ہے — اس کے لیے ایڈمن کی اجازت درکار نہیں، اور یہ سسٹم کے کسی بھی گٹ انسٹال سے بالکل الگ ہے)۔ ہرمیس اس بنڈل شدہ گٹ بیش کو شیل کمانڈز چلانے کے لیے استعمال کرتا ہے۔
-
-اگر آپ کے پاس پہلے سے گٹ (Git) انسٹال ہے، تو انسٹالر اسے شناخت کر لیتا ہے اور اسے ہی استعمال کرتا ہے۔ بصورت دیگر آپ کو صرف ~45MB کے MinGit ڈاؤنلوڈ کی ضرورت ہوگی — یہ آپ کے سسٹم کے گٹ پر کوئی اثر نہیں ڈالے گا۔
-
-> **اینڈرائیڈ (Android) / ٹرمکس (Termux):** ٹیسٹ کیا گیا مینوئل طریقہ [Termux گائیڈ](https://hermes-agent.nousresearch.com/docs/getting-started/termux) میں موجود ہے۔ ٹرمکس پر ہرمیس ایک مخصوص `.[termux]` ایکسٹرا انسٹال کرتا ہے کیونکہ مکمل `.[all]` ایکسٹرا میں ایسی وائس ڈیپینڈینسیز شامل ہیں جو اینڈرائیڈ کے ساتھ مطابقت نہیں رکھتیں۔
->
-> **ونڈوز (Windows):** مقامی ونڈوز کی مکمل سپورٹ موجود ہے — اوپر دی گئی پاور شیل کی کمانڈ سب کچھ انسٹال کر دیتی ہے۔ اگر آپ WSL2 استعمال کرنا چاہتے ہیں، تو لینکس کی کمانڈ وہاں کام کرتی ہے۔ مقامی ونڈوز میں انسٹالیشن `%LOCALAPPDATA%\hermes` میں ہوتی ہے؛ جبکہ WSL2 میں لینکس کی طرح `~/.hermes` میں ہوتی ہے۔ ہرمیس کا وہ واحد فیچر جسے فی الحال خاص طور پر WSL2 کی ضرورت ہے وہ براؤزر پر مبنی ڈیش بورڈ چیٹ پین ہے (یہ POSIX PTY استعمال کرتا ہے — کلاسک CLI اور گیٹ وے دونوں مقامی طور پر چلتے ہیں)۔
-
-انسٹالیشن کے بعد:
+### Linux / macOS / WSL2
 
 <div dir="ltr">
 
 ```bash
-source ~/.bashrc    # شیل کو ری لوڈ کریں (یا: source ~/.zshrc)
-hermes              # بات چیت شروع کریں!
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 ```
 
 </div>
 
----
+یہ upstream انسٹالرز اس فورک کے Pi2 مخصوص پروفائلز یا IoT پیکیجنگ کو انسٹال نہیں کرتے۔
 
-## آغاز کریں (Getting Started)
+## Hermes Agent کے بارے میں
 
-<div dir="ltr">
+ہرمیس ایجنٹ [Nous Research](https://nousresearch.com) کا تیار کردہ خود کو بہتر بنانے والا AI ایجنٹ ہے۔ یہ ٹرمینل انٹرفیس، مستقل سیکھنے اور میموری، شیڈول شدہ آٹومیشنز، سب ایجنٹس، متعدد ایگزیکیوشن بیک اینڈز، میسجنگ گیٹ ویز اور متعدد LLM پرووائیڈرز کی سپورٹ فراہم کرتا ہے۔
 
-```bash
-hermes              # انٹرایکٹو CLI — بات چیت شروع کریں
-hermes model        # اپنا LLM پرووائیڈر اور ماڈل منتخب کریں
-hermes tools        # کنفیگر کریں کہ کون سے ٹولز ایکٹو ہیں
-hermes config set   # انفرادی کنفگ (config) ویلیوز سیٹ کریں
-hermes gateway      # میسجنگ گیٹ وے شروع کریں (ٹیلی گرام، ڈسکارڈ، وغیرہ)
-hermes setup        # مکمل سیٹ اپ وزرڈ چلائیں (یہ سب کچھ ایک ساتھ کنفیگر کر دے گا)
-hermes claw migrate # OpenClaw سے مائیگریٹ کریں (اگر آپ OpenClaw سے آ رہے ہیں)
-hermes update       # لیٹسٹ ورژن پر اپ ڈیٹ کریں
-hermes doctor       # کسی بھی مسئلے کی تشخیص کریں
-```
+ہرمیس ایجنٹ IoT upstream پروجیکٹ کی جگہ نہیں لیتا۔ یہ اس بنیاد کو Raspberry Pi 2، ARMv7، کم وسائل والے edge نوڈز، MQTT/Home Assistant ماحول اور مستقبل کی روبوٹکس انٹیگریشنز کے لیے ڈھالتا ہے۔
 
-</div>
+## لائسنس اور انتساب
 
-📖 **[مکمل دستاویزات →](https://hermes-agent.nousresearch.com/docs/)**
-
----
-
-## API-کیز اکٹھی کرنے سے بچیں — Nous Portal
-
-ہرمیس آپ کے پسندیدہ پرووائیڈر کے ساتھ کام کرتا ہے — یہ چیز تبدیل نہیں ہو رہی۔ لیکن اگر آپ ماڈل، ویب سرچ، امیج جنریشن، TTS، اور کلاؤڈ براؤزر کے لیے پانچ الگ الگ API کیز جمع نہیں کرنا چاہتے، تو **[Nous Portal](https://portal.nousresearch.com)** ان سب کو ایک ہی سبسکرپشن کے تحت کور کرتا ہے:
-
-- **300+ ماڈلز** — ان میں سے کوئی بھی ماڈل `/model <name>` کے ذریعے منتخب کریں
-- **ٹول گیٹ وے (Tool Gateway)** — ویب سرچ (Firecrawl)، امیج جنریشن (FAL)، ٹیکسٹ ٹو سپیچ (OpenAI)، کلاؤڈ براؤزر (Browser Use)، یہ سب آپ کی سبسکرپشن کے ذریعے چلتے ہیں۔ کسی اضافی اکاؤنٹ کی ضرورت نہیں۔
-
-نئی انسٹالیشن کے بعد بس ایک کمانڈ کی ضرورت ہے:
-
-<div dir="ltr">
-
-```bash
-hermes setup --portal
-```
-
-</div>
-
-یہ آپ کو OAuth کے ذریعے لاگ ان کرواتا ہے، Nous کو آپ کا پرووائیڈر مقرر کرتا ہے، اور ٹول گیٹ وے کو آن کر دیتا ہے۔ `hermes portal info` کمانڈ استعمال کر کے آپ کسی بھی وقت چیک کر سکتے ہیں کہ کون کون سی سروسز منسلک ہیں۔ مکمل تفصیلات [Tool Gateway دستاویزات کے صفحے](https://hermes-agent.nousresearch.com/docs/user-guide/features/tool-gateway) پر موجود ہیں۔
-
-آپ اب بھی کسی بھی ٹول کے لیے اپنی مرضی کی API کیز استعمال کر سکتے ہیں — گیٹ وے ہر سروس کے لیے الگ الگ کام کرتا ہے، ایسا نہیں کہ یا تو سب کچھ استعمال کریں یا کچھ بھی نہیں۔
-
----
-
-## CLI بمقابلہ میسجنگ فوری حوالہ
-
-ہرمیس کے دو بنیادی انٹر فیس ہیں: آپ ٹرمینل UI کو `hermes` کے ساتھ شروع کریں، یا گیٹ وے چلا کر اس کے ساتھ ٹیلی گرام، ڈسکارڈ، سلیک، واٹس ایپ، سگنل، یا ای میل کے ذریعے بات کریں۔ جب آپ کسی بات چیت میں ہوتے ہیں، تو بہت سی سلیش (slash) کمانڈز دونوں انٹرفیسز میں ایک جیسی ہوتی ہیں۔
-
-<div dir="ltr">
-
-| کارروائی (Action)                         | سی ایل آئی (CLI)                              | میسجنگ پلیٹ فارمز (Messaging platforms)                                          |
-| --------------------------------------- | --------------------------------------------- | -------------------------------------------------------------------------------- |
-| بات چیت شروع کریں                       | `hermes`                                      | `hermes gateway setup` اور `hermes gateway start` چلائیں، پھر بوٹ کو میسج بھیجیں |
-| نئی بات چیت شروع کریں                   | `/new` یا `/reset`                            | `/new` یا `/reset`                                                               |
-| ماڈل تبدیل کریں                         | `/model [provider:model]`                     | `/model [provider:model]`                                                        |
-| پرسنلٹی (Personality) سیٹ کریں           | `/personality [name]`                         | `/personality [name]`                                                            |
-| پچھلی باری کو دوبارہ یا منسوخ (undo) کریں | `/retry`، `/undo`                             | `/retry`، `/undo`                                                                |
-| کانٹیکسٹ (context) کمپریس کریں / استعمال چیک کریں | `/compress`، `/usage`، `/insights [--days N]` | `/compress`، `/usage`، `/insights [days]`                                        |
-| مہارتیں (Skills) براؤز کریں             | `/skills` یا `/<skill-name>`                  | `/<skill-name>`                                                                  |
-| موجودہ کام کو روکیں                     | `Ctrl+C` دبائیں یا نیا میسج بھیجیں            | `/stop` یا نیا میسج بھیجیں                                                       |
-| پلیٹ فارم کے لحاظ سے سٹیٹس              | `/platforms`                                  | `/status`، `/sethome`                                                            |
-
-</div>
-
-مکمل کمانڈ لسٹ کے لیے، [CLI گائیڈ](https://hermes-agent.nousresearch.com/docs/user-guide/cli) اور [میسجنگ گیٹ وے گائیڈ](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) دیکھیں۔
-
----
-
-## دستاویزات (Documentation)
-
-تمام دستاویزات **[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)** پر موجود ہیں:
-
-<div dir="ltr">
-
-| سیکشن (Section)                                                                                     | تفصیل (What's Covered)                                     |
-| --------------------------------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| [فوری آغاز (Quickstart)](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart)     | انسٹالیشن → سیٹ اپ → 2 منٹ میں پہلی بات چیت شروع کریں       |
-| [CLI کا استعمال](https://hermes-agent.nousresearch.com/docs/user-guide/cli)                         | کمانڈز، کی بائنڈنگز (keybindings)، پرسنلٹیز (personalities)، سیشنز |
-| [کنفیگریشن (Configuration)](https://hermes-agent.nousresearch.com/docs/user-guide/configuration)    | کنفگ فائل، پرووائیڈرز، ماڈلز، اور تمام آپشنز               |
-| [میسجنگ گیٹ وے](https://hermes-agent.nousresearch.com/docs/user-guide/messaging)                    | ٹیلی گرام، ڈسکارڈ، سلیک، واٹس ایپ، سگنل، ہوم اسسٹنٹ         |
-| [سیکیورٹی (Security)](https://hermes-agent.nousresearch.com/docs/user-guide/security)              | کمانڈ کی منظوری، DM پیئرنگ (pairing)، کنٹینر آئسولیشن       |
-| [ٹولز اور ٹول سیٹس](https://hermes-agent.nousresearch.com/docs/user-guide/features/tools)          | 40 سے زائد ٹولز، ٹول سیٹ سسٹم، ٹرمینل بیک اینڈز             |
-| [مہارتوں کا سسٹم (Skills System)](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)| پروسیجرل (Procedural) میموری، سکلز ہب، نئی مہارتیں بنانا    |
-| [میموری (Memory)](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory)            | مستقل میموری، یوزر پروفائلز، بہترین طریقہ کار              |
-| [MCP انضمام (Integration)](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp)      | صلاحیتوں کو بڑھانے کے لیے کسی بھی MCP سرور کو جوڑیں        |
-| [کرون (Cron) شیڈیولنگ](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)         | پلیٹ فارم ڈیلیوری کے ساتھ شیڈول کیے گئے کام                 |
-| [کانٹیکسٹ (Context) فائلز](https://hermes-agent.nousresearch.com/docs/user-guide/features/context-files)| پروجیکٹ کا سیاق و سباق (context) جو ہر بات چیت پر اثر انداز ہوتا ہے |
-| [آرکیٹیکچر (Architecture)](https://hermes-agent.nousresearch.com/docs/developer-guide/architecture) | پروجیکٹ کا ڈھانچہ، ایجنٹ لوپ، اہم کلاسز                    |
-| [تعاون (Contributing)](https://hermes-agent.nousresearch.com/docs/developer-guide/contributing)     | ڈیویلپمنٹ سیٹ اپ، PR کا طریقہ کار، کوڈنگ کا انداز          |
-| [CLI حوالہ جات (Reference)](https://hermes-agent.nousresearch.com/docs/reference/cli-commands)      | تمام کمانڈز اور فلیگز (flags)                              |
-| [انوائرمنٹ ویری ایبلز](https://hermes-agent.nousresearch.com/docs/reference/environment-variables)  | مکمل انوائرمنٹ ویری ایبل حوالہ جات                         |
-
-</div>
-
----
-
-## OpenClaw سے منتقلی
-
-اگر آپ OpenClaw سے منتقل ہو رہے ہیں، تو ہرمیس آپ کی سیٹنگز، یادیں (memories)، مہارتیں (skills)، اور API کیز کو خود بخود امپورٹ کر سکتا ہے۔
-
-**پہلی بار سیٹ اپ کے دوران:** سیٹ اپ وزرڈ (`hermes setup`) خود بخود `~/.openclaw` کو پہچان لیتا ہے اور کنفیگریشن شروع ہونے سے پہلے مائیگریٹ (migrate) کرنے کا آپشن دیتا ہے۔
-
-**انسٹالیشن کے بعد کسی بھی وقت:**
-
-<div dir="ltr">
-
-```bash
-hermes claw migrate              # انٹرایکٹو مائیگریشن (مکمل پری سیٹ)
-hermes claw migrate --dry-run    # جائزہ لیں کہ کیا کیا مائیگریٹ ہوگا
-hermes claw migrate --preset user-data   # حساس معلومات (secrets) کے بغیر مائیگریٹ کریں
-hermes claw migrate --overwrite  # موجودہ متصادم فائلوں کو اوور رائٹ کریں
-```
-
-</div>
-
-جو چیزیں امپورٹ ہوتی ہیں:
-
-- **SOUL.md** — پرسونا (persona) فائل
-- **میموریز (Memories)** — MEMORY.md اور USER.md کی اندراجات
-- **مہارتیں (Skills)** — صارف کی بنائی گئی مہارتیں → `~/.hermes/skills/openclaw-imports/`
-- **کمانڈ الاؤ لسٹ (allowlist)** — منظوری کے پیٹرنز (approval patterns)
-- **میسجنگ سیٹنگز** — پلیٹ فارم کنفیگریشنز، اجازت یافتہ صارفین، ورکنگ ڈائریکٹری
-- **API کیز** — الاؤ لسٹ شدہ حساس معلومات (ٹیلی گرام، OpenRouter، OpenAI، Anthropic، ElevenLabs)
-- **TTS اثاثے** — ورک اسپیس کی آڈیو فائلیں
-- **ورک اسپیس کی ہدایات** — AGENTS.md (`--workspace-target` کے ساتھ)
-
-تمام آپشنز دیکھنے کے لیے `hermes claw migrate --help` استعمال کریں، یا انٹرایکٹو ایجنٹ کی مدد سے مائیگریٹ کرنے کے لیے `openclaw-migration` سکل کا استعمال کریں (جس میں ڈرائی رن (dry-run) پریویوز شامل ہیں)۔
-
----
-
-## تعاون کریں (Contributing)
-
-ہم آپ کے تعاون کا خیرمقدم کرتے ہیں! ڈیویلپمنٹ سیٹ اپ، کوڈ کے انداز اور PR کے طریقہ کار کے لیے براہ کرم ہماری [Contributing گائیڈ](https://hermes-agent.nousresearch.com/docs/developer-guide/contributing) دیکھیں۔
-
-معاونین (contributors) کے لیے فوری آغاز — کلون (clone) کریں اور `setup-hermes.sh` چلائیں:
-
-<div dir="ltr">
-
-```bash
-git clone https://github.com/NousResearch/hermes-agent.git
-cd hermes-agent
-./setup-hermes.sh     # uv کو انسٹال کرتا ہے، venv بناتا ہے، .[all] کو انسٹال کرتا ہے، اور ~/.local/bin/hermes کا سیم لنک (symlink) بناتا ہے
-./hermes              # خود بخود venv کی شناخت کرتا ہے، پہلے `source` کرنے کی ضرورت نہیں
-```
-
-</div>
-
-مینوئل طریقہ (اوپر والے طریقے کے مساوی):
-
-<div dir="ltr">
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv venv .venv --python 3.11
-source .venv/bin/activate
-uv pip install -e ".[all,dev]"
-scripts/run_tests.sh
-```
-
-</div>
-
----
-
-## کمیونٹی (Community)
-
-- 💬 [ڈسکارڈ (Discord)](https://discord.gg/NousResearch)
-- 📚 [سکلز ہب (Skills Hub)](https://agentskills.io)
-- 🐛 [مسائل (Issues)](https://github.com/NousResearch/hermes-agent/issues)
-- 🔌 [computer-use-linux](https://github.com/avifenesh/computer-use-linux) — ہرمیس اور دیگر MCP ہوسٹس کے لیے لینکس (Linux) ڈیسک ٹاپ کنٹرول MCP سرور، جس میں AT-SPI ایکسیسیبلٹی ٹریز، Wayland/X11 ان پٹ، سکرین شاٹس، اور کمپوزیٹر ونڈو ٹارگیٹنگ شامل ہے۔
-- 🔌 [HermesClaw](https://github.com/AaronWong1999/hermesclaw) — کمیونٹی وی چیٹ (WeChat) برج: ہرمیس ایجنٹ اور OpenClaw کو ایک ہی وی چیٹ اکاؤنٹ پر چلائیں۔
-
----
-
-## لائسنس (License)
-
-MIT — تفصیلات کے لیے [LICENSE](LICENSE) دیکھیں۔
-
-[نوس ریسرچ (Nous Research)](https://nousresearch.com) کی جانب سے تیار کردہ۔
+ہرمیس ایجنٹ IoT [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) سے ماخوذ ہے اور اس ریپوزٹری کے [MIT لائسنس](LICENSE) کی پیروی کرتا ہے۔ ماخوذ کام کو دوبارہ تقسیم کرتے وقت upstream کاپی رائٹ اور انتساب محفوظ رکھیں۔
 
 </div>
