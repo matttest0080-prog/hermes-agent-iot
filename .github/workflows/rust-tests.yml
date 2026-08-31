@@ -27,6 +27,10 @@ concurrency:
 jobs:
   bootstrap-installer:
     name: cargo test (bootstrap installer)
+    # cargo builds codegen units and test binaries in parallel across the
+    # cores. This lane also builds the crate from the start when Cargo.toml
+    # changes.
+    # IoT fork: no ubuntu-latest-32-core larger runner on this repo.
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:

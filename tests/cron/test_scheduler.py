@@ -194,6 +194,7 @@ class TestResolveDeliveryTarget:
             "platform": "telegram",
             "chat_id": "-1001",
             "thread_id": "17585",
+            "_resolved_from": "origin",
         }
 
 
@@ -238,6 +239,7 @@ class TestResolveDeliveryTarget:
             "platform": "telegram",
             "chat_id": "-1003724596514",
             "thread_id": "17",
+            "_resolved_from": "explicit",
         }
 
 
@@ -254,6 +256,7 @@ class TestResolveDeliveryTarget:
             "platform": "whatsapp",
             "chat_id": "12345678901234@lid",
             "thread_id": None,
+            "_resolved_from": "explicit",
         }
 
 
@@ -269,6 +272,7 @@ class TestResolveDeliveryTarget:
             "platform": "whatsapp",
             "chat_id": "12345@lid",
             "thread_id": None,
+            "_resolved_from": "explicit",
         }
 
     def test_unresolved_target_still_delivered_as_written(self):
@@ -287,6 +291,7 @@ class TestResolveDeliveryTarget:
             "platform": "telegram",
             "chat_id": "ops-room",
             "thread_id": None,
+            "_resolved_from": "explicit",
         }
 
 
@@ -2194,11 +2199,20 @@ class TestCronDeliveryTargets:
 
         targets = {t["id"]: t for t in cron_delivery_targets()}
 
-        assert set(targets) == {"matrix", "telegram"}
+        # bot-chat:<profile> entries (machine-local Bot Chat injection) ride
+        # the same listing but are not gateway platforms — scope the
+        # platform assertions to the gateway entries.
+        platform_targets = {k: v for k, v in targets.items() if not k.startswith("bot-chat")}
+
+        assert set(platform_targets) == {"matrix", "telegram"}
         # Configured but no home channel → surfaced, flagged for the UI.
-        assert targets["matrix"]["home_target_set"] is False
-        assert targets["matrix"]["home_env_var"] == "MATRIX_HOME_ROOM"
-        assert targets["telegram"]["home_target_set"] is False
+        assert platform_targets["matrix"]["home_target_set"] is False
+        assert platform_targets["matrix"]["home_env_var"] == "MATRIX_HOME_ROOM"
+        assert platform_targets["telegram"]["home_target_set"] is False
+        # Bot Chat targets need no home channel: whatever profiles exist on
+        # this machine must all be listed as ready.
+        bot_chat = [v for k, v in targets.items() if k.startswith("bot-chat")]
+        assert all(t["home_target_set"] for t in bot_chat)
 
 
 class TestHomeTargetEnvVarRegistry:
