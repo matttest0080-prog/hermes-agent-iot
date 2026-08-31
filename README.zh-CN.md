@@ -1,208 +1,198 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Hermes Agent" width="100%">
+  <img src="assets/banner.png" alt="Hermes Agent IoT" width="100%">
 </p>
 
-# Hermes Agent ☤
+# Hermes Agent IoT
+
+> 面向 Raspberry Pi 2 / ARMv7、MQTT、Home Assistant、机器人和低资源边缘 AI 的轻量级 Hermes Agent。
 
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentation"></a>
-  <a href="https://discord.gg/NousResearch"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/NousResearch/hermes-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
-  <a href="https://nousresearch.com"><img src="https://img.shields.io/badge/Built%20by-Nous%20Research-blueviolet?style=for-the-badge" alt="Built by Nous Research"></a>
-  <a href="README.md"><img src="https://img.shields.io/badge/Lang-English-lightgrey?style=for-the-badge" alt="English"></a>
-  <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
+  <a href="https://pypi.org/project/hermes-agent-iot/"><img src="https://img.shields.io/badge/PyPI-hermes--agent--iot-blue?style=for-the-badge" alt="PyPI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/NousResearch/hermes-agent"><img src="https://img.shields.io/badge/Upstream-NousResearch%2Fhermes--agent-blueviolet?style=for-the-badge" alt="Upstream Hermes Agent"></a>
+  <a href="README_PI2.md"><img src="https://img.shields.io/badge/Raspberry%20Pi%202-ARMv7-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white" alt="Raspberry Pi 2"></a>
 </p>
 
-**由 [Nous Research](https://nousresearch.com) 构建的自进化 AI 代理。** 它是唯一内置学习闭环的智能代理——从经验中创建技能，在使用中改进技能，主动持久化知识，搜索过往对话，并在跨会话中逐步构建对你的深度理解。可以在 $5 的 VPS 上运行，也可以在 GPU 集群上运行，或者使用几乎零成本的 Serverless 基础设施。它不绑定你的笔记本——你可以在 Telegram 上与它对话，而它在云端 VM 上工作。
+<p align="center">
+  <a href="README.md"><img src="https://img.shields.io/badge/Lang-English-lightgrey?style=for-the-badge" alt="English"></a>
+  <a href="README.es.md"><img src="https://img.shields.io/badge/Lang-Español-orange?style=for-the-badge" alt="Español"></a>
+  <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
+</p>
 
-支持任意模型——[Nous Portal](https://portal.nousresearch.com)、[OpenRouter](https://openrouter.ai)（200+ 模型）、[NVIDIA NIM](https://build.nvidia.com)（Nemotron）、[小米 MiMo](https://platform.xiaomimimo.com)、[z.ai/GLM](https://z.ai)、[Kimi/Moonshot](https://platform.moonshot.ai)、[MiniMax](https://www.minimax.io)、[Hugging Face](https://huggingface.co)、OpenAI，或自定义端点。使用 `hermes model` 即可切换——无需改代码，无锁定。
+Hermes Agent IoT 是 [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) 面向 IoT／机器人方向的 fork。维护中的 `pi2-lite` 分支专注于受限的 Raspberry Pi 与边缘部署，同时保留上游 Hermes Agent 的运行时与生态。
 
-<table>
-<tr><td><b>真正的终端界面</b></td><td>完整的 TUI，支持多行编辑、斜杠命令自动补全、对话历史、中断重定向和流式工具输出。</td></tr>
-<tr><td><b>随你所在</b></td><td>Telegram、Discord、Slack、WhatsApp、Signal 和 CLI——全部从单个网关进程运行。语音备忘录转写、跨平台对话连续性。</td></tr>
-<tr><td><b>闭环学习</b></td><td>代理管理记忆并定期自我提醒。复杂任务后自动创建技能。技能在使用中自我改进。FTS5 会话搜索配合 LLM 摘要实现跨会话回溯。<a href="https://github.com/plastic-labs/honcho">Honcho</a> 辩证式用户建模。兼容 <a href="https://agentskills.io">agentskills.io</a> 开放标准。</td></tr>
-<tr><td><b>定时自动化</b></td><td>内置 cron 调度器，支持向任何平台投递。日报、夜间备份、周审计——全部用自然语言描述，无人值守运行。</td></tr>
-<tr><td><b>委派与并行</b></td><td>生成隔离子代理处理并行工作流。编写 Python 脚本通过 RPC 调用工具，将多步管道压缩为零上下文开销的轮次。</td></tr>
-<tr><td><b>随处运行</b></td><td>六种终端后端——本地、Docker、SSH、Daytona、Singularity 和 Modal。Daytona 和 Modal 提供 Serverless 持久化——代理环境空闲时休眠、按需唤醒，空闲期间几乎零成本。$5 VPS 或 GPU 集群都能跑。</td></tr>
-<tr><td><b>研究就绪</b></td><td>批量轨迹生成、轨迹压缩——用于训练下一代工具调用模型。</td></tr>
-</table>
+## 为什么选择 Hermes Agent IoT？
 
----
+- **Raspberry Pi 2 / ARMv7：** 已验证的 1 GB 级硬件低资源安装路径。
+- **IoT profiles：** 面向 MQTT、Home Assistant、MCP/ACP 与 remote-first RAG 的依赖配置。
+- **边缘优先部署：** 将重型 AI 推理留在远端，由 Raspberry Pi 负责 Agent 编排与设备集成。
+- **机器人方向：** 为 GPIO、I2C、PWM、传感器、执行器与机器人技能奠定基础。
+- **上游感知：** IoT 与 ARMv7 兼容性改动与快速迭代的上游开发分开评审。
 
-## 快速安装
+## 快速开始 — Raspberry Pi 2
 
-```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-```
-
-支持 Linux、macOS、WSL2 和 Android (Termux)。安装程序会自动处理平台特定的配置。
-
-> **Android / Termux：** 已测试的手动安装路径请参考 [Termux 指南](https://hermes-agent.nousresearch.com/docs/getting-started/termux)。在 Termux 上，Hermes 会安装精选的 `.[termux]` 扩展，因为完整的 `.[all]` 扩展会拉取 Android 不兼容的语音依赖。
->
-> **Windows：** 在 PowerShell 中运行：
-> ```powershell
-> iex (irm https://hermes-agent.nousresearch.com/install.ps1)
-> ```
-> 安装完成后，可能需要重启终端，然后运行 `hermes` 开始对话。
-
-安装后：
+Hermes Agent IoT 需要 Python `>=3.11,<3.14`。在虚拟环境中安装：
 
 ```bash
-source ~/.bashrc    # 重新加载 shell（或: source ~/.zshrc）
-hermes              # 开始对话！
+python3 --version
+python3 -m venv ~/.venvs/hermes-iot
+source ~/.venvs/hermes-iot/bin/activate
+python -m pip install --upgrade pip
+python -m pip install 'hermes-agent-iot[minimal]==0.20.5.post2'
+python -m pip check
+
+hermes-iot setup --profile minimal
+hermes-iot profile show
+hermes setup model
+hermes
 ```
 
----
+> 不要使用 system pip、`sudo pip` 或 `--break-system-packages`。
 
-## 快速入门
+### 源码检出
+
+当你需要完整的仓库资源时，使用维护中的 `pi2-lite` 分支：
 
 ```bash
-hermes              # 交互式 CLI — 开始对话
-hermes model        # 选择 LLM 提供商和模型
-hermes tools        # 配置启用的工具
-hermes config set   # 设置单个配置项
-hermes gateway      # 启动消息网关（Telegram、Discord 等）
-hermes setup        # 运行完整设置向导（一次性配置所有内容）
-hermes claw migrate # 从 OpenClaw 迁移（如果来自 OpenClaw）
-hermes update       # 更新到最新版本
-hermes doctor       # 诊断问题
+git clone --branch pi2-lite --depth 1 \
+  https://github.com/matttest0080-prog/hermes-agent-iot.git
+cd hermes-agent-iot
+bash setup-pi2-minimal.sh --profile minimal
+source ~/.hermes-venv/bin/activate
+hermes setup model
+hermes
 ```
 
-📖 **[完整文档 →](https://hermes-agent.nousresearch.com/docs/)**
+> 请保留 clone 目录。源码安装器使用可编辑的 Python 安装，移动或删除 checkout 会破坏环境。
 
----
+## 安装 Profiles
 
-## 省去到处收集 API Key — Nous Portal
+| Profile | 目标 |
+| --- | --- |
+| `minimal` | Raspberry Pi 2 / ARMv7 / 1 GB 基线 |
+| `iot` | MQTT、Home Assistant、MCP/ACP 及相关 IoT 集成 |
+| `rag` | IoT 加上 Honcho / remote-first RAG |
+| `full` | 更强的 Raspberry Pi、ARM64、x86 边缘服务器或 VM |
+| `dev` | 贡献者与开发系统 |
 
-Hermes 始终允许你使用任意服务商，这点不会改变。但如果你不想为模型、网页搜索、图像生成、TTS、云浏览器分别去申请五个不同的 API Key，**[Nous Portal](https://portal.nousresearch.com)** 用一个订阅就能覆盖全部：
-
-- **300+ 模型** — 用 `/model <name>` 随时切换
-- **Tool Gateway** — 网页搜索（Firecrawl）、图像生成（FAL）、文本转语音（OpenAI）、云浏览器（Browser Use），全部通过订阅托管。无需额外注册任何账户。
-
-全新安装时一条命令即可：
+让 PyPI extra 与 setup profile 保持一致。例如：
 
 ```bash
-hermes setup --portal
+python -m pip install 'hermes-agent-iot[iot]==0.20.5.post2'
+hermes-iot setup --profile iot
 ```
 
-它会通过 OAuth 登录、把 Nous 设为推理服务商，并启用 Tool Gateway。随时用 `hermes portal info` 查看路由状态。完整说明见 [Tool Gateway 文档](https://hermes-agent.nousresearch.com/docs/user-guide/features/tool-gateway)。
+`full` 和 `dev` 不推荐用于 Raspberry Pi 2 / 1 GB 系统。
 
-你随时可以按工具单独切回自己的 API Key — Gateway 是按工具粒度生效的，不是一刀切。
+## 项目状态
 
----
-
-## CLI 与消息平台 快速对照
-
-Hermes 有两种入口：用 `hermes` 启动终端 UI，或运行网关从 Telegram、Discord、Slack、WhatsApp、Signal 或 Email 与之对话。进入对话后，许多斜杠命令在两种界面中通用。
-
-| 操作 | CLI | 消息平台 |
-|------|-----|----------|
-| 开始对话 | `hermes` | 运行 `hermes gateway setup` + `hermes gateway start`，然后给机器人发消息 |
-| 开始新对话 | `/new` 或 `/reset` | `/new` 或 `/reset` |
-| 更换模型 | `/model [provider:model]` | `/model [provider:model]` |
-| 设置人格 | `/personality [name]` | `/personality [name]` |
-| 重试或撤销上一轮 | `/retry`、`/undo` | `/retry`、`/undo` |
-| 压缩上下文 / 查看用量 | `/compress`、`/usage`、`/insights [--days N]` | `/compress`、`/usage`、`/insights [days]` |
-| 浏览技能 | `/skills` 或 `/<skill-name>` | `/skills` 或 `/<skill-name>` |
-| 中断当前工作 | `Ctrl+C` 或发送新消息 | `/stop` 或发送新消息 |
-| 平台特定状态 | `/platforms` | `/status`、`/sethome` |
-
-完整命令列表请参阅 [CLI 指南](https://hermes-agent.nousresearch.com/docs/user-guide/cli) 和 [消息网关指南](https://hermes-agent.nousresearch.com/docs/user-guide/messaging)。
-
----
+| 能力 | 状态 |
+| --- | --- |
+| Raspberry Pi 2 / ARMv7 minimal 安装 | ✅ 已验证 |
+| 公开 PyPI 包 | ✅ 可用 |
+| Minimal 依赖配置 | ✅ 可用 |
+| IoT 依赖配置 | ✅ 可用 |
+| MQTT 集成 | ✅ 可用 |
+| Home Assistant 集成 | ✅ 可用 |
+| Remote-first RAG | ✅ 可用 |
+| 机器人文档 | ✅ 可用 |
+| GPIO 抽象 | 🛠 路线图 |
+| I2C 设备层 | 🛠 路线图 |
+| PWM / 舵机控制 | 🛠 路线图 |
+| 传感器插件框架 | 🛠 路线图 |
+| ESP32 MQTT 桥接 | 🛠 路线图 |
 
 ## 文档
 
-所有文档位于 **[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)**：
+- [IoT 项目概览](IOT_PROJECT.md) — 项目目标、支持状态、profiles 与路线图。
+- [Raspberry Pi 2 快速开始](README_PI2.md) — 依赖矩阵、配置 profiles 与 Pi2 安全指引。
+- [Raspberry Pi 2 手册](RASPBERRY_PI2_MANUAL.md) — 详细的 Pi2 部署文档。
+- [机器人](ROBOTICS.md) — 机器人集成说明。
+- [安全政策](SECURITY.md) — 漏洞报告与安全指引。
+- [上游 Hermes Agent 文档](https://hermes-agent.nousresearch.com/docs/) — 通用 Hermes Agent 功能、providers、gateway、桌面/服务器用法与集成。
 
-| 章节 | 内容 |
-|------|------|
-| [快速开始](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart) | 安装 → 设置 → 2 分钟内开始首次对话 |
-| [CLI 使用](https://hermes-agent.nousresearch.com/docs/user-guide/cli) | 命令、快捷键、人格、会话 |
-| [配置](https://hermes-agent.nousresearch.com/docs/user-guide/configuration) | 配置文件、提供商、模型、所有选项 |
-| [消息网关](https://hermes-agent.nousresearch.com/docs/user-guide/messaging) | Telegram、Discord、Slack、WhatsApp、Signal、Home Assistant |
-| [安全](https://hermes-agent.nousresearch.com/docs/user-guide/security) | 命令审批、DM 配对、容器隔离 |
-| [工具与工具集](https://hermes-agent.nousresearch.com/docs/user-guide/features/tools) | 40+ 工具、工具集系统、终端后端 |
-| [技能系统](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills) | 过程记忆、技能中心、创建技能 |
-| [记忆](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory) | 持久记忆、用户画像、最佳实践 |
-| [MCP 集成](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp) | 连接任意 MCP 服务器扩展能力 |
-| [定时调度](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron) | 定时任务与平台投递 |
-| [上下文文件](https://hermes-agent.nousresearch.com/docs/user-guide/features/context-files) | 影响每次对话的项目上下文 |
-| [架构](https://hermes-agent.nousresearch.com/docs/developer-guide/architecture) | 项目结构、代理循环、关键类 |
-| [贡献](https://hermes-agent.nousresearch.com/docs/developer-guide/contributing) | 开发设置、PR 流程、代码风格 |
-| [CLI 参考](https://hermes-agent.nousresearch.com/docs/reference/cli-commands) | 所有命令和标志 |
-| [环境变量](https://hermes-agent.nousresearch.com/docs/reference/environment-variables) | 完整环境变量参考 |
+## 上游 vs Hermes Agent IoT
 
----
+| 领域 | 上游 Hermes Agent | Hermes Agent IoT |
+| --- | --- | --- |
+| 通用桌面/服务器 Agent | 主要目标 | 使用上游基础 |
+| Raspberry Pi 2 / ARMv7 | 非主要目标 | 主要兼容目标 |
+| 1 GB 级 minimal profile | 通用依赖模型 | 专属 `minimal` profile |
+| MQTT / Home Assistant 部署 | 通用集成 | 专属 `iot` profile |
+| 低资源边缘部署 | 通用运行时 | fork 的核心重点 |
+| 机器人 | 通用 Agent 范围 | 面向 IoT/机器人的文档与路线图 |
 
-## 从 OpenClaw 迁移
+在依赖变更、IoT 补丁与 ARMv7 兼容性经过评审与验证期间，此 fork 可能有意落后于上游 `main`。对于通用桌面/服务器 Hermes Agent 用途，请优先使用上游项目。
 
-如果你来自 OpenClaw，Hermes 可以自动导入你的设置、记忆、技能和 API 密钥。
+## 已验证版本
 
-**首次安装时：** 安装向导（`hermes setup`）会自动检测 `~/.openclaw` 并在配置开始前提供迁移选项。
+当前已验证基线：
 
-**安装后任意时间：**
+- PyPI: [`hermes-agent-iot 0.20.5.post2`](https://pypi.org/project/hermes-agent-iot/0.20.5.post2/)
+- Tag: `iot-v0.20.5.post2`
+- Python: `>=3.11,<3.14`
+- 物理验证：Raspberry Pi 2 Model B Rev 1.1，32-bit ARMv7，921 MiB RAM，Python 3.13.5
+
+`minimal` wheel 基线已在实体 Raspberry Pi 2 硬件上 clean-install 并 smoke test。更重的可选 extras 需要与其依赖集相匹配的硬件。
+
+## 更新 Pi2 源码安装
+
+始终将更新固定到 `pi2-lite` 分支：
 
 ```bash
-hermes claw migrate              # 交互式迁移（完整预设）
-hermes claw migrate --dry-run    # 预览将要迁移的内容
-hermes claw migrate --preset user-data   # 仅迁移用户数据，不含密钥
-hermes claw migrate --overwrite  # 覆盖已有冲突
+cd ~/hermes-agent-iot
+source ~/.hermes-venv/bin/activate
+
+git status --short
+git switch pi2-lite
+git fetch origin pi2-lite
+git merge --ff-only origin/pi2-lite
+
+bash setup-pi2-minimal.sh --profile minimal
 ```
 
-导入内容：
-- **SOUL.md** — 人格文件
-- **记忆** — MEMORY.md 和 USER.md 条目
-- **技能** — 用户创建的技能 → `~/.hermes/skills/openclaw-imports/`
-- **命令白名单** — 审批模式
-- **消息设置** — 平台配置、允许用户、工作目录
-- **API 密钥** — 白名单中的密钥（Telegram、OpenRouter、OpenAI、Anthropic、ElevenLabs）
-- **TTS 资产** — 工作区音频文件
-- **工作区指令** — AGENTS.md（使用 `--workspace-target`）
+将 `minimal` 替换为最初安装的 profile。在 IoT release 0.20.4 及之后，裸 `hermes update` 会检测到 `hermes-agent-iot` distribution 并默认使用 `pi2-lite`；在自动化中显式的 `--branch pi2-lite` 仍有助于审计。源码更新后请重新运行 profile 安装器。
 
-使用 `hermes claw migrate --help` 查看所有选项，或使用 `openclaw-migration` 技能进行交互式代理引导迁移（含干运行预览）。
+## 路线图
 
----
+- [x] Raspberry Pi 2 / ARMv7 安装路径
+- [x] 低资源依赖配置
+- [x] IoT 依赖配置
+- [x] MQTT / Home Assistant 集成路径
+- [x] 公开 PyPI 包
+- [x] 实体 Raspberry Pi 2 验证
+- [ ] GPIO 抽象
+- [ ] I2C 设备抽象
+- [ ] PWM / 舵机控制
+- [ ] 传感器插件框架
+- [ ] 机器人技能框架
+- [ ] ESP32 MQTT 桥接
+- [ ] Raspberry Pi 3 / 4 / 5 验证矩阵
 
-## 贡献
+## 上游桌面 / 服务器安装
 
-欢迎贡献！请参阅 [贡献指南](https://hermes-agent.nousresearch.com/docs/developer-guide/contributing) 了解开发设置、代码风格和 PR 流程。
+Hermes Agent IoT 主要用于 Raspberry Pi 与边缘部署。对于通用桌面或服务器用途，请安装上游 Hermes Agent。
 
-贡献者快速开始——使用标准安装器，然后在它创建的完整 git checkout 中开发：
-`$HERMES_HOME/hermes-agent`（通常是 `~/.hermes/hermes-agent`）。这会匹配
-`hermes update`、托管 venv、lazy dependencies、gateway 和 docs tooling 使用的布局。
+### Windows（原生 PowerShell）
+
+```powershell
+iex (irm https://hermes-agent.nousresearch.com/install.ps1)
+```
+
+### Linux / macOS / WSL2
 
 ```bash
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
-cd "${HERMES_HOME:-$HOME/.hermes}/hermes-agent"
-uv pip install -e ".[all,dev]"
-scripts/run_tests.sh
 ```
 
-手动克隆备用路径（用于一次性 clone / CI，或你明确不想使用 managed install layout 时）：
+这些上游安装器不会安装此 fork 的 Pi2 专属 profiles 或 IoT 打包。
 
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv venv venv --python 3.11
-source venv/bin/activate
-uv pip install -e ".[all,dev]"
-python -m pytest tests/ -q
-```
+## 关于 Hermes Agent
 
----
+Hermes Agent 是由 [Nous Research](https://nousresearch.com) 开发的自我进化 AI Agent。它提供终端界面、持久学习与记忆、定时自动化、subagents、多种执行后端、消息 gateway 以及对多种 LLM provider 的支持。
 
-## 社区
+Hermes Agent IoT 不会取代上游项目。它将这一基础适配于 Raspberry Pi 2、ARMv7、低资源边缘节点、MQTT/Home Assistant 环境以及未来的机器人集成。
 
-- 💬 [Discord](https://discord.gg/NousResearch)
-- 📚 [技能中心](https://agentskills.io)
-- 🐛 [问题反馈](https://github.com/NousResearch/hermes-agent/issues)
-- 💡 [讨论区](https://github.com/NousResearch/hermes-agent/discussions)
-- 🔌 [HermesClaw](https://github.com/AaronWong1999/hermesclaw) — 社区微信桥接：在同一微信账号上运行 Hermes Agent 和 OpenClaw。
+## 许可与署名
 
----
-
-## 许可证
-
-MIT — 详见 [LICENSE](LICENSE)。
-
-由 [Nous Research](https://nousresearch.com) 构建。
+Hermes Agent IoT 衍生自 [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent)，遵循本仓库的 [MIT License](LICENSE)。在再分发衍生作品时请保留上游版权与署名。

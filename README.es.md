@@ -1,220 +1,198 @@
 <p align="center">
-  <img src="assets/banner.png" alt="Hermes Agent" width="100%">
+  <img src="assets/banner.png" alt="Hermes Agent IoT" width="100%">
 </p>
 
-# Hermes Agent ☤
+# Hermes Agent IoT
+
+> Agente Hermes ligero para Raspberry Pi 2 / ARMv7, MQTT, Home Assistant, robótica e IA de borde de bajos recursos.
+
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/">Hermes Agent</a> | <a href="https://hermes-agent.nousresearch.com/">Hermes Desktop</a>
+  <a href="https://pypi.org/project/hermes-agent-iot/"><img src="https://img.shields.io/badge/PyPI-hermes--agent--iot-blue?style=for-the-badge" alt="PyPI"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green?style=for-the-badge" alt="License: MIT"></a>
+  <a href="https://github.com/NousResearch/hermes-agent"><img src="https://img.shields.io/badge/Upstream-NousResearch%2Fhermes--agent-blueviolet?style=for-the-badge" alt="Upstream Hermes Agent"></a>
+  <a href="README_PI2.md"><img src="https://img.shields.io/badge/Raspberry%20Pi%202-ARMv7-C51A4A?style=for-the-badge&logo=raspberrypi&logoColor=white" alt="Raspberry Pi 2"></a>
 </p>
+
 <p align="center">
-  <a href="https://hermes-agent.nousresearch.com/docs/"><img src="https://img.shields.io/badge/Docs-hermes--agent.nousresearch.com-FFD700?style=for-the-badge" alt="Documentación"></a>
-  <a href="https://discord.gg/NousResearch"><img src="https://img.shields.io/badge/Discord-5865F2?style=for-the-badge&logo=discord&logoColor=white" alt="Discord"></a>
-  <a href="https://github.com/NousResearch/hermes-agent/blob/main/LICENSE"><img src="https://img.shields.io/badge/Licencia-MIT-green?style=for-the-badge" alt="Licencia: MIT"></a>
-  <a href="https://nousresearch.com"><img src="https://img.shields.io/badge/Creado%20por-Nous%20Research-blueviolet?style=for-the-badge" alt="Creado por Nous Research"></a>
-  <a href="README.md"><img src="https://img.shields.io/badge/Lang-English-blue?style=for-the-badge" alt="English"></a>
+  <a href="README.md"><img src="https://img.shields.io/badge/Lang-English-lightgrey?style=for-the-badge" alt="English"></a>
+  <a href="README.es.md"><img src="https://img.shields.io/badge/Lang-Español-orange?style=for-the-badge" alt="Español"></a>
   <a href="README.zh-CN.md"><img src="https://img.shields.io/badge/Lang-中文-red?style=for-the-badge" alt="中文"></a>
-  <a href="README.ur-pk.md"><img src="https://img.shields.io/badge/Lang-اردو-green?style=for-the-badge" alt="اردو"></a>
 </p>
 
-**El agente de IA con mejora continua creado por [Nous Research](https://nousresearch.com).** Es el único agente con un bucle de aprendizaje integrado: crea habilidades a partir de la experiencia, las mejora durante el uso, se impulsa a sí mismo a persistir el conocimiento, busca en sus propias conversaciones pasadas y construye un modelo cada vez más profundo de quién eres a lo largo de las sesiones. Ejecútalo en un VPS de $5, un clúster de GPUs o infraestructura sin servidor que cuesta casi nada cuando está inactivo. No está atado a tu laptop — habla con él desde Telegram mientras trabaja en una VM en la nube.
+Hermes Agent IoT es un fork de [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) centrado en IoT y robótica. La rama mantenida `pi2-lite` se enfoca en despliegues restringidos de Raspberry Pi y edge, preservando el runtime y el ecosistema del Hermes Agent upstream.
 
-Usa cualquier modelo que quieras — [Nous Portal](https://portal.nousresearch.com), [OpenRouter](https://openrouter.ai) (más de 200 modelos), [NovitaAI](https://novita.ai), [NVIDIA NIM](https://build.nvidia.com) (Nemotron), [Xiaomi MiMo](https://platform.xiaomimimo.com), [z.ai/GLM](https://z.ai), [Kimi/Moonshot](https://platform.moonshot.ai), [MiniMax](https://www.minimax.io), [Hugging Face](https://huggingface.co), OpenAI, o tu propio endpoint. Cambia con `hermes model` — sin cambios de código, sin dependencias.
+## ¿Por qué Hermes Agent IoT?
 
-<table>
-<tr><td><b>Una interfaz de terminal real</b></td><td>TUI completa con edición multilínea, autocompletado de comandos, historial de conversaciones, interrupción y redirección, y salida de herramientas en streaming.</td></tr>
-<tr><td><b>Vive donde tú vives</b></td><td>Telegram, Discord, Slack, WhatsApp, Signal y CLI — todo desde un único proceso gateway. Transcripción de notas de voz, continuidad de conversación entre plataformas.</td></tr>
-<tr><td><b>Un bucle de aprendizaje cerrado</b></td><td>Memoria curada por el agente con recordatorios periódicos. Creación autónoma de habilidades tras tareas complejas. Las habilidades mejoran solas durante el uso. Búsqueda FTS5 de sesiones con resumención por LLM para recuperación entre sesiones. Modelado de usuario dialéctico <a href="https://github.com/plastic-labs/honcho">Honcho</a>. Compatible con el estándar abierto de <a href="https://agentskills.io">agentskills.io</a>.</td></tr>
-<tr><td><b>Automatizaciones programadas</b></td><td>Planificador cron integrado con entrega a cualquier plataforma. Informes diarios, copias de seguridad nocturnas, auditorías semanales — todo en lenguaje natural, ejecutándose de forma autónoma.</td></tr>
-<tr><td><b>Delega y paraleliza</b></td><td>Lanza subagentes aislados para flujos de trabajo paralelos. Escribe scripts de Python que llaman a herramientas vía RPC, convirtiendo pipelines de múltiples pasos en turnos de coste cero de contexto.</td></tr>
-<tr><td><b>Funciona en cualquier lugar, no solo en tu laptop</b></td><td>Seis backends de terminal — local, Docker, SSH, Singularity, Modal y Daytona. Daytona y Modal ofrecen persistencia sin servidor — el entorno de tu agente hiberna cuando está inactivo y se activa bajo demanda, costando casi nada entre sesiones. Ejecútalo en un VPS de $5 o un clúster de GPUs.</td></tr>
-<tr><td><b>Listo para investigación</b></td><td>Generación de trayectorias en lote, compresión de trayectorias para entrenar la próxima generación de modelos de llamadas a herramientas.</td></tr>
-</table>
+- **Raspberry Pi 2 / ARMv7:** ruta de instalación de bajos recursos verificada para hardware de clase 1 GB.
+- **Perfiles IoT:** perfiles de dependencias para MQTT, Home Assistant, MCP/ACP y RAG remoto (remote-first).
+- **Despliegue edge-first:** mantén la inferencia pesada de IA en remoto mientras la Raspberry Pi maneja la orquestación del agente y la integración de dispositivos.
+- **Dirección de robótica:** base para GPIO, I2C, PWM, sensores, actuadores y habilidades de robótica.
+- **Consciente del upstream:** los cambios de compatibilidad IoT y ARMv7 se revisan por separado del rápido desarrollo upstream.
 
----
+## Inicio rápido — Raspberry Pi 2
 
-## Instalación rápida
-
-### Linux, macOS, WSL2, Termux
+Hermes Agent IoT requiere Python `>=3.11,<3.14`. Instálalo en un entorno virtual:
 
 ```bash
-curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
+python3 --version
+python3 -m venv ~/.venvs/hermes-iot
+source ~/.venvs/hermes-iot/bin/activate
+python -m pip install --upgrade pip
+python -m pip install 'hermes-agent-iot[minimal]==0.20.5.post2'
+python -m pip check
+
+hermes-iot setup --profile minimal
+hermes-iot profile show
+hermes setup model
+hermes
 ```
 
-### Windows (nativo, PowerShell)
+> No uses pip del sistema, `sudo pip` ni `--break-system-packages`.
 
-> **Nota:** En Windows nativo, Hermes funciona sin WSL — la CLI, el gateway, la TUI y las herramientas funcionan de forma nativa. Si prefieres usar WSL2, el comando de Linux/macOS de arriba también funciona allí. ¿Encontraste un error? Por favor [crea un issue](https://github.com/NousResearch/hermes-agent/issues).
+### Checkout del código fuente
 
-Ejecuta esto en PowerShell:
+Usa la rama mantenida `pi2-lite` cuando necesites los recursos completos del repositorio:
+
+```bash
+git clone --branch pi2-lite --depth 1 \
+  https://github.com/matttest0080-prog/hermes-agent-iot.git
+cd hermes-agent-iot
+bash setup-pi2-minimal.sh --profile minimal
+source ~/.hermes-venv/bin/activate
+hermes setup model
+hermes
+```
+
+> Conserva el directorio del clon. El instalador de código fuente usa una instalación editable de Python, por lo que mover o eliminar el checkout puede romper el entorno.
+
+## Perfiles de instalación
+
+| Perfil | Destino previsto |
+| --- | --- |
+| `minimal` | Línea base Raspberry Pi 2 / ARMv7 / 1 GB |
+| `iot` | MQTT, Home Assistant, MCP/ACP e integraciones IoT relacionadas |
+| `rag` | IoT más Honcho / RAG remoto (remote-first) |
+| `full` | Raspberry Pi más potente, ARM64, servidor edge x86 o VM |
+| `dev` | Sistemas de contribución y desarrollo |
+
+Mantén alineados el extra de PyPI y el perfil de setup. Por ejemplo:
+
+```bash
+python -m pip install 'hermes-agent-iot[iot]==0.20.5.post2'
+hermes-iot setup --profile iot
+```
+
+`full` y `dev` no se recomiendan para sistemas Raspberry Pi 2 / 1 GB.
+
+## Estado del proyecto
+
+| Capacidad | Estado |
+| --- | --- |
+| Instalación mínima Raspberry Pi 2 / ARMv7 | ✅ Verificado |
+| Paquete PyPI público | ✅ Disponible |
+| Perfil de dependencias mínimo | ✅ Disponible |
+| Perfil de dependencias IoT | ✅ Disponible |
+| Integración MQTT | ✅ Disponible |
+| Integración Home Assistant | ✅ Disponible |
+| RAG remoto (remote-first) | ✅ Disponible |
+| Documentación de robótica | ✅ Disponible |
+| Abstracción GPIO | 🛠 Hoja de ruta |
+| Capa de dispositivos I2C | 🛠 Hoja de ruta |
+| Control PWM / servos | 🛠 Hoja de ruta |
+| Framework de plugins de sensores | 🛠 Hoja de ruta |
+| Puente MQTT ESP32 | 🛠 Hoja de ruta |
+
+## Documentación
+
+- [Resumen del proyecto IoT](IOT_PROJECT.md) — objetivos, estado de soporte, perfiles y hoja de ruta.
+- [Inicio rápido de Raspberry Pi 2](README_PI2.md) — matriz de dependencias, perfiles de configuración y guía de seguridad para Pi2.
+- [Manual de Raspberry Pi 2](RASPBERRY_PI2_MANUAL.md) — documentación detallada de despliegue en Pi2.
+- [Robótica](ROBOTICS.md) — notas de integración de robótica.
+- [Política de seguridad](SECURITY.md) — reporte de vulnerabilidades y guía de seguridad.
+- [Documentación del Hermes Agent upstream](https://hermes-agent.nousresearch.com/docs/) — características generales, proveedores, gateways, uso de escritorio/servidor e integraciones.
+
+## Upstream vs Hermes Agent IoT
+
+| Área | Hermes Agent upstream | Hermes Agent IoT |
+| --- | --- | --- |
+| Agente general de escritorio/servidor | Objetivo principal | Usa la base upstream |
+| Raspberry Pi 2 / ARMv7 | No es objetivo principal | Objetivo principal de compatibilidad |
+| Perfil mínimo de clase 1 GB | Modelo de dependencias general | Perfil `minimal` dedicado |
+| Despliegue MQTT / Home Assistant | Integraciones generales | Perfil `iot` dedicado |
+| Despliegue edge de bajos recursos | Runtime general | Foco principal del fork |
+| Robótica | Alcance general del agente | Documentación y hoja de ruta orientadas a IoT/robótica |
+
+Este fork puede quedarse intencionalmente atrás del `main` upstream mientras se revisan y validan los cambios de dependencias, los parches IoT y la compatibilidad ARMv7. Para un uso general de escritorio/servidor, prefiere el proyecto upstream.
+
+## Versión verificada
+
+Línea base verificada actual:
+
+- PyPI: [`hermes-agent-iot 0.20.5.post2`](https://pypi.org/project/hermes-agent-iot/0.20.5.post2/)
+- Tag: `iot-v0.20.5.post2`
+- Python: `>=3.11,<3.14`
+- Validación física: Raspberry Pi 2 Model B Rev 1.1, ARMv7 de 32 bits, 921 MiB RAM, Python 3.13.5
+
+La línea base del wheel `minimal` se instaló en limpio y se sometió a smoke tests en hardware físico Raspberry Pi 2. Los extras opcionales más pesados requieren hardware acorde a su conjunto de dependencias.
+
+## Actualizar una instalación de código fuente en Pi2
+
+Mantén siempre las actualizaciones ancladas a la rama `pi2-lite`:
+
+```bash
+cd ~/hermes-agent-iot
+source ~/.hermes-venv/bin/activate
+
+git status --short
+git switch pi2-lite
+git fetch origin pi2-lite
+git merge --ff-only origin/pi2-lite
+
+bash setup-pi2-minimal.sh --profile minimal
+```
+
+Sustituye `minimal` por el perfil instalado originalmente. En el release IoT 0.20.4 y posteriores, un `hermes update` sin argumentos detecta la distribución `hermes-agent-iot` y usa `pi2-lite` por defecto; un `--branch pi2-lite` explícito sigue siendo útil en automatización para auditabilidad. Vuelve a ejecutar el instalador de perfil tras una actualización de código fuente.
+
+## Hoja de ruta
+
+- [x] Ruta de instalación Raspberry Pi 2 / ARMv7
+- [x] Perfil de dependencias de bajos recursos
+- [x] Perfil de dependencias IoT
+- [x] Ruta de integración MQTT / Home Assistant
+- [x] Paquete PyPI público
+- [x] Validación física en Raspberry Pi 2
+- [ ] Abstracción GPIO
+- [ ] Abstracción de dispositivos I2C
+- [ ] Control PWM / servos
+- [ ] Framework de plugins de sensores
+- [ ] Framework de habilidades de robótica
+- [ ] Puente MQTT ESP32
+- [ ] Matriz de validación Raspberry Pi 3 / 4 / 5
+
+## Instalación de escritorio / servidor upstream
+
+Hermes Agent IoT está orientado principalmente a Raspberry Pi y despliegues edge. Para uso general de escritorio o servidor, instala el Hermes Agent upstream.
+
+### Windows (PowerShell nativo)
 
 ```powershell
 iex (irm https://hermes-agent.nousresearch.com/install.ps1)
 ```
 
-El instalador se encarga de todo: uv, Python 3.11, Node.js, ripgrep, ffmpeg, **y un Git Bash portátil** (MinGit, descomprimido en `%LOCALAPPDATA%\hermes\git` — no requiere administrador, completamente aislado de cualquier instalación de Git del sistema). Hermes usa este Git Bash incluido para ejecutar comandos de shell.
-
-Si ya tienes Git instalado, el instalador lo detecta y lo usa en su lugar. De lo contrario, una descarga de ~45MB de MinGit es todo lo que necesitas — no tocará ni interferirá con ningún Git del sistema.
-
-> **Android / Termux:** La ruta manual probada está documentada en la [guía de Termux](https://hermes-agent.nousresearch.com/docs/getting-started/termux). En Termux, Hermes instala el extra `.[termux]` curado porque el extra completo `.[all]` actualmente incluye dependencias de voz incompatibles con Android.
->
-> **Windows:** Windows nativo es totalmente compatible — el comando de PowerShell de arriba instala todo. Si prefieres usar WSL2, el comando de Linux también funciona allí. La instalación nativa de Windows se encuentra en `%LOCALAPPDATA%\hermes`; WSL2 instala en `~/.hermes` como en Linux.
-
-Después de la instalación:
+### Linux / macOS / WSL2
 
 ```bash
-source ~/.bashrc    # recargar shell (o: source ~/.zshrc)
-hermes              # ¡empieza a chatear!
+curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 ```
 
----
+Estos instaladores upstream no instalan los perfiles específicos de Pi2 ni el empaquetado IoT de este fork.
 
-## Primeros pasos
+## Acerca de Hermes Agent
 
-```bash
-hermes              # CLI interactiva — inicia una conversación
-hermes model        # Elige tu proveedor y modelo LLM
-hermes tools        # Configura qué herramientas están habilitadas
-hermes config set   # Establece valores de configuración individuales
-hermes gateway      # Inicia el gateway de mensajería (Telegram, Discord, etc.)
-hermes setup        # Ejecuta el asistente de configuración completo
-hermes claw migrate # Migra desde OpenClaw (si vienes de OpenClaw)
-hermes update       # Actualiza a la última versión
-hermes doctor       # Diagnostica cualquier problema
-```
+Hermes Agent es el agente de IA con mejora continua desarrollado por [Nous Research](https://nousresearch.com). Ofrece una interfaz de terminal, aprendizaje y memoria persistentes, automatizaciones programadas, subagentes, múltiples backends de ejecución, gateways de mensajería y soporte para múltiples proveedores de LLM.
 
-📖 **[Documentación completa →](https://hermes-agent.nousresearch.com/docs/)**
+Hermes Agent IoT no reemplaza al proyecto upstream. Adapta esa base para Raspberry Pi 2, ARMv7, nodos edge de bajos recursos, entornos MQTT/Home Assistant e integraciones futuras de robótica.
 
----
+## Licencia y atribución
 
-## Evita la colección de claves API — Nous Portal
-
-Hermes funciona con cualquier proveedor que quieras — eso no cambiará. Pero si prefieres no recopilar cinco claves API separadas para el modelo, búsqueda web, generación de imágenes, TTS y un navegador en la nube, **[Nous Portal](https://portal.nousresearch.com)** las cubre todas bajo una sola suscripción:
-
-- **Más de 300 modelos** — elige cualquiera con `/model <nombre>`
-- **Tool Gateway** — búsqueda web (Firecrawl), generación de imágenes (FAL), texto a voz (OpenAI), navegador en la nube (Browser Use), todo enrutado a través de tu suscripción. Sin cuentas adicionales.
-
-Un comando desde una instalación nueva:
-
-```bash
-hermes setup --portal
-```
-
-Esto te autentica vía OAuth, establece Nous como tu proveedor y activa el Tool Gateway. Comprueba qué está conectado en cualquier momento con `hermes portal info`. Detalles completos en la [página de documentación del Tool Gateway](https://hermes-agent.nousresearch.com/docs/user-guide/features/tool-gateway).
-
-Puedes seguir usando tus propias claves por herramienta cuando quieras — el gateway es por backend, no todo o nada.
-
----
-
-## Referencia rápida: CLI vs Mensajería
-
-Hermes tiene dos puntos de entrada: inicia la interfaz de terminal con `hermes`, o ejecuta el gateway y habla con él desde Telegram, Discord, Slack, WhatsApp, Signal o Email. Una vez en una conversación, muchos comandos de barra son compartidos entre ambas interfaces.
-
-| Acción                              | CLI                                           | Plataformas de mensajería                                                         |
-| ----------------------------------- | --------------------------------------------- | --------------------------------------------------------------------------------- |
-| Empezar a chatear                   | `hermes`                                      | Ejecuta `hermes gateway setup` + `hermes gateway start`, luego envía un mensaje al bot |
-| Nueva conversación                  | `/new` o `/reset`                             | `/new` o `/reset`                                                                 |
-| Cambiar modelo                      | `/model [proveedor:modelo]`                   | `/model [proveedor:modelo]`                                                       |
-| Establecer personalidad             | `/personality [nombre]`                       | `/personality [nombre]`                                                           |
-| Reintentar o deshacer último turno  | `/retry`, `/undo`                             | `/retry`, `/undo`                                                                 |
-| Comprimir contexto / ver uso        | `/compress`, `/usage`, `/insights [--days N]` | `/compress`, `/usage`, `/insights [days]`                                         |
-| Explorar habilidades                | `/skills` o `/<nombre-habilidad>`             | `/<nombre-habilidad>`                                                             |
-| Interrumpir trabajo actual          | `Ctrl+C` o enviar un nuevo mensaje            | `/stop` o enviar un nuevo mensaje                                                 |
-| Estado específico de plataforma     | `/platforms`                                  | `/status`, `/sethome`                                                             |
-
-Para las listas de comandos completas, consulta la [guía de CLI](https://hermes-agent.nousresearch.com/docs/user-guide/cli) y la [guía del Gateway de Mensajería](https://hermes-agent.nousresearch.com/docs/user-guide/messaging).
-
----
-
-## Documentación
-
-Toda la documentación está en **[hermes-agent.nousresearch.com/docs](https://hermes-agent.nousresearch.com/docs/)**:
-
-| Sección                                                                                             | Contenido                                                    |
-| --------------------------------------------------------------------------------------------------- | ------------------------------------------------------------ |
-| [Inicio rápido](https://hermes-agent.nousresearch.com/docs/getting-started/quickstart)              | Instalar → configurar → primera conversación en 2 minutos   |
-| [Uso de CLI](https://hermes-agent.nousresearch.com/docs/user-guide/cli)                             | Comandos, atajos de teclado, personalidades, sesiones        |
-| [Configuración](https://hermes-agent.nousresearch.com/docs/user-guide/configuration)               | Archivo de configuración, proveedores, modelos, todas las opciones |
-| [Gateway de Mensajería](https://hermes-agent.nousresearch.com/docs/user-guide/messaging)           | Telegram, Discord, Slack, WhatsApp, Signal, Home Assistant   |
-| [Seguridad](https://hermes-agent.nousresearch.com/docs/user-guide/security)                        | Aprobación de comandos, emparejamiento por DM, aislamiento en contenedor |
-| [Herramientas y Toolsets](https://hermes-agent.nousresearch.com/docs/user-guide/features/tools)   | Más de 40 herramientas, sistema de toolsets, backends de terminal |
-| [Sistema de Habilidades](https://hermes-agent.nousresearch.com/docs/user-guide/features/skills)   | Memoria procedimental, Skills Hub, creación de habilidades   |
-| [Memoria](https://hermes-agent.nousresearch.com/docs/user-guide/features/memory)                   | Memoria persistente, perfiles de usuario, mejores prácticas  |
-| [Integración MCP](https://hermes-agent.nousresearch.com/docs/user-guide/features/mcp)              | Conecta cualquier servidor MCP para capacidades extendidas   |
-| [Programación Cron](https://hermes-agent.nousresearch.com/docs/user-guide/features/cron)           | Tareas programadas con entrega a plataforma                  |
-| [Archivos de Contexto](https://hermes-agent.nousresearch.com/docs/user-guide/features/context-files) | Contexto de proyecto que da forma a cada conversación      |
-| [Arquitectura](https://hermes-agent.nousresearch.com/docs/developer-guide/architecture)            | Estructura del proyecto, bucle del agente, clases principales |
-| [Contribuir](https://hermes-agent.nousresearch.com/docs/developer-guide/contributing)              | Configuración de desarrollo, proceso de PR, estilo de código |
-| [Referencia de CLI](https://hermes-agent.nousresearch.com/docs/reference/cli-commands)             | Todos los comandos y flags                                   |
-| [Variables de Entorno](https://hermes-agent.nousresearch.com/docs/reference/environment-variables) | Referencia completa de variables de entorno                  |
-
----
-
-## Migración desde OpenClaw
-
-Si vienes de OpenClaw, Hermes puede importar automáticamente tu configuración, memorias, habilidades y claves API.
-
-**Durante la configuración inicial:** El asistente de configuración (`hermes setup`) detecta automáticamente `~/.openclaw` y ofrece migrar antes de que comience la configuración.
-
-**En cualquier momento después de instalar:**
-
-```bash
-hermes claw migrate              # Migración interactiva (preset completo)
-hermes claw migrate --dry-run    # Vista previa de qué se migraría
-hermes claw migrate --preset user-data   # Migrar sin secretos
-hermes claw migrate --overwrite  # Sobreescribir conflictos existentes
-```
-
-Qué se importa:
-
-- **SOUL.md** — archivo de personalidad
-- **Memorias** — entradas de MEMORY.md y USER.md
-- **Habilidades** — habilidades creadas por el usuario → `~/.hermes/skills/openclaw-imports/`
-- **Lista de comandos permitidos** — patrones de aprobación
-- **Configuración de mensajería** — configuración de plataformas, usuarios permitidos, directorio de trabajo
-- **Claves API** — secretos en lista de permitidos (Telegram, OpenRouter, OpenAI, Anthropic, ElevenLabs)
-- **Assets de TTS** — archivos de audio del espacio de trabajo
-- **Instrucciones del espacio de trabajo** — AGENTS.md (con `--workspace-target`)
-
-Consulta `hermes claw migrate --help` para todas las opciones, o usa la habilidad `openclaw-migration` para una migración guiada interactiva por el agente con vistas previas de dry-run.
-
----
-
-## Contribuir
-
-¡Las contribuciones son bienvenidas! Consulta la [Guía de Contribución](CONTRIBUTING.es.md) para la configuración del desarrollo, el estilo de código y el proceso de PR.
-
-Inicio rápido para colaboradores — clona y comienza con `setup-hermes.sh`:
-
-```bash
-git clone https://github.com/NousResearch/hermes-agent.git
-cd hermes-agent
-./setup-hermes.sh     # instala uv, crea venv, instala .[all], enlaza ~/.local/bin/hermes
-./hermes              # detecta automáticamente el venv, no necesitas hacer `source` primero
-```
-
-Ruta manual (equivalente a lo anterior):
-
-```bash
-curl -LsSf https://astral.sh/uv/install.sh | sh
-uv venv .venv --python 3.11
-source .venv/bin/activate
-uv pip install -e ".[all,dev]"
-scripts/run_tests.sh
-```
-
----
-
-## Comunidad
-
-- 💬 [Discord](https://discord.gg/NousResearch)
-- 📚 [Skills Hub](https://agentskills.io)
-- 🐛 [Issues](https://github.com/NousResearch/hermes-agent/issues)
-- 🔌 [computer-use-linux](https://github.com/avifenesh/computer-use-linux) — Servidor MCP de control de escritorio Linux para Hermes y otros hosts MCP, con árboles de accesibilidad AT-SPI, entrada Wayland/X11, capturas de pantalla y targeting de ventanas del compositor.
-- 🔌 [HermesClaw](https://github.com/AaronWong1999/hermesclaw) — Puente WeChat comunitario: Ejecuta Hermes Agent y OpenClaw en la misma cuenta de WeChat.
-
----
-
-## Licencia
-
-MIT — ver [LICENSE](LICENSE).
-
-Creado por [Nous Research](https://nousresearch.com).
+Hermes Agent IoT deriva de [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent) y sigue la [Licencia MIT](LICENSE) de este repositorio. Conserva el copyright y la atribución del upstream al redistribuir trabajos derivados.

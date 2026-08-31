@@ -188,6 +188,159 @@ class TestFallbackChainAdvancement:
             assert agent._try_activate_fallback() is True
             assert agent.model == "gpt-4o"
 
+    def test_skips_candidate_below_profile_context_floor_without_runtime_pollution(self):
+        fbs = [
+            {"provider": "openai", "model": "tiny-context"},
+            {"provider": "zai", "model": "large-enough"},
+        ]
+        agent = _make_agent(fallback_model=fbs)
+        agent._minimum_tool_context_length = 2_048
+        original_model = agent.model
+        original_provider = agent.provider
+        original_client = agent.client
+        original_pool = agent._credential_pool
+        original_context = agent.context_compressor.context_length
+        original_prompt_cache = agent._use_prompt_caching
+        probes = []
+
+        def context_for_candidate(model, **_kwargs):
+            probes.append(model)
+            if model == "large-enough":
+                assert agent.model == original_model
+                assert agent.provider == original_provider
+                assert agent.client is original_client
+                assert agent._credential_pool is original_pool
+                assert agent.context_compressor.context_length == original_context
+                assert agent._use_prompt_caching == original_prompt_cache
+                return 8_192
+            return 1_024
+
+        with (
+            patch(
+                "agent.auxiliary_client.resolve_provider_client",
+                side_effect=[
+                    (_mock_client("https://tiny.example/v1"), "tiny-context"),
+                    (_mock_client("https://large.example/v1"), "large-enough"),
+                ],
+            ),
+            patch("agent.model_metadata.get_model_context_length", side_effect=context_for_candidate),
+        ):
+            assert agent._try_activate_fallback() is True
+
+        assert probes == ["tiny-context", "large-enough"]
+        assert agent.model == "large-enough"
+        assert agent.provider == "zai"
+        assert agent.context_compressor.context_length == 8_192
+        assert agent._fallback_index == 2
+
+    def test_activation_failure_rolls_back_runtime_before_chain_exhaustion(self):
+        fbs = [{"provider": "openai", "model": "gpt-4o"}]
+        agent = _make_agent(fallback_model=fbs)
+        original_client = agent.client
+        original_model = agent.model
+        original_provider = agent.provider
+        original_requested_provider = agent.requested_provider
+        original_pool = agent._credential_pool
+        agent._credential_pool_entry_id = "primary-entry"
+        original_compressor_state = dict(vars(agent.context_compressor))
+        original_primary_runtime = agent._primary_runtime
+        original_transport_cache = {"primary": object()}
+        agent._transport_cache = original_transport_cache
+        original_client_kwargs = dict(agent._client_kwargs)
+        original_cache_flags = (
+            agent._use_prompt_caching,
+            agent._use_native_cache_layout,
+        )
+        agent._anthropic_prompt_cache_policy = MagicMock(
+            side_effect=RuntimeError("prompt cache policy failed")
+        )
+
+        with (
+            patch(
+                "agent.auxiliary_client.resolve_provider_client",
+                return_value=(_mock_client("https://api.openai.com/v1"), "gpt-4o"),
+            ),
+            patch("agent.model_metadata.get_model_context_length", return_value=128_000),
+        ):
+            assert agent._try_activate_fallback() is False
+
+        assert agent.model == original_model
+        assert agent.provider == original_provider
+        assert agent.requested_provider == original_requested_provider
+        assert agent.client is original_client
+        assert agent._credential_pool is original_pool
+        assert agent._credential_pool_entry_id == "primary-entry"
+        assert agent._primary_runtime is original_primary_runtime
+        assert agent._transport_cache is original_transport_cache
+        assert list(agent._transport_cache) == ["primary"]
+        assert agent._client_kwargs == original_client_kwargs
+        assert (
+            agent._use_prompt_caching,
+            agent._use_native_cache_layout,
+        ) == original_cache_flags
+        assert vars(agent.context_compressor) == original_compressor_state
+        assert agent._fallback_activated is False
+        assert agent._fallback_index == 1
+
+    def test_rejected_candidate_restores_preconstruction_mutations_and_closes_owned_client(self):
+        fbs = [{"provider": "openai", "model": "tiny-context"}]
+        agent = _make_agent(fallback_model=fbs)
+        agent._minimum_tool_context_length = 2_048
+        agent._reasoning_echo_flag = True
+        candidate = _mock_client("https://tiny.example/v1")
+
+        def construct_candidate(*_args, **_kwargs):
+            agent._reasoning_echo_flag = False
+            return candidate, "tiny-context"
+
+        with (
+            patch(
+                "agent.auxiliary_client.resolve_provider_client",
+                side_effect=construct_candidate,
+            ),
+            patch("agent.model_metadata.get_model_context_length", return_value=1_024),
+        ):
+            assert agent._try_activate_fallback() is False
+
+        assert agent._reasoning_echo_flag is True
+        candidate.close.assert_called_once_with()
+        assert agent._fallback_index == 1
+
+    def test_fallback_prevalidation_honors_entry_context_length(self):
+        fbs = [
+            {
+                "provider": "custom",
+                "model": "tiny-model",
+                "base_url": "http://pi2.local:11434/v1",
+                "context_length": 8192,
+            }
+        ]
+        agent = _make_agent(fallback_model=fbs)
+        agent._minimum_tool_context_length = 2048
+
+        def resolve_context(model, **kwargs):
+            assert model == "tiny-model"
+            assert kwargs["config_context_length"] == 8192
+            return kwargs["config_context_length"]
+
+        with (
+            patch(
+                "agent.auxiliary_client.resolve_provider_client",
+                return_value=(
+                    _mock_client("http://pi2.local:11434/v1"),
+                    "tiny-model",
+                ),
+            ),
+            patch(
+                "agent.model_metadata.get_model_context_length",
+                side_effect=resolve_context,
+            ),
+        ):
+            assert agent._try_activate_fallback() is True
+
+        assert agent._config_context_length == 8192
+        assert agent.context_compressor.context_length == 8192
+
     def test_resolves_key_env_for_fallback_provider(self):
         fbs = [
             {

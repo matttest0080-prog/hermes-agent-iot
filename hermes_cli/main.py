@@ -820,6 +820,7 @@ from hermes_cli.model_setup_flows import (
     _model_flow_qwen_oauth,
     _model_flow_minimax_oauth,
     _model_flow_custom,
+    _model_flow_local_llama,
     _model_flow_azure_foundry,
     _model_flow_named_custom,
     _model_flow_copilot,
@@ -4093,6 +4094,7 @@ def select_provider_and_model(args=None):
             ordered.append((key, label, []))
 
     ordered.append(("custom", "Custom endpoint (enter URL manually)", []))
+    ordered.append(("local-llama", "Local AI (llama.cpp / llama-server)", []))
     _has_saved_custom_list = isinstance(config.get("custom_providers"), list) and bool(
         config.get("custom_providers")
     )
@@ -4162,6 +4164,8 @@ def select_provider_and_model(args=None):
         _model_flow_copilot(config, current_model)
     elif selected_provider == "custom":
         _model_flow_custom(config)
+    elif selected_provider == "local-llama":
+        _model_flow_local_llama(config)
     elif (
         selected_provider.startswith("custom:")
         or selected_provider in _custom_provider_map
@@ -10713,15 +10717,53 @@ def _finalize_update_output(state):
             pass
 
 
-def _resolve_update_branch(args) -> str:
-    """Normalize ``args.branch`` into a non-empty branch name.
+def _is_iot_install() -> bool:
+    """Return whether the active source/package is the protected IoT fork.
 
-    Centralizes the "default to main, accept --branch override, treat empty
-    or whitespace-only values as the default" parsing so every consumer of
-    ``--branch`` (check path, git-update path, ZIP-fallback path) agrees on
-    the same answer.
+    Installed distribution metadata is authoritative. Editable/source installs
+    fall back to the checkout's pyproject. User-writable install-profile data is
+    deliberately not an identity signal: stale metadata must never redirect an
+    official ``hermes-agent`` updater to the IoT branch.
     """
-    return (getattr(args, "branch", None) or "main").strip() or "main"
+    from importlib import metadata as importlib_metadata
+
+    try:
+        importlib_metadata.distribution("hermes-agent")
+        return False
+    except importlib_metadata.PackageNotFoundError:
+        pass
+    except Exception:
+        return False
+
+    try:
+        importlib_metadata.distribution("hermes-agent-iot")
+        return True
+    except importlib_metadata.PackageNotFoundError:
+        pass
+    except Exception:
+        return False
+
+    try:
+        import tomllib
+
+        with (PROJECT_ROOT / "pyproject.toml").open("rb") as stream:
+            project = tomllib.load(stream).get("project", {})
+        return project.get("name") == "hermes-agent-iot"
+    except (OSError, ValueError, TypeError):
+        return False
+
+
+def _resolve_update_branch(args) -> str:
+    """Resolve the update branch without detaching IoT installs from Pi2.
+
+    An explicit ``--branch`` always wins. Official Hermes defaults to ``main``;
+    hermes-agent-iot source/wheel/profile installs default to ``pi2-lite`` so a
+    bare update cannot silently follow the fork's stale main or upstream/main.
+    """
+    requested = (getattr(args, "branch", None) or "").strip()
+    if requested:
+        return requested
+    return "pi2-lite" if _is_iot_install() else "main"
 
 
 def _size_delta_label(saved_mb: float) -> str:
@@ -12959,7 +13001,7 @@ def cmd_monitoring(args):
         else:
             print("  OTLP endpoint:  not configured (monitoring.export.otlp)")
         print(f"  OTel SDK:       {'installed' if otlp_exporter.is_available() else 'not installed'} "
-              f"(optional extra: hermes-agent[otlp])")
+              f"(optional extra: hermes-agent-iot[otlp])")
         print("\n  Scope: gateway service health + redacted diagnostics only.")
         print("  No prompts, messages, tool args/results, usage analytics, or traces.")
         return

@@ -7,9 +7,10 @@ The transport is now a file (--query-file) / stdin, and the protocol text
 must never regress to inlining the body into -q.
 """
 
-
 import sys
 from pathlib import Path
+
+import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 
@@ -49,15 +50,14 @@ def test_query_file_reads_hostile_text_verbatim(tmp_path, monkeypatch):
     assert not Path("/tmp/pwned_by_dm_test").exists()
 
 
-def test_query_and_query_file_mutually_exclusive(tmp_path):
+def test_query_and_query_file_mutually_exclusive(tmp_path, capsys):
     """argparse rejects -q + --query-file at parse time (exit 2), no env needed."""
-    import pytest
-
     f = tmp_path / "dm.txt"
     f.write_text("hello", encoding="utf-8")
-    with pytest.raises(SystemExit) as exc:
+    with pytest.raises(SystemExit) as exc_info:
         _parse(["chat", "-q", "x", "--query-file", str(f)])
-    assert exc.value.code == 2
+    assert exc_info.value.code == 2
+    assert "not allowed with argument" in capsys.readouterr().err
 
 
 def test_bot_mode_protocol_never_inlines_message_into_shell():
