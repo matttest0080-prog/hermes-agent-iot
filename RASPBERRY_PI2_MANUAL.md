@@ -36,11 +36,12 @@ Raspberry Pi OS 若仍是 Python 3.9，必須先安裝 Python 3.11+。
 
 ## 3. 安裝
 
-### 3.1 公開 PyPI wheel
+### 3.1 公開 PyPI wheel（已完成實體 Pi2 驗證）
 
-目前公開版本是 `hermes-agent-iot 0.20.6.post1`（GitHub/PyPI 閘門已過）。
-最後一次實體 Raspberry Pi 2 Model B Rev 1.1（`armv7l`、32-bit、
-921 MiB RAM、Python 3.13.5）驗證仍是 `0.20.5.post2`；本版尚未在實體 Pi2 重跑。
+目前已驗證版本是 `hermes-agent-iot 0.20.6.post1`。它已從公開 PyPI
+clean-install 到實體 Raspberry Pi 2 Model B Rev 1.1（`armv7l`、32-bit、
+921 MiB RAM、Python 3.13.5），並通過 `minimal` Profile、CLI、`pip check`
+與權限 smoke test。
 
 必須使用 Python `>=3.11,<3.14` 的 virtualenv；不要使用 system pip、
 `sudo pip` 或 `--break-system-packages`：

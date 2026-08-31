@@ -52,7 +52,7 @@ with a packaged default config; the latter isolate running Hermes instances.
 
 PyPI users install exactly one public extra into a virtual environment, then
 apply its config without invoking pip. Release `0.20.6.post1` is the current
-published pin (`0.20.5.post2` remains the last physical-Pi2 baseline):
+verified Pi2 baseline:
 
 ```bash
 python3 --version  # must be >=3.11,<3.14
@@ -89,15 +89,13 @@ not silently download missing skills, MCP catalogs, locale files, Dashboard, or
 TUI assets. Use the `pi2-lite` source installer for catalog browsing/install,
 localized UI, Dashboard/TUI operation, or frontend/source development.
 
-Release `0.20.6.post1` completed the x86_64 GitHub release gates and public
-PyPI publish. Wheel SHA-256
-`1393bfd72cc96f62965e4170f707911ee1b079ce12b45c4018043228b33f3197`
-(commit `cb749957c66e537e951937f49251dbf18a4fb3c8`, workflow
-https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/33358885842).
-Last physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM,
-Python 3.13.5) exact-wheel test remains `0.20.5.post2` (SHA-256
-`2de6f2615f53e51cf7c90b05c564e027439946f3eec069780cd0404017814629`).
-Heavier optional extras retain their own hardware requirements.
+Release `0.20.6.post1` completed both the x86_64 GitHub release gates and an
+exact-wheel clean-install/profile smoke test on a physical Raspberry Pi 2 Model
+B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Python 3.13.5). The GitHub artifact,
+Pi2-tested wheel, and public PyPI download all had SHA-256
+`1393bfd72cc96f62965e4170f707911ee1b079ce12b45c4018043228b33f3197`.
+This evidence verifies the `minimal` baseline; heavier optional extras retain
+their own hardware requirements.
 
 The release is wheel-only; no source distribution is published. Its public
 PyPI provenance identifies `matttest0080-prog/hermes-agent-iot`, workflow
