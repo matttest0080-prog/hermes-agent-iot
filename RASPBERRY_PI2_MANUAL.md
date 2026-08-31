@@ -36,12 +36,11 @@ Raspberry Pi OS 若仍是 Python 3.9，必須先安裝 Python 3.11+。
 
 ## 3. 安裝
 
-### 3.1 公開 PyPI wheel（已完成實體 Pi2 驗證）
+### 3.1 公開 PyPI wheel
 
-目前已驗證版本是 `hermes-agent-iot 0.20.5.post2`。它已從公開 PyPI
-clean-install 到實體 Raspberry Pi 2 Model B Rev 1.1（`armv7l`、32-bit、
-921 MiB RAM、Python 3.13.5），並通過 `minimal` Profile、CLI、`pip check`
-與權限 smoke test。
+目前公開版本是 `hermes-agent-iot 0.20.6.post1`（GitHub/PyPI 閘門已過）。
+最後一次實體 Raspberry Pi 2 Model B Rev 1.1（`armv7l`、32-bit、
+921 MiB RAM、Python 3.13.5）驗證仍是 `0.20.5.post2`；本版尚未在實體 Pi2 重跑。
 
 必須使用 Python `>=3.11,<3.14` 的 virtualenv；不要使用 system pip、
 `sudo pip` 或 `--break-system-packages`：
@@ -52,7 +51,7 @@ python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.20.5.post2'
+python -m pip install 'hermes-agent-iot[minimal]==0.20.6.post1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -70,12 +69,12 @@ distribution 會提供重疊的 Python modules 與 CLI。`hermes-iot setup` 不�
 供應鏈識別：
 
 ```text
-PyPI:       https://pypi.org/project/hermes-agent-iot/0.20.5.post2/
-Tag:        iot-v0.20.5.post2
-Commit:     b20d9eac292f6eab76c725cfe0bf46fde7f67425
-Wheel:      hermes_agent_iot-0.20.5.post2-py3-none-any.whl
-SHA-256:    2de6f2615f53e51cf7c90b05c564e027439946f3eec069780cd0404017814629
-Workflow:   https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/32724087830
+PyPI:       https://pypi.org/project/hermes-agent-iot/0.20.6.post1/
+Tag:        iot-v0.20.6.post1
+Commit:     cb749957c66e537e951937f49251dbf18a4fb3c8
+Wheel:      hermes_agent_iot-0.20.6.post1-py3-none-any.whl
+SHA-256:    1393bfd72cc96f62965e4170f707911ee1b079ce12b45c4018043228b33f3197
+Workflow:   https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/33358885842
 ```
 
 此版本只發布一個 universal wheel，沒有 sdist；公開 PyPI provenance 綁定
