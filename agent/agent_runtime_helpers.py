@@ -3306,6 +3306,7 @@ def switch_model(
                 _destination_context_intent
             )
         except Exception:
+            _close_new_clients()
             _restore_snapshot()
             raise
     else:
@@ -3396,97 +3397,102 @@ def switch_model(
             _restore_snapshot()
             raise
 
-    # ── Re-resolve reasoning_config from per-model override ──
-    # The new model may have a different reasoning_effort override. Re-read
-    # config so the override takes effect immediately on /model switch —
-    # resolved through the shared chokepoint (per-model > global; YAML
-    # boolean False = disabled).
     try:
-        from hermes_constants import resolve_reasoning_config
-        from hermes_cli.config import load_config as _sm_load_config
+        # ── Re-resolve reasoning_config from per-model override ──
+        # The new model may have a different reasoning_effort override. Re-read
+        # config so the override takes effect immediately on /model switch —
+        # resolved through the shared chokepoint (per-model > global; YAML
+        # boolean False = disabled).
+        try:
+            from hermes_constants import resolve_reasoning_config
+            from hermes_cli.config import load_config as _sm_load_config
 
-        _reasoning_cfg = _sm_load_config() or {}
-        agent.reasoning_config = resolve_reasoning_config(_reasoning_cfg, agent.model)
-        logger.info(
-            "switch_model: reasoning_config resolved for %s: %s",
-            agent.model, agent.reasoning_config,
-        )
-    except Exception as _reasoning_err:
-        logger.debug("switch_model: could not re-resolve reasoning_config: %s", _reasoning_err)
+            _reasoning_cfg = _sm_load_config() or {}
+            agent.reasoning_config = resolve_reasoning_config(_reasoning_cfg, agent.model)
+            logger.info(
+                "switch_model: reasoning_config resolved for %s: %s",
+                agent.model, agent.reasoning_config,
+            )
+        except Exception as _reasoning_err:
+            logger.debug("switch_model: could not re-resolve reasoning_config: %s", _reasoning_err)
 
-    # ── Invalidate cached system prompt so it rebuilds next turn ──
-    agent._cached_system_prompt = None
+        # ── Invalidate cached system prompt so it rebuilds next turn ──
+        agent._cached_system_prompt = None
 
-    # Publish the destination capability map only after every runtime setup
-    # above has succeeded. Failed switches must leave the old map intact.
-    agent.runtime_capabilities = destination_capabilities
+        # Publish the destination capability map only after every runtime setup
+        # above has succeeded. Failed switches must leave the old map intact.
+        agent.runtime_capabilities = destination_capabilities
 
-    # ── Reset the cross-turn stale-call circuit breaker (#58962) ──
-    # The breaker's error text tells the user to "switch models ... then
-    # retry"; without this reset the streak stays latched and the freshly
-    # selected (healthy) provider would keep short-circuiting before any
-    # stream is even attempted.
-    from agent.chat_completion_helpers import _reset_stale_streak
-    _reset_stale_streak(agent)
+        # ── Reset the cross-turn stale-call circuit breaker (#58962) ──
+        # The breaker's error text tells the user to "switch models ... then
+        # retry"; without this reset the streak stays latched and the freshly
+        # selected (healthy) provider would keep short-circuiting before any
+        # stream is even attempted.
+        from agent.chat_completion_helpers import _reset_stale_streak
+        _reset_stale_streak(agent)
 
-    # ── Update _primary_runtime so the change persists across turns ──
-    _cc = agent.context_compressor if hasattr(agent, "context_compressor") and agent.context_compressor else None
-    agent._primary_runtime = {
-        "model": agent.model,
-        "provider": agent.provider,
-        "requested_provider": agent.requested_provider,
-        "base_url": agent.base_url,
-        "api_mode": agent.api_mode,
-        "api_key": getattr(agent, "api_key", ""),
-        "client_kwargs": dict(agent._client_kwargs),
-        "use_prompt_caching": agent._use_prompt_caching,
-        "use_native_cache_layout": agent._use_native_cache_layout,
-        "reasoning_config": dict(agent.reasoning_config) if getattr(agent, "reasoning_config", None) else None,
-        "reasoning_echo_flag": getattr(agent, "_reasoning_echo_flag", False),
-        # Request-level overrides (extra_body etc.) must travel with the
-        # switched-to identity; without this, a post-switch transport
-        # recovery or fallback restore would resurrect the PRE-switch
-        # overrides via the stale init-time snapshot (#75091 seam).
-        "request_overrides": dict(getattr(agent, "request_overrides", {}) or {}),
-        "runtime_capabilities": dict(getattr(agent, "runtime_capabilities", {}) or {}),
-        "compressor_model": getattr(_cc, "model", agent.model) if _cc else agent.model,
-        "compressor_base_url": getattr(_cc, "base_url", agent.base_url) if _cc else agent.base_url,
-        "compressor_api_key": getattr(_cc, "api_key", "") if _cc else "",
-        "compressor_provider": getattr(_cc, "provider", agent.provider) if _cc else agent.provider,
-        "compressor_context_length": _cc.context_length if _cc else 0,
-        "compressor_api_mode": getattr(_cc, "api_mode", agent.api_mode) if _cc else agent.api_mode,
-        "compressor_threshold_tokens": _cc.threshold_tokens if _cc else 0,
-    }
-    if api_mode == "anthropic_messages":
-        agent._primary_runtime.update({
-            "anthropic_api_key": agent._anthropic_api_key,
-            "anthropic_base_url": agent._anthropic_base_url,
-            "is_anthropic_oauth": agent._is_anthropic_oauth,
-        })
+        # ── Update _primary_runtime so the change persists across turns ──
+        _cc = agent.context_compressor if hasattr(agent, "context_compressor") and agent.context_compressor else None
+        agent._primary_runtime = {
+            "model": agent.model,
+            "provider": agent.provider,
+            "requested_provider": agent.requested_provider,
+            "base_url": agent.base_url,
+            "api_mode": agent.api_mode,
+            "api_key": getattr(agent, "api_key", ""),
+            "client_kwargs": dict(agent._client_kwargs),
+            "use_prompt_caching": agent._use_prompt_caching,
+            "use_native_cache_layout": agent._use_native_cache_layout,
+            "reasoning_config": dict(agent.reasoning_config) if getattr(agent, "reasoning_config", None) else None,
+            "reasoning_echo_flag": getattr(agent, "_reasoning_echo_flag", False),
+            # Request-level overrides (extra_body etc.) must travel with the
+            # switched-to identity; without this, a post-switch transport
+            # recovery or fallback restore would resurrect the PRE-switch
+            # overrides via the stale init-time snapshot (#75091 seam).
+            "request_overrides": dict(getattr(agent, "request_overrides", {}) or {}),
+            "runtime_capabilities": dict(getattr(agent, "runtime_capabilities", {}) or {}),
+            "compressor_model": getattr(_cc, "model", agent.model) if _cc else agent.model,
+            "compressor_base_url": getattr(_cc, "base_url", agent.base_url) if _cc else agent.base_url,
+            "compressor_api_key": getattr(_cc, "api_key", "") if _cc else "",
+            "compressor_provider": getattr(_cc, "provider", agent.provider) if _cc else agent.provider,
+            "compressor_context_length": _cc.context_length if _cc else 0,
+            "compressor_api_mode": getattr(_cc, "api_mode", agent.api_mode) if _cc else agent.api_mode,
+            "compressor_threshold_tokens": _cc.threshold_tokens if _cc else 0,
+        }
+        if api_mode == "anthropic_messages":
+            agent._primary_runtime.update({
+                "anthropic_api_key": agent._anthropic_api_key,
+                "anthropic_base_url": agent._anthropic_base_url,
+                "is_anthropic_oauth": agent._is_anthropic_oauth,
+            })
 
-    # ── Reset fallback state ──
-    agent._fallback_activated = False
-    agent._provider_fallback_active = False
-    agent._provider_fallback_route = None
-    agent._fallback_index = 0
+        # ── Reset fallback state ──
+        agent._fallback_activated = False
+        agent._provider_fallback_active = False
+        agent._provider_fallback_route = None
+        agent._fallback_index = 0
 
-    # When the user deliberately swaps primary providers (e.g. openrouter
-    # → anthropic), drop any fallback entries that target the OLD primary
-    # or the NEW one.  The chain was seeded from config at agent init for
-    # the original provider — without pruning, a failed turn on the new
-    # primary silently re-activates the provider the user just rejected,
-    # which is exactly what was reported during TUI v2 blitz testing
-    # ("switched to anthropic, tui keeps trying openrouter").
-    old_norm = (old_provider or "").strip().lower()
-    new_norm = (new_provider or "").strip().lower()
-    fallback_chain = list(getattr(agent, "_fallback_chain", []) or [])
-    if old_norm and new_norm and old_norm != new_norm:
-        fallback_chain = [
-            entry for entry in fallback_chain
-            if (entry.get("provider") or "").strip().lower() not in {old_norm, new_norm}
-        ]
-    agent._fallback_chain = fallback_chain
-    agent._fallback_model = fallback_chain[0] if fallback_chain else None
+        # When the user deliberately swaps primary providers (e.g. openrouter
+        # → anthropic), drop any fallback entries that target the OLD primary
+        # or the NEW one.  The chain was seeded from config at agent init for
+        # the original provider — without pruning, a failed turn on the new
+        # primary silently re-activates the provider the user just rejected,
+        # which is exactly what was reported during TUI v2 blitz testing
+        # ("switched to anthropic, tui keeps trying openrouter").
+        old_norm = (old_provider or "").strip().lower()
+        new_norm = (new_provider or "").strip().lower()
+        fallback_chain = list(getattr(agent, "_fallback_chain", []) or [])
+        if old_norm and new_norm and old_norm != new_norm:
+            fallback_chain = [
+                entry for entry in fallback_chain
+                if (entry.get("provider") or "").strip().lower() not in {old_norm, new_norm}
+            ]
+        agent._fallback_chain = fallback_chain
+        agent._fallback_model = fallback_chain[0] if fallback_chain else None
+    except Exception:
+        _close_new_clients()
+        _restore_snapshot()
+        raise
 
     # Apply the switched-to provider's request_overrides (custom_providers
     # extra_body, e.g. chat_template_kwargs). See helper for rationale.
