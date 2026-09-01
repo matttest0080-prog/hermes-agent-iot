@@ -1618,6 +1618,24 @@ class SessionStore:
                         recovered_keys += 1
                         continue
 
+                    # A non-None recovery with the SAME session id is a
+                    # successful resume (all recovery gates passed, row
+                    # reopened): keep the routing entry — it is proven valid,
+                    # not a dead route (#95957). Keep the ORIGINAL entry
+                    # object, not the recovered one: the recovered entry is
+                    # rebuilt minimal from the DB row and would silently drop
+                    # live state the existing entry carries (token/cost
+                    # counters, model_override, resume_pending/queued-work
+                    # markers, metadata). Nothing in sessions.json changes,
+                    # so no save is needed for this branch.
+                    if recovered_entry is not None:
+                        logger.info(
+                            "gateway.session: reopened ended session %s for "
+                            "sessions.json entry %r (end_reason=%r); keeping route",
+                            entry.session_id, key, row["end_reason"],
+                        )
+                        continue
+
                     logger.warning(
                         "gateway.session: pruning stale sessions.json entry "
                         "%r -> %s (end_reason=%r); left by a crashed gateway",
@@ -3912,22 +3930,28 @@ class SessionStore:
 
     @staticmethod
     def _is_fts_corruption_error(exc: Exception) -> bool:
-        """True if *exc* looks like an FTS index corruption error.
+        """True only when the failure is provably scoped to the FTS index.
 
-        Matches the specific SQLite error strings for malformed disk images
-        and FTS table corruption — not bare ``"fts"`` substrings which match
-        unrelated words like ``"shifts"`` or ``"gifts"``.
+        A generic ``database disk image is malformed`` (bare SQLITE_CORRUPT)
+        can mean structural damage to canonical B-trees, not just the FTS
+        shadow tables — treating it as FTS-only here made the store rebuild
+        the index and retry transcript writes against a structurally corrupt
+        database (#97940). Only errors that name ``messages_fts`` or carry
+        FTS provenance per ``SessionDB._is_fts_write_corruption_error``
+        (``SQLITE_CORRUPT_VTAB`` result code, or explicit ``fts5:`` corrupt
+        structure text) may authorize the one-shot rebuild-and-retry.
+        Everything else falls through to the bounded retry/backoff path.
         """
         text = str(exc).lower()
-        return any(
-            marker in text
-            for marker in (
-                "database disk image is malformed",
-                "malformed database schema",
-                "messages_fts",
-                "no such table: messages_fts",
-            )
-        )
+        if "messages_fts" in text:
+            return True
+        import sqlite3
+
+        from hermes_state import SessionDB
+
+        if isinstance(exc, sqlite3.DatabaseError):
+            return SessionDB._is_fts_write_corruption_error(exc)
+        return False
 
     def _rebuild_fts_once(self) -> bool:
         """Attempt FTS5 ``rebuild`` command once per store lifetime.

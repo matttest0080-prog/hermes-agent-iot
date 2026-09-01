@@ -48,10 +48,10 @@ export const en: Translations = {
   fileMenu: {
     revealFinder: 'Reveal in Finder',
     revealExplorer: 'Reveal in File Explorer',
-    revealFileManager: 'Open Containing Folder',
+    revealFileManager: 'Open containing folder',
     revealInSidebar: 'Reveal in filetree',
-    copyPath: 'Copy Path',
-    copyRelativePath: 'Copy Relative Path',
+    copyPath: 'Copy path',
+    copyRelativePath: 'Copy relative path',
     download: 'Download',
     downloadSaved: 'Saved',
     downloadFailed: 'Download failed',
@@ -588,6 +588,12 @@ export const en: Translations = {
       introSplashDesc: 'The wordmark and prompt shown on an empty chat.',
       reactionsTitle: 'Message Reactions',
       reactionsDesc: 'iMessage-style emoji tapbacks — react to messages, and Hermes can react to yours.',
+      tipsTitle: 'In-App Tips',
+      tipsDesc:
+        'A small bubble pointing at one part of the app, shown occasionally while idle and by Hermes when it helps. Closing one retires it for good.',
+      tipsReset: (count: number) => `Bring back ${count} closed ${count === 1 ? 'tip' : 'tips'}`,
+      toursTitle: 'Guided Tours',
+      toursDesc: 'Let Hermes walk you through the app, dimming the screen and spotlighting each step.',
       composerPopoutTitle: 'Floating Composer',
       composerPopoutDesc: 'Allow dragging the composer out of its dock. Turn this off to keep it locked at the bottom.',
       vibeHeartsTitle: 'Vibe Hearts',
@@ -1242,6 +1248,16 @@ export const en: Translations = {
         selectedMessage: backend => `Terminal commands now run via ${backend}. Applies to new sessions.`,
         failedSelect: backend => `Failed to select ${backend}`,
         needsSetupHint: 'You can select this backend now — commands will fail until setup is complete.'
+      },
+      browserRealProfile: {
+        label: 'Use My Real Browser Profile',
+        description:
+          "Copies your default browser's logins and cookies into a managed snapshot the agent browses with. Your live profile is never opened directly. Applies to new sessions.",
+        enabledTitle: 'Real-profile browsing on',
+        enabledMessage: 'New sessions will browse with a snapshot of your default browser profile.',
+        disabledTitle: 'Real-profile browsing off',
+        disabledMessage: 'The profile snapshot will be deleted; new sessions use a clean browser.',
+        failedSave: 'Could not save the real-profile setting'
       }
     }
   },
@@ -1898,6 +1914,7 @@ export const en: Translations = {
     defaultBadge: 'Default',
     rename: 'Rename',
     renameMenu: 'Rename…',
+    exportMenu: 'Export…',
     editSoul: 'Edit SOUL.md…',
     copySetup: 'Copy setup',
     copying: 'Copying...',
@@ -2203,7 +2220,7 @@ export const en: Translations = {
       removeFolder: 'Remove',
       create: 'Create',
       menu: 'Actions',
-      menuRename: 'Rename',
+      menuRename: 'Rename…',
       menuAppearance: 'Appearance',
       noColor: 'No color',
       menuAddFolder: 'Add folder',
@@ -2273,7 +2290,7 @@ export const en: Translations = {
       copyId: 'Copy ID',
       export: 'Export',
       branchFrom: 'Branch',
-      rename: 'Rename',
+      rename: 'Rename…',
       archive: 'Archive',
       newWindow: 'New window',
       openInTerminal: 'Open in terminal',
@@ -2521,8 +2538,8 @@ export const en: Translations = {
       behind: count => `${count} behind`,
       review: 'Review',
       close: 'Close',
-      openChanges: 'Open Changes',
-      openFile: 'Open File',
+      openChanges: 'Open changes',
+      openFile: 'Open file',
       stage: 'Stage',
       unstage: 'Unstage',
       stageAll: 'Stage all',
@@ -2821,8 +2838,8 @@ export const en: Translations = {
     modelMenu: {
       search: 'Search models',
       noModels: 'No models found',
-      editModels: 'Edit Models…',
-      refreshModels: 'Refresh Models',
+      editModels: 'Edit models…',
+      refreshModels: 'Refresh models',
       fast: 'Fast'
     },
     modelOptions: {
@@ -3456,6 +3473,52 @@ export const en: Translations = {
       systemNote: platform => `↻ Handed off to ${platform} — resume here anytime.`,
       failed: error => `Handoff failed: ${error}`,
       timedOut: 'Timed out waiting for the gateway. Is `hermes gateway` running?'
+    }
+  },
+
+  tips: {
+    close: "Don't show this tip again",
+    items: {
+      'new-session': {
+        title: 'Start fresh',
+        text: 'A new chat gets its own context, terminal and working directory.'
+      },
+      skills: {
+        title: 'Teach it once',
+        text: 'Skills are folders of instructions Hermes loads when the work calls for them.'
+      },
+      messaging: {
+        title: 'Hermes away from your desk',
+        text: 'Connect Telegram, Discord, Slack and more — same agent, same memory.'
+      },
+      artifacts: {
+        title: 'Everything Hermes made',
+        text: 'Images, files and links from every session, indexed in one place.'
+      },
+      cron: {
+        title: 'Work that runs itself',
+        text: 'Schedule a prompt hourly, nightly, or on a cron expression.'
+      },
+      'command-palette': {
+        title: 'One box for everything',
+        text: 'Sessions, settings, skills and commands all answer to the palette.'
+      },
+      profiles: {
+        title: 'Profiles are separate',
+        text: 'Each one is its own Hermes — own keys, own memory, own sessions.'
+      },
+      'composer-mentions': {
+        title: 'Attach and command',
+        text: 'Type @ to bring a file into the conversation, / to run a command.'
+      },
+      'model-switch': {
+        title: 'Switch models mid-thread',
+        text: 'The model name is a button. Change it whenever the work changes shape.'
+      },
+      'right-pane': {
+        title: 'The working pane',
+        text: 'Files, terminal, review and the in-app browser share the right side.'
+      }
     }
   },
 

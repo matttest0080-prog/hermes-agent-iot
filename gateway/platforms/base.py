@@ -62,6 +62,45 @@ _AUDIO_EXTS = frozenset(_AUDIO_MIME_TYPES)
 # delivered as a regular document.
 _TELEGRAM_AUDIO_ATTACHMENT_EXTS = frozenset({'.mp3', '.m4a'})
 _TELEGRAM_VOICE_EXTS = frozenset({'.ogg', '.opus'})
+
+
+def transcode_to_ogg_opus(path: str, *, bitrate: str = "32k") -> "str | None":
+    """Best-effort ffmpeg transcode of any audio file to Ogg/Opus (voip-tuned).
+
+    The shared engine behind native voice-bubble delivery for platforms whose
+    voice channel only accepts Opus/OGG (Telegram sendVoice, Feishu opus
+    audio, Matrix MSC3245, WhatsApp voice notes). Returns the path of a NEW
+    temp ``.ogg`` file (caller owns cleanup), or ``None`` when ffmpeg is
+    missing or the conversion fails — callers keep their previous fallback
+    (document/attachment delivery). Blocking; call via ``asyncio.to_thread``
+    from async code.
+    """
+    import shutil as _shutil
+    import subprocess as _subprocess
+    import tempfile as _tempfile
+
+    ffmpeg = _shutil.which("ffmpeg")
+    if not ffmpeg:
+        return None
+
+    fd, ogg_path = _tempfile.mkstemp(prefix="voice_transcode_", suffix=".ogg")
+    os.close(fd)
+    try:
+        result = _subprocess.run(
+            [ffmpeg, "-v", "error", "-y", "-i", str(path),
+             "-acodec", "libopus", "-ac", "1", "-b:a", bitrate, "-vbr", "on",
+             "-application", "voip", "-compression_level", "10", ogg_path],
+            capture_output=True, timeout=60, stdin=_subprocess.DEVNULL,
+        )
+        if result.returncode == 0 and os.path.getsize(ogg_path) > 0:
+            return ogg_path
+    except Exception:
+        logger.debug("voice transcode to Ogg/Opus failed for %s", path, exc_info=True)
+    try:
+        os.unlink(ogg_path)
+    except OSError:
+        pass
+    return None
 _POST_DELIVERY_CALLBACK_TIMEOUT_SECONDS = 30.0
 # Delivery-time history is best-effort dedup metadata, not canonical state.
 # Keep this comfortably below the Discord heartbeat watchdog window and fail
@@ -184,6 +223,12 @@ def should_send_media_as_audio(platform, ext: str, is_voice: bool = False) -> bo
     if normalized_ext not in _AUDIO_EXTS:
         return False
     if _platform_name(platform) == "telegram":
+        if is_voice:
+            # Explicit [[audio_as_voice]] intent: ANY audio format routes to
+            # the voice sender — the adapter transcodes non-Opus input to
+            # Ogg/Opus on the fly (transcode_to_ogg_opus), so the intent no
+            # longer dead-ends into document delivery for .mp3/.wav/etc.
+            return True
         if normalized_ext in _TELEGRAM_VOICE_EXTS:
             return is_voice
         return normalized_ext in _TELEGRAM_AUDIO_ATTACHMENT_EXTS
@@ -1549,7 +1594,7 @@ def _docker_sandbox_dir_candidates(session_key: str = "") -> List[str]:
     """
     candidates: List[str] = []
     try:
-        from tools.environments.base import sanitize_task_id_for_path
+        from tools.environments.path_utils import sanitize_task_id_for_path
     except Exception:
         return ["default"]
     # Explicit trusted-profiles opt-in: one shared container identity.
@@ -2416,6 +2461,9 @@ class MessageEvent:
     # media_urls: local file paths (for vision tool access)
     media_urls: List[str] = field(default_factory=list)
     media_types: List[str] = field(default_factory=list)
+    # Per-attachment text-inlining contract. None/absent preserves the legacy
+    # assumption that text/* adapters already injected content into ``text``.
+    media_text_inlined: List[Optional[bool]] = field(default_factory=list)
     
     # Reply context
     reply_to_message_id: Optional[str] = None
@@ -2800,10 +2848,22 @@ def merge_pending_message_event(
         incoming_is_photo = event.message_type == MessageType.PHOTO
         existing_has_media = bool(existing.media_urls)
         incoming_has_media = bool(event.media_urls)
+        incoming_inline_flags: List[Optional[bool]] = []
+        if incoming_has_media:
+            existing_inline_flags = list(getattr(existing, "media_text_inlined", []) or [])
+            existing_inline_flags.extend(
+                [None] * max(0, len(existing.media_urls) - len(existing_inline_flags))
+            )
+            incoming_inline_flags = list(getattr(event, "media_text_inlined", []) or [])
+            incoming_inline_flags.extend(
+                [None] * max(0, len(event.media_urls) - len(incoming_inline_flags))
+            )
+            existing.media_text_inlined = existing_inline_flags
 
         if existing_is_photo and incoming_is_photo:
             existing.media_urls.extend(event.media_urls)
             existing.media_types.extend(event.media_types)
+            existing.media_text_inlined.extend(incoming_inline_flags)
             if event.text:
                 existing.text = BasePlatformAdapter._merge_caption(existing.text, event.text)
             _invalidate_pending_stt_cache(existing)
@@ -2813,6 +2873,7 @@ def merge_pending_message_event(
             if incoming_has_media:
                 existing.media_urls.extend(event.media_urls)
                 existing.media_types.extend(event.media_types)
+                existing.media_text_inlined.extend(incoming_inline_flags)
             if event.text:
                 if existing.text:
                     existing.text = BasePlatformAdapter._merge_caption(existing.text, event.text)
@@ -3703,6 +3764,50 @@ class BasePlatformAdapter(ABC):
         release_scoped_lock(self._platform_lock_scope, identity)
         self._platform_lock_identity = None
 
+    def _wire_plugin_handlers(self, native: Any = None) -> None:
+        """Invoke plugin-registered native handler factories for this platform.
+
+        Plugins call ``ctx.register_platform_handler(<platform>, factory)``
+        at register() time; adapters call this from ``connect()`` once
+        their native client object exists (and, where dispatch order
+        matters, before their own handlers register). Each factory is
+        invoked with ``(native, adapter)``.
+
+        Args:
+            native: The platform's native client/app object to hand to
+                factories (PTB ``Application``, ``commands.Bot``,
+                ``AsyncApp``, aiohttp ``web.Application``, ...). Pass
+                ``None`` for adapters with no separate native object —
+                factories then work against the adapter handle alone.
+
+        Each factory is isolated so a misbehaving plugin can't prevent
+        the platform from connecting.
+        """
+        platform_name = getattr(self.platform, "value", str(self.platform))
+        try:
+            from hermes_cli.plugins import get_plugin_manager
+            factories = get_plugin_manager().get_platform_handler_factories(
+                platform_name
+            )
+        except Exception as e:  # pragma: no cover - defensive
+            logger.warning(
+                "[%s] Could not load plugin handler factories: %s",
+                self.name, e,
+            )
+            return
+        for factory, plugin_name in factories:
+            try:
+                factory(native, self)
+                logger.info(
+                    "[%s] Wired native handlers from plugin '%s'",
+                    self.name, plugin_name,
+                )
+            except Exception as exc:
+                logger.error(
+                    "[%s] Plugin '%s' handler factory raised: %s",
+                    self.name, plugin_name, exc, exc_info=True,
+                )
+
     @property
     def name(self) -> str:
         """Human-readable name for this adapter."""
@@ -3818,11 +3923,26 @@ class BasePlatformAdapter(ABC):
         registered via :meth:`set_authorization_check`. Returns ``None``
         when no check is registered (caller should treat as "trust unknown"
         and preserve legacy behaviour).
+
+        Only the literal booleans are propagated. A callback that returns
+        anything else is treated as "unknown" rather than coerced with
+        ``bool()``: callers that gate a credentialed side effect on an
+        explicit ``is True`` must not have a truthy non-boolean (a status
+        string, a sentinel object) silently promoted to an authorization.
         """
         if not user_id or self._authorization_check is None:
             return None
         try:
-            return bool(self._authorization_check(user_id, chat_type, chat_id))
+            result = self._authorization_check(user_id, chat_type, chat_id)
+            if result is True:
+                return True
+            if result is False:
+                return False
+            logger.warning(
+                "[%s] Authorization check returned %s for user %s; treating as unknown",
+                self.name, type(result).__name__, user_id,
+            )
+            return None
         except Exception:
             logger.warning(
                 "[%s] Authorization check raised for user %s; treating as unknown",
@@ -6208,7 +6328,7 @@ class BasePlatformAdapter(ABC):
                     return
 
                 # Other bypass commands (/approve, /deny, /status,
-                # /background, /restart) just need direct dispatch — they
+                # /bg, /restart) just need direct dispatch — they
                 # don't cancel the running task.
                 logger.debug(
                     "[%s] Command '/%s' bypassing active-session guard for %s",
@@ -6837,6 +6957,7 @@ class BasePlatformAdapter(ABC):
                                 chat_id=event.source.chat_id,
                                 audio_path=media_path,
                                 metadata=_final_thread_metadata,
+                                is_voice=is_voice,
                             )
                         elif ext in _VIDEO_EXTS:
                             logger.info(

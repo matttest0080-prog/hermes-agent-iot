@@ -20,17 +20,17 @@ def test_distribution_version_scripts_and_aggregate_extras():
 
     project = metadata()["project"]
     assert project["name"] == "hermes-agent-iot"
-    assert project["version"] == "0.20.6.post1"
+    assert project["version"] == "0.21.0.post1"
     assert __version__ == project["version"]
-    assert __release_date__ == "2026.8.27"
+    assert __release_date__ == "2026.8.31"
     assert project["scripts"]["hermes-iot"] == "hermes_cli.iot_cli:main"
     assert {"hermes", "hermes-agent", "hermes-acp"} <= project["scripts"].keys()
     extras = project["optional-dependencies"]
-    assert extras["minimal"] == ["hermes-agent-iot[cli,pty]==0.20.6.post1"]
-    assert extras["iot"] == ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.20.6.post1"]
-    assert extras["rag"] == ["hermes-agent-iot[iot,honcho]==0.20.6.post1"]
-    assert extras["full"] == ["hermes-agent-iot[all]==0.20.6.post1"]
-    assert "hermes-agent-iot[full]==0.20.6.post1" in extras["dev"]
+    assert extras["minimal"] == ["hermes-agent-iot[cli,pty]==0.21.0.post1"]
+    assert extras["iot"] == ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.21.0.post1"]
+    assert extras["rag"] == ["hermes-agent-iot[iot,honcho]==0.21.0.post1"]
+    assert extras["full"] == ["hermes-agent-iot[all]==0.21.0.post1"]
+    assert "hermes-agent-iot[full]==0.21.0.post1" in extras["dev"]
     assert "pytest==9.1.1" in extras["dev"]
     assert extras["vercel"] == ["vercel==0.7.2"]
     from tools.lazy_deps import LAZY_DEPS
@@ -112,7 +112,7 @@ def test_setup_atomically_creates_private_config_and_secret_free_manifest(tmp_pa
     data = json.loads(manifest.read_text())
     assert data == {
         "distribution": "hermes-agent-iot",
-        "version": "0.20.6.post1",
+        "version": "0.21.0.post1",
         "profile": "iot",
         "template": "config.pi2-native.yaml",
         "environment": str(sys.prefix),
@@ -376,7 +376,7 @@ def test_profile_show_reports_install_record(tmp_path):
     assert _run_cli(tmp_path, "setup", "--profile", "dev").returncode == 0
     result = _run_cli(tmp_path, "profile", "show")
     assert result.returncode == 0
-    for value in ("hermes-agent-iot", "0.20.6.post1", "dev", "config.pi2-full.yaml", str(sys.prefix)):
+    for value in ("hermes-agent-iot", "0.21.0.post1", "dev", "config.pi2-full.yaml", str(sys.prefix)):
         assert value in result.stdout
 
 

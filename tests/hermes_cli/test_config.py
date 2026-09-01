@@ -74,6 +74,51 @@ class TestEnsureHermesHome:
             ensure_hermes_home()
             assert soul_path.read_text(encoding="utf-8") == DEFAULT_SOUL_MD
 
+    # The pre-#95681 DEFAULT_SOUL_MD text, hardcoded (not read from the
+    # module) so this fixture keeps testing the OLD text regardless of any
+    # future change to _LEGACY_TEMPLATE_SOULS's length or ordering.
+    _PRE_REWRITE_DEFAULT_SOUL = (
+        "You are Hermes Agent, an intelligent AI assistant created by Nous "
+        "Research. You are helpful, knowledgeable, and direct. You assist "
+        "users with a wide range of tasks including answering questions, "
+        "writing and editing code, analyzing information, creative work, "
+        "and executing actions via your tools. You communicate clearly, "
+        "admit uncertainty when appropriate, and prioritize being "
+        "genuinely useful over being verbose unless otherwise directed "
+        "below. Be targeted and efficient in your exploration and "
+        "investigations."
+    )
+
+    def test_upgrades_pre_rewrite_default_soul_md(self, tmp_path):
+        # Every install seeded between the old DEFAULT_SOUL_MD's introduction
+        # and its #95681 rewrite got the old text auto-written on first run —
+        # not user-authored, so it's just as safe to upgrade in place as the
+        # comment-only scaffolds above. Regression test for that upgrade path.
+        from hermes_cli.default_soul import DEFAULT_SOUL_MD
+
+        assert self._PRE_REWRITE_DEFAULT_SOUL != DEFAULT_SOUL_MD  # sanity: fixture predates the rewrite
+
+        with patch.dict(os.environ, {"HERMES_HOME": str(tmp_path)}):
+            soul_path = tmp_path / "SOUL.md"
+            soul_path.write_text(self._PRE_REWRITE_DEFAULT_SOUL, encoding="utf-8")
+            ensure_hermes_home()
+            assert soul_path.read_text(encoding="utf-8") == DEFAULT_SOUL_MD
+
+    def test_does_not_upgrade_user_customized_soul_md(self, tmp_path):
+        # A SOUL.md that merely starts with the old default but was edited by
+        # the user carries real intent and must never be silently overwritten.
+        from hermes_cli.default_soul import DEFAULT_SOUL_MD
+
+        customized = self._PRE_REWRITE_DEFAULT_SOUL + " Also: always answer in rhyming couplets."
+
+        with patch.dict(os.environ, {"HERMES_HOME": str(tmp_path)}):
+            soul_path = tmp_path / "SOUL.md"
+            soul_path.write_text(customized, encoding="utf-8")
+            ensure_hermes_home()
+            content = soul_path.read_text(encoding="utf-8")
+            assert content == customized
+            assert content != DEFAULT_SOUL_MD
+
 
 
 
@@ -610,24 +655,24 @@ class TestSanitizeEnvLines:
 class TestOptionalEnvVarsRegistry:
     """Verify that key env vars are registered in OPTIONAL_ENV_VARS."""
 
-    def test_tavily_api_key_registered(self):
-        """TAVILY_API_KEY is listed in OPTIONAL_ENV_VARS."""
+    def test_keenable_api_key_registered(self):
+        """KEENABLE_API_KEY is listed in OPTIONAL_ENV_VARS."""
         from hermes_cli.config import OPTIONAL_ENV_VARS
-        assert "TAVILY_API_KEY" in OPTIONAL_ENV_VARS
+        assert "KEENABLE_API_KEY" in OPTIONAL_ENV_VARS
 
 
-    def test_tavily_api_key_has_url(self):
-        """TAVILY_API_KEY has a URL."""
+    def test_keenable_api_key_has_url(self):
+        """KEENABLE_API_KEY has a URL."""
         from hermes_cli.config import OPTIONAL_ENV_VARS
-        assert OPTIONAL_ENV_VARS["TAVILY_API_KEY"]["url"] == "https://app.tavily.com/home"
+        assert OPTIONAL_ENV_VARS["KEENABLE_API_KEY"]["url"] == "https://keenable.ai"
 
-    def test_tavily_in_env_vars_by_version(self):
-        """TAVILY_API_KEY is listed in ENV_VARS_BY_VERSION."""
+    def test_removed_tavily_var_not_in_env_vars_by_version(self):
+        """TAVILY_API_KEY was removed with the Tavily backend."""
         from hermes_cli.config import ENV_VARS_BY_VERSION
         all_vars = []
         for vars_list in ENV_VARS_BY_VERSION.values():
             all_vars.extend(vars_list)
-        assert "TAVILY_API_KEY" in all_vars
+        assert "TAVILY_API_KEY" not in all_vars
 
     def test_max_iterations_not_offered_as_env_var(self):
         """HERMES_MAX_ITERATIONS must NOT be in OPTIONAL_ENV_VARS (issue #17534).

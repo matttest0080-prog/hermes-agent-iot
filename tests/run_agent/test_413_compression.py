@@ -15,7 +15,7 @@ from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 
-from agent.context_compressor import SUMMARY_PREFIX
+from agent.context_compressor import SUMMARY_PREFIX, _DB_PERSISTED_MARKER
 from agent.conversation_compression import COMPACTION_DONE_STATUS, COMPACTION_STATUS
 from run_agent import AIAgent
 import run_agent
@@ -479,10 +479,13 @@ class TestPreflightCompression:
         # summary-first before the next API call).
         assert compressed == [
             {"role": "user", "content": f"{SUMMARY_PREFIX}\nPrevious conversation"},
-            {"role": "user", "content": "hello"},
+            {"role": "user", "content": "hello", _DB_PERSISTED_MARKER: True},
         ]
-        assert new_system_prompt == "You are helpful."
-        build_prompt.assert_not_called()
+        # Post-#98426 the commit boundary ALWAYS runs the live builder;
+        # its output differs from the cached prompt here, so the rebuilt
+        # prompt wins.
+        assert new_system_prompt == "new system prompt"
+        build_prompt.assert_called_once()
         assert events == [
             ("lifecycle", COMPACTION_STATUS),
             ("compress", "started"),
@@ -529,7 +532,12 @@ class TestPreflightCompression:
         assert ("compacted", COMPACTION_DONE_STATUS) not in events
 
     def test_compression_reuses_cached_prompt_when_memory_snapshot_is_unchanged(self, agent):
-        """A memory reload without new injected text must keep the cache prefix."""
+        """A byte-equal rebuild must keep the EXACT cached prompt object.
+
+        Post-#98426 the commit boundary always runs the live builder; when
+        its output is byte-identical to the stored prompt, the ORIGINAL
+        string object is kept (KV/prefix caches keyed on identity survive).
+        """
         agent.compression_enabled = False
         agent._memory_enabled = True
         agent._user_profile_enabled = False
@@ -547,7 +555,11 @@ class TestPreflightCompression:
                 "compress",
                 return_value=[{"role": "user", "content": f"{SUMMARY_PREFIX}\nPrevious conversation"}],
             ),
-            patch.object(agent, "_build_system_prompt") as build_prompt,
+            patch.object(
+                agent,
+                "_build_system_prompt",
+                return_value="cached system prompt\n\n<memory>same facts</memory>",
+            ) as build_prompt,
         ):
             _, new_system_prompt = agent._compress_context(
                 [{"role": "user", "content": "hello"}],
@@ -557,7 +569,7 @@ class TestPreflightCompression:
 
         assert new_system_prompt is agent._cached_system_prompt
         assert new_system_prompt == "cached system prompt\n\n<memory>same facts</memory>"
-        build_prompt.assert_not_called()
+        build_prompt.assert_called_once()
         memory_store.load_from_disk.assert_called_once()
 
 
@@ -675,7 +687,7 @@ class TestPreflightCompression:
             mock_compress.return_value = (
                 [
                     {"role": "user", "content": f"{SUMMARY_PREFIX}\nPrevious conversation"},
-                    {"role": "user", "content": "hello"},
+                    {"role": "user", "content": "hello", _DB_PERSISTED_MARKER: True},
                 ],
                 "new system prompt",
             )

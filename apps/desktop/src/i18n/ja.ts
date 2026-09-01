@@ -411,6 +411,12 @@ export const ja = defineLocale({
       reactionsTitle: 'メッセージリアクション',
       reactionsDesc:
         'iMessage風の絵文字タップバック — メッセージにリアクションでき、Hermesもあなたのメッセージにリアクションします。',
+      tipsTitle: 'アプリ内ヒント',
+      tipsDesc:
+        'アプリの一部を指す小さな吹き出し。待機中にときどき、また役に立つときは Hermes からも表示します。閉じたヒントは二度と表示されません。',
+      tipsReset: (count: number) => `閉じた${count}件のヒントを元に戻す`,
+      toursTitle: 'ガイドツアー',
+      toursDesc: '画面を暗くして各ステップを強調しながら、Hermes がアプリを案内します。',
       composerPopoutTitle: 'フローティング入力欄',
       composerPopoutDesc: '入力欄をドックからドラッグして外せるようにします。オフにすると画面下部に固定されます。',
       vibeHeartsTitle: 'バイブハート',
@@ -1134,6 +1140,16 @@ export const ja = defineLocale({
         selectedMessage: backend => `ターミナルコマンドは ${backend} で実行されます。新しいセッションに適用されます。`,
         failedSelect: backend => `${backend} の選択に失敗しました`,
         needsSetupHint: 'このバックエンドは今すぐ選択できますが、セットアップが完了するまでコマンドは失敗します。'
+      },
+      browserRealProfile: {
+        label: '実際のブラウザプロファイルを使用',
+        description:
+          '既定ブラウザのログイン情報と Cookie を管理されたスナップショットにコピーし、エージェントはそれを使ってブラウジングします。実際のプロファイルが直接開かれることはありません。新しいセッションに適用されます。',
+        enabledTitle: '実プロファイルブラウジング：オン',
+        enabledMessage: '新しいセッションは既定ブラウザプロファイルのスナップショットでブラウジングします。',
+        disabledTitle: '実プロファイルブラウジング：オフ',
+        disabledMessage: 'プロファイルのスナップショットは削除され、新しいセッションはクリーンなブラウザを使用します。',
+        failedSave: '実プロファイル設定を保存できませんでした'
       }
     }
   },
@@ -1585,6 +1601,7 @@ export const ja = defineLocale({
     defaultBadge: 'デフォルト',
     rename: '名前を変更',
     renameMenu: '名前を変更…',
+    exportMenu: 'エクスポート…',
     editSoul: 'SOUL.md を編集…',
     copySetup: 'セットアップをコピー',
     copying: 'コピー中...',
@@ -1889,7 +1906,7 @@ export const ja = defineLocale({
       removeFolder: '削除',
       create: '作成',
       menu: 'アクション',
-      menuRename: '名前を変更',
+      menuRename: '名前を変更…',
       menuAppearance: '外観',
       noColor: '色なし',
       menuAddFolder: 'フォルダを追加',
@@ -1952,7 +1969,7 @@ export const ja = defineLocale({
       copyId: 'ID をコピー',
       export: 'エクスポート',
       branchFrom: '分岐',
-      rename: '名前を変更',
+      rename: '名前を変更…',
       archive: 'アーカイブ',
       newWindow: '新しいウィンドウ',
       openInTerminal: 'ターミナルで開く',
@@ -3079,6 +3096,52 @@ export const ja = defineLocale({
       systemNote: platform => `↻ ${platform} に引き継ぎました — いつでもここで再開できます。`,
       failed: error => `引き継ぎに失敗しました: ${error}`,
       timedOut: 'ゲートウェイの待機がタイムアウトしました。`hermes gateway` は起動していますか？'
+    }
+  },
+
+  tips: {
+    close: 'このヒントを今後表示しない',
+    items: {
+      'new-session': {
+        title: '新しく始める',
+        text: '新しいチャットは、専用のコンテキスト・ターミナル・作業ディレクトリを持ちます。'
+      },
+      skills: {
+        title: '一度教えれば覚えます',
+        text: 'スキルは手順書のフォルダで、必要な場面で Hermes が自分で読み込みます。'
+      },
+      messaging: {
+        title: 'デスクを離れても Hermes',
+        text: 'Telegram、Discord、Slack などに接続。同じエージェント、同じ記憶のままです。'
+      },
+      artifacts: {
+        title: 'Hermes が作ったものすべて',
+        text: '全セッションの画像・ファイル・リンクを一箇所にまとめています。'
+      },
+      cron: {
+        title: '自動で動く仕事',
+        text: 'プロンプトを毎時・毎晩、または cron 式で実行できます。'
+      },
+      'command-palette': {
+        title: 'すべてはこの一箇所から',
+        text: 'セッション、設定、スキル、コマンドはすべてパレットから呼び出せます。'
+      },
+      profiles: {
+        title: 'プロファイルは独立しています',
+        text: 'それぞれが独自のキー・メモリ・セッションを持つ、別の Hermes です。'
+      },
+      'composer-mentions': {
+        title: 'ファイルとコマンド',
+        text: '@ でファイルを会話に取り込み、/ でコマンドを実行できます。'
+      },
+      'model-switch': {
+        title: '会話の途中でモデルを変更',
+        text: 'モデル名はボタンです。作業の性質が変わったら切り替えてください。'
+      },
+      'right-pane': {
+        title: '作業用ペイン',
+        text: 'ファイル、ターミナル、レビュー、アプリ内ブラウザはサイドペインにまとまっています。'
+      }
     }
   },
 

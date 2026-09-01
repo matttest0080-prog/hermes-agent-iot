@@ -84,11 +84,14 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
       clientPlacement: hudWindowing?.clientPlacement !== false,
       controlDrag: hudWindowing?.controlDrag === true,
       nativeDrag: hudNativeDrag,
+      solid: hudWindowing?.solid === true,
       workspaceTransfer: hudWindowing?.workspaceTransfer === true
     },
     open: request => ipcRenderer.invoke('hermes:hud:open', request),
     close: () => ipcRenderer.invoke('hermes:hud:close'),
     setIgnoreMouse: ignore => ipcRenderer.send('hermes:hud:ignore-mouse', ignore),
+    beginMove: () => ipcRenderer.send('hermes:hud:begin-move'),
+    endMove: () => ipcRenderer.send('hermes:hud:end-move'),
     moveBy: delta => ipcRenderer.send('hermes:hud:move-by', delta),
     setWorkspaceTransfer: transferring => ipcRenderer.send('hermes:hud:workspace-transfer', transferring),
     setBounds: bounds => ipcRenderer.send('hermes:hud:set-bounds', bounds),
@@ -267,6 +270,14 @@ contextBridge.exposeInMainWorld('hermesDesktop', {
   setDisableF12: blocked => ipcRenderer.send('hermes:devtools:disable-f12', blocked),
   setPreviewShortcutActive: active => ipcRenderer.send('hermes:previewShortcutActive', Boolean(active)),
   openExternal: url => ipcRenderer.invoke('hermes:openExternal', url),
+  mcpOauth: {
+    // One-shot loopback listener for MCP OAuth against remote backends: bind
+    // on this machine, hand redirectUri to mcp.servers.oauth.start, then wait
+    // for the provider redirect and relay code/state via oauth.callback.
+    listen: () => ipcRenderer.invoke('hermes:mcp-oauth:listen'),
+    wait: (id, timeoutMs) => ipcRenderer.invoke('hermes:mcp-oauth:wait', id, timeoutMs),
+    cancel: id => ipcRenderer.invoke('hermes:mcp-oauth:cancel', id)
+  },
   openPreviewInBrowser: url => ipcRenderer.invoke('hermes:openPreviewInBrowser', url),
   reachPreviewUrl: url => ipcRenderer.invoke('hermes:preview:reach', url),
   setActiveConnectionRoute: route => ipcRenderer.send('hermes:connection:active-route', route),

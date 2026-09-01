@@ -4,6 +4,7 @@ import json
 import sqlite3
 import pytest
 import time
+from types import SimpleNamespace
 from unittest.mock import patch, MagicMock
 
 from agent.context_compressor import (
@@ -419,6 +420,31 @@ class TestCompress:
         t = ContextCompressor._compute_threshold_tokens(MINIMUM_CONTEXT_LENGTH, 0.50)
         assert t < MINIMUM_CONTEXT_LENGTH
         assert t == 54400  # 85% of 64000
+
+    def test_threshold_floor_capped_at_85_percent_of_window(self):
+        """The MINIMUM_CONTEXT_LENGTH floor must not consume the window's
+        output headroom. At context_length == 65,536 (a common local-model
+        window) the floored threshold used to pass through at 64,000 — 97.7%
+        of the window, ~1.5K tokens of output room — so pre-API compaction
+        effectively could not fire. Providers that silently truncate
+        over-window prompts instead of rejecting them (e.g. ollama's
+        OpenAI-compatible endpoint) never delivered the reactive
+        context-overflow backstop either: a live session rode into the window
+        ceiling and each length-continuation retry re-sent a window-filling
+        prompt (observed 65,120 -> 65,273 prompt tokens against 65,536,
+        leaving 263 output tokens) until the turn died with "Response
+        remained truncated after 4 continuation attempts". The floor is now
+        capped at 85% of the effective input budget whenever it is the
+        binding term."""
+        t = ContextCompressor._compute_threshold_tokens(65_536, 0.50)
+        assert t == int(65_536 * 0.85)  # 55,705
+        # Any window where the floor lands above 85% is capped the same way.
+        assert ContextCompressor._compute_threshold_tokens(70_000, 0.50) == 59_500
+        # Floor binding but at/under the 85% cap: unchanged.
+        assert ContextCompressor._compute_threshold_tokens(100_000, 0.50) == 64_000
+        # An explicit threshold_percent above 85% is user intent, not the
+        # floor — it is not capped.
+        assert ContextCompressor._compute_threshold_tokens(372_000, 0.90) == 334_800
 
     def test_threshold_uses_configured_profile_floor(self):
         compressor = ContextCompressor(
@@ -3630,3 +3656,60 @@ class TestPreLlmFeasibilityCheck:
             feasibility_skip=compressor._last_feasibility_skip,
         )
         assert compressor._fallback_compression_streak == 1
+
+
+class TestSanitizeToolPairsWhitespace:
+    """_sanitize_tool_pairs must strip whitespace from tool_call_id before
+    comparing, matching the fix applied to agent_runtime_helpers.py in
+    commit fa3ab2ffd.  Without stripping, a valid tool result whose
+    tool_call_id has surrounding whitespace is misclassified as orphaned
+    and silently replaced with a [Result unavailable] stub.
+    """
+
+    def _make(self):
+        with patch("agent.context_compressor.get_model_context_length", return_value=100000):
+            return ContextCompressor(model="test/model", quiet_mode=True,
+                                     protect_first_n=2, protect_last_n=2)
+
+    def _assistant(self, call_id):
+        return {
+            "role": "assistant", "content": "",
+            "tool_calls": [{"id": call_id, "type": "function",
+                             "function": {"name": "f", "arguments": "{}"}}],
+        }
+
+    def test_leading_whitespace_on_result_id_preserved(self):
+        c = self._make()
+        msgs = [
+            self._assistant("call_abc"),
+            {"role": "tool", "tool_call_id": " call_abc", "content": "ok"},
+        ]
+        out = c._sanitize_tool_pairs(msgs)
+        tool_msgs = [m for m in out if m.get("role") == "tool"]
+        assert len(tool_msgs) == 1
+        assert tool_msgs[0]["content"] == "ok", "valid result must not be treated as orphaned"
+
+    def test_trailing_whitespace_on_result_id_preserved(self):
+        c = self._make()
+        msgs = [
+            self._assistant("call_xyz"),
+            {"role": "tool", "tool_call_id": "call_xyz  ", "content": "data"},
+        ]
+        out = c._sanitize_tool_pairs(msgs)
+        tool_msgs = [m for m in out if m.get("role") == "tool"]
+        assert len(tool_msgs) == 1
+        assert tool_msgs[0]["content"] == "data"
+
+    def test_truly_orphaned_still_removed(self):
+        """Whitespace-trimmed ID that still has no match must be removed.
+        The assistant's call_real has no matching result, so a stub is
+        inserted in its place — the original orphaned entry must be gone."""
+        c = self._make()
+        msgs = [
+            self._assistant("call_real"),
+            {"role": "tool", "tool_call_id": " call_orphan ", "content": "stale"},
+        ]
+        out = c._sanitize_tool_pairs(msgs)
+        tool_call_ids = [m.get("tool_call_id") for m in out if m.get("role") == "tool"]
+        assert "call_orphan" not in tool_call_ids, "genuinely orphaned result must be removed"
+        assert " call_orphan " not in tool_call_ids, "original whitespace form must also be gone"

@@ -1774,7 +1774,7 @@ class OwnerCommandMiddleware(InboundMiddleware):
     # Slash command allowlist that bot owner can execute in group without @Bot
     ALLOWLIST: frozenset = frozenset({
         "/new", "/reset", "/retry", "/undo", "/stop",
-        "/approve", "/deny", "/background", "/bg",
+        "/approve", "/deny", "/bg",
         "/btw", "/queue", "/q",
     })
 
@@ -5069,7 +5069,11 @@ class YuanbaoAdapter(BasePlatformAdapter):
 
         Delegates to ConnectionManager.open().
         """
-        return await self._connection.open()
+        ok = await self._connection.open()
+        if ok:
+            # Plugin-registered native handlers (ctx.register_platform_handler).
+            self._wire_plugin_handlers(None)
+        return ok
 
     async def disconnect(self) -> None:
         """Cancel background tasks and close the WebSocket connection."""

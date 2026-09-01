@@ -6165,6 +6165,18 @@ def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float):
                         and isinstance(_stdio_dead_result := _stdio_dead(), bool)
                         and _stdio_dead_result
                     ):
+                        # Dead children but stale server.session, so the
+                        # transport-down path above never fired — signal the
+                        # server task to respawn and return a clean
+                        # reconnecting error. No explicit _bump_server_error:
+                        # the error return flows through the handler's JSON
+                        # parse, which already bumps once.
+                        if _signal_reconnect(server):
+                            return tool_error(
+                                f"MCP server '{server_name}' stdio subprocess is "
+                                f"dead and reconnect was requested. Do NOT retry "
+                                f"immediately — give it a few seconds to respawn."
+                            )
                         raise TimeoutError(
                             f"MCP stdio subprocess for '{server_name}' has "
                             f"exited; failing the call fast instead of "
@@ -6201,11 +6213,19 @@ def _make_tool_handler(server_name: str, tool_name: str, tool_timeout: float):
                             )
                             if watch_task in done and not rpc_task.done():
                                 rpc_task.cancel()
+                                # Same stale-session problem as the pre-call
+                                # gate above: the subprocess died mid-call but
+                                # nothing clears server.session, so without a
+                                # reconnect signal the server would stay dead
+                                # until the idle keepalive probe notices.
+                                _signal_reconnect(server)
                                 raise TimeoutError(
                                     f"MCP stdio subprocess for '{server_name}' "
                                     f"exited mid-call; failing the call fast "
                                     f"instead of waiting "
-                                    f"{float(tool_timeout):.0f}s"
+                                    f"{float(tool_timeout):.0f}s; reconnect "
+                                    f"requested — give it a few seconds to "
+                                    f"respawn before retrying"
                                 )
                             result = await rpc_task
                         finally:
@@ -8123,6 +8143,7 @@ def refresh_agent_mcp_tools(
     enabled_override=None,
     disabled_override=None,
     quiet_mode: bool = True,
+    content_aware: bool = False,
 ) -> set:
     """Re-derive an already-built agent's tool snapshot from the live registry.
 
@@ -8224,10 +8245,31 @@ def refresh_agent_mcp_tools(
             for t in (getattr(agent, "tools", None) or [])
         }
         if new_names == current:
-            # No change → leave the live snapshot untouched (no churn), but
-            # record the generation so an in-flight older caller can't clobber.
-            agent._tool_snapshot_generation = max(published_gen, snapshot_generation)
-            return set()
+            # Same NAME set. For MCP-reload callers that is "no change" —
+            # leave the live snapshot untouched (no churn). Content-aware
+            # callers (the compaction boundary) also diff the serialized
+            # bytes: dynamic schemas (image_generate capabilities,
+            # delegate_task limits, execute_code stubs) change CONTENT
+            # under stable names when config changes between compactions.
+            content_changed = False
+            if content_aware:
+                try:
+                    _stable = json.dumps(
+                        (getattr(agent, "tools", None) or []),
+                        sort_keys=True, separators=(",", ":"), default=str,
+                    )
+                    _new = json.dumps(
+                        new_defs, sort_keys=True, separators=(",", ":"),
+                        default=str,
+                    )
+                    content_changed = _stable != _new
+                except Exception:  # noqa: BLE001
+                    content_changed = False
+            if not content_changed:
+                # Record the generation so an in-flight older caller can't
+                # clobber.
+                agent._tool_snapshot_generation = max(published_gen, snapshot_generation)
+                return set()
         agent.tools = new_defs
         agent.valid_tool_names = new_names
         # Publish context-engine routing names atomically with the snapshot.
