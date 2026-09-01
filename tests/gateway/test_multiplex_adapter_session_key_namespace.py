@@ -18,10 +18,13 @@ adapter, and ``_session_key_profile`` resolves the namespace as
 adapter keys into its own namespace even before the runner stamps the source.
 """
 
+import asyncio
+from unittest.mock import AsyncMock
+
 import pytest
 
-from gateway.config import Platform
-from gateway.platforms.base import BasePlatformAdapter
+from gateway.config import Platform, PlatformConfig
+from gateway.platforms.base import BasePlatformAdapter, MessageEvent, MessageType
 from gateway.session import SessionSource, build_session_key
 
 
@@ -193,3 +196,59 @@ class TestOwnerProfileKeying:
         a._session_store = _Store(active="default")
         a.set_owner_profile("medicina")
         assert a._session_key_profile(None) == "medicina"
+
+
+class TestSiblingIngressKeying:
+    def test_weixin_text_batch_uses_adapter_owner_profile(self):
+        from gateway.platforms.weixin import WeixinAdapter
+
+        adapter = object.__new__(WeixinAdapter)
+        adapter.config = PlatformConfig(extra={})
+        adapter._session_store = _Store(active="default")
+        adapter.set_owner_profile("medicina")
+        source = SessionSource(
+            platform=Platform.WEIXIN,
+            chat_id=UID,
+            chat_type="dm",
+            user_id=UID,
+        )
+        event = MessageEvent(
+            text="hello",
+            message_type=MessageType.TEXT,
+            source=source,
+        )
+
+        key = adapter._text_batch_key(event)
+
+        assert key.startswith("agent:medicina:"), key
+
+    @pytest.mark.asyncio
+    async def test_yuanbao_dispatch_uses_adapter_owner_profile(self):
+        from gateway.platforms.yuanbao import DispatchMiddleware, InboundContext, YuanbaoAdapter
+
+        adapter = object.__new__(YuanbaoAdapter)
+        adapter.config = PlatformConfig(extra={})
+        adapter._session_store = _Store(active="default")
+        adapter.set_owner_profile("medicina")
+        adapter._processing_msg_ids = {}
+        adapter._processing_msg_texts = {}
+        adapter._msg_content_cache = {}
+        adapter._inbound_tasks = set()
+        adapter.handle_message = AsyncMock()
+        source = SessionSource(
+            platform=Platform.YUANBAO,
+            chat_id=UID,
+            chat_type="dm",
+            user_id=UID,
+        )
+        ctx = InboundContext(adapter=adapter)
+        ctx.source = source
+        ctx.chat_type = "dm"
+        ctx.raw_text = "hello"
+        ctx.msg_id = "msg-1"
+
+        await DispatchMiddleware().handle(ctx, AsyncMock())
+        await asyncio.gather(*adapter._inbound_tasks)
+
+        expected = build_session_key(source, profile="medicina")
+        assert adapter._processing_msg_ids == {expected: "msg-1"}

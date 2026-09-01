@@ -210,7 +210,9 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     # uploaded to the Discord gateway fails to decode at att.read() with
     # "Can not decode content-encoding: br" — see #12511 / #15744.
     "platform.discord": (
-        "discord.py[voice]==2.7.1",
+        "discord.py==2.7.1",
+        "PyNaCl==1.6.2",
+        "davey==0.1.4",
         "brotlicffi==1.2.0.1",
         # discord.py pulls aiohttp transitively (>=3.7.4,<4) as its HTTP
         # backbone. Pin the patched floor here too so the lazy Discord path
@@ -253,7 +255,7 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     "platform.teams": ("microsoft-teams-apps==2.0.13.4", "aiohttp==3.14.3"),  # aiohttp 3.14.3: prior CVEs + GHSA-cq5v-8q36-5273/GHSA-mfx4-hv73-q22v/GHSA-mq44-7p77-q5h7
 
     # ─── Terminal backends ─────────────────────────────────────────────────
-    "terminal.modal": ("modal==1.3.4",),
+    "terminal.modal": ("modal==1.3.4", "cbor2==5.9.0"),
     "terminal.daytona": ("daytona==0.155.0",),
     "terminal.vercel": ("vercel==0.7.2",),
 
@@ -277,7 +279,7 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     # Dashboard (`hermes dashboard`)
     "tool.dashboard": (
         "fastapi==0.133.1",
-        "uvicorn[standard]==0.41.0",
+        "uvicorn==0.41.0",
         "starlette==1.3.1",  # CVE-2026-48710 (BadHost) — keep lazy-install in sync with pyproject [web]
         "python-multipart==0.0.32",  # FastAPI UploadFile/Form for streaming uploads (NS-501)
     ),
@@ -287,6 +289,8 @@ LAZY_DEPS: dict[str, tuple[str, ...]] = {
     # call site uses prompt=False so it can never raise a blocking input()
     # prompt mid-session (#40490).
     "tool.vision": ("Pillow==12.3.0",),
+    # MQTT IoT tools — small pure-Python client, installed only when used.
+    "tool.mqtt": ("paho-mqtt==2.1.0",),
     # Document-to-Markdown extraction for read_file (firecrawl-anydoc, Rust
     # core, imports as `anydoc`). Widens read_file's auto-extraction beyond
     # the stdlib .ipynb/.docx/.xlsx to PDF, legacy Office (.doc/.ppt/.xls),

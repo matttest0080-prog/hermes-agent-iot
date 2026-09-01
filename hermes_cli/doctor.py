@@ -2426,8 +2426,8 @@ def run_doctor(args):
         else:
             _fail_and_issue(
                 "vercel SDK not installed",
-                "(pip install 'hermes-agent[vercel]')",
-                "Install the Vercel optional dependency: pip install 'hermes-agent[vercel]'",
+                "(python -m pip install vercel==0.7.2)",
+                "Install the Vercel optional dependency: python -m pip install vercel==0.7.2",
                 issues,
             )
 

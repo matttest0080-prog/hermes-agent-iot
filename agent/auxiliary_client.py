@@ -170,6 +170,7 @@ def aux_probe_mode():
 from agent.credential_pool import load_pool
 from agent.model_metadata import (
     MINIMUM_CONTEXT_LENGTH,
+    get_minimum_tool_context_length,
     get_model_context_length,
     strip_codex_context_variant_suffix as _strip_codex_ctx_variant,
 )
@@ -5829,8 +5830,8 @@ def _try_main_agent_model_fallback(
 def _task_minimum_context_length(task: Optional[str]) -> Optional[int]:
     """Return the minimum context length required for an auxiliary task.
 
-    Only ``compression`` carries an explicit minimum today (the same
-    ``MINIMUM_CONTEXT_LENGTH`` (64K) floor that
+    Only ``compression`` carries an explicit minimum today (the same active
+    profile floor that
     ``check_compression_model_feasibility`` already enforces at startup).
     Other tasks (``vision``, ``title_generation``,
     ``skills_hub``, ``mcp``, ``session_search``) return ``None`` — they
@@ -5843,7 +5844,7 @@ def _task_minimum_context_length(task: Optional[str]) -> Optional[int]:
     if not task:
         return None
     if task == "compression":
-        return MINIMUM_CONTEXT_LENGTH
+        return get_minimum_tool_context_length()
     return None
 
 

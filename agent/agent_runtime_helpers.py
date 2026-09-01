@@ -3011,8 +3011,24 @@ def switch_model(
             "_config_context_length",
             "_reasoning_echo_flag",
             "runtime_capabilities",
+            "_use_prompt_caching",
+            "_use_native_cache_layout",
+            "_transport_cache",
+            "_custom_providers",
+            "reasoning_config",
+            "_cached_system_prompt",
+            "_consecutive_stale_streams",
+            "_primary_runtime",
+            "_fallback_activated",
+            "_fallback_index",
+            "_fallback_chain",
+            "_fallback_model",
         )
     }
+    _transport_cache = getattr(agent, "_transport_cache", _MISSING)
+    _transport_cache_snapshot = (
+        dict(_transport_cache) if isinstance(_transport_cache, dict) else None
+    )
     # _client_kwargs is a dict — snapshot a shallow copy so mutating the
     # live dict doesn't poison the rollback target.
     _snapshot["_client_kwargs"] = dict(getattr(agent, "_client_kwargs", {}) or {})
@@ -3023,16 +3039,71 @@ def switch_model(
     _snapshot["_credential_pool_entry_id"] = getattr(
         agent, "_credential_pool_entry_id", _MISSING
     )
+    _compressor = getattr(agent, "context_compressor", None)
+    _compressor_snapshot = (
+        dict(vars(_compressor))
+        if _compressor is not None and hasattr(_compressor, "__dict__")
+        else None
+    )
 
     def _restore_snapshot() -> None:
         for _name, _value in _snapshot.items():
             if _value is _MISSING:
-                # Attribute did not exist before the swap — don't fabricate it.
+                if hasattr(agent, _name):
+                    try:
+                        delattr(agent, _name)
+                    except Exception:  # noqa: BLE001
+                        pass
                 continue
             try:
                 setattr(agent, _name, _value)
             except Exception:  # noqa: BLE001
                 pass
+        if _compressor_snapshot is not None:
+            try:
+                vars(_compressor).clear()
+                vars(_compressor).update(_compressor_snapshot)
+            except Exception:  # noqa: BLE001
+                pass
+        if _transport_cache_snapshot is not None:
+            try:
+                _transport_cache.clear()
+                _transport_cache.update(_transport_cache_snapshot)
+                agent._transport_cache = _transport_cache
+            except Exception:  # noqa: BLE001
+                pass
+
+    _original_client_ids = {
+        id(_client)
+        for _client in (
+            _snapshot.get("client", _MISSING),
+            _snapshot.get("_anthropic_client", _MISSING),
+        )
+        if _client is not _MISSING and _client is not None
+    }
+
+    def _close_new_clients() -> None:
+        """Close clients built by this failed switch, never pre-switch clients."""
+        _closed_ids = set()
+        for _name in ("client", "_anthropic_client"):
+            _client = getattr(agent, _name, None)
+            if (
+                _client is None
+                or id(_client) in _original_client_ids
+                or id(_client) in _closed_ids
+            ):
+                continue
+            _closed_ids.add(id(_client))
+            _close = getattr(_client, "close", None)
+            if callable(_close):
+                try:
+                    _close()
+                except Exception:  # noqa: BLE001
+                    logger.debug(
+                        "switch_model: failed to close newly-created %s",
+                        _name,
+                        exc_info=True,
+                    )
 
     try:
         # Clear the per-config context_length override so the new model's
@@ -3117,7 +3188,8 @@ def switch_model(
             # moa://local placeholder → HTTP 404 → fallback to a reference
             # model. Pin chat_completions here so the primary call always goes
             # through MoAClient.chat.completions, matching agent_init.py.
-            agent.api_mode = "chat_completions"
+            api_mode = "chat_completions"
+            agent.api_mode = api_mode
             agent.api_key = api_key or "moa-virtual-provider"
             agent.base_url = "moa://local"
             agent._client_kwargs = {}
@@ -3205,6 +3277,7 @@ def switch_model(
         # caller's exception handler can surface a meaningful warning.  The
         # exception is re-raised; cli.py / gateway/run.py / tui_gateway catch
         # it and print "Agent swap failed; change applied to next session".
+        _close_new_clients()
         _restore_snapshot()
         raise
 
@@ -3260,16 +3333,21 @@ def switch_model(
     # live list the context-length resolution used — without this, a flag
     # added to config.yaml after session start is invisible to a /model
     # switch (the policy would read the stale init-time snapshot).
-    if _sm_custom_providers is not None:
-        agent._custom_providers = _sm_custom_providers
-    agent._use_prompt_caching, agent._use_native_cache_layout = (
-        agent._anthropic_prompt_cache_policy(
-            provider=new_provider,
-            base_url=agent.base_url,
-            api_mode=api_mode,
-            model=new_model,
+    try:
+        if _sm_custom_providers is not None:
+            agent._custom_providers = _sm_custom_providers
+        agent._use_prompt_caching, agent._use_native_cache_layout = (
+            agent._anthropic_prompt_cache_policy(
+                provider=new_provider,
+                base_url=agent.base_url,
+                api_mode=api_mode,
+                model=new_model,
+            )
         )
-    )
+    except Exception:
+        _close_new_clients()
+        _restore_snapshot()
+        raise
 
     # ── Update context compressor ──
     if hasattr(agent, "context_compressor") and agent.context_compressor:
@@ -3295,6 +3373,16 @@ def switch_model(
                 config_context_length=_effective_context_length,
                 custom_providers=_sm_custom_providers,
             )
+            from agent.model_metadata import (
+                get_minimum_tool_context_length,
+                validate_tool_context_length,
+            )
+
+            validate_tool_context_length(
+                agent.model,
+                new_context_length,
+                get_minimum_tool_context_length(agent),
+            )
             agent.context_compressor.update_model(
                 model=agent.model,
                 context_length=new_context_length,
@@ -3304,6 +3392,7 @@ def switch_model(
                 api_mode=agent.api_mode,
             )
         except Exception:
+            _close_new_clients()
             _restore_snapshot()
             raise
 

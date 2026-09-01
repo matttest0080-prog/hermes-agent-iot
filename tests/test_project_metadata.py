@@ -1,5 +1,6 @@
 """Regression tests for packaging metadata in pyproject.toml."""
 
+import json
 from pathlib import Path
 import tomllib
 
@@ -15,6 +16,23 @@ def _load_package_data():
     with pyproject_path.open("rb") as handle:
         tool = tomllib.load(handle)["tool"]
     return tool["setuptools"]["package-data"]
+
+
+def test_h2_request_smuggling_floor_is_enforced():
+    """Keep grpclib transitives above GHSA-6hr6-w5qg-qmwg's fixed floor."""
+    pyproject_path = Path(__file__).resolve().parents[1] / "pyproject.toml"
+    with pyproject_path.open("rb") as handle:
+        overrides = tomllib.load(handle)["tool"]["uv"]["override-dependencies"]
+    assert "h2>=4.4.1" in overrides
+
+
+def test_website_postcss_override_preserves_current_version_and_pins_nanoid():
+    root = Path(__file__).resolve().parents[1]
+    package = json.loads((root / "website" / "package.json").read_text(encoding="utf-8"))
+    assert package["overrides"]["postcss"] == {
+        ".": "8.5.25",
+        "nanoid": "3.3.18",
+    }
 
 
 def test_matrix_extra_not_in_all():
@@ -79,7 +97,7 @@ def test_lazy_installable_extras_excluded_from_all():
     for extra in lazy_covered_extras:
         offending = [
             spec for spec in all_extra_specs
-            if f"hermes-agent[{extra}]" in spec
+            if f"hermes-agent-iot[{extra}]" in spec
         ]
         assert not offending, (
             f"[{extra}] is in [all] but also in LAZY_DEPS. "

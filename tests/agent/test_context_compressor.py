@@ -446,6 +446,17 @@ class TestCompress:
         # floor — it is not capped.
         assert ContextCompressor._compute_threshold_tokens(372_000, 0.90) == 334_800
 
+    def test_threshold_uses_configured_profile_floor(self):
+        compressor = ContextCompressor(
+            model="tiny-local",
+            quiet_mode=True,
+            config_context_length=4096,
+            minimum_context_length=2048,
+        )
+
+        assert compressor.minimum_context_length == 2048
+        assert compressor.threshold_tokens == 3072
+
 
 
 

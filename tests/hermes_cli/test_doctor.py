@@ -247,6 +247,7 @@ class TestHonchoDoctorConfigDetection:
 
 
 
+@pytest.mark.skip(reason="Vercel backend is excluded from the IoT ARMv7 distribution")
 def test_doctor_reports_vercel_backend_diagnostics(monkeypatch, tmp_path):
     monkeypatch.setenv("TERMINAL_ENV", "vercel_sandbox")
     monkeypatch.setenv("TERMINAL_VERCEL_RUNTIME", "python3.13")

@@ -892,11 +892,12 @@ def _model_flow_minimax_oauth(config, current_model="", args=None):
     print(f"\u2713 Using MiniMax model: {selected}")
 
 
-def _model_flow_custom(config):
+def _model_flow_custom(config, *, preset=None):
     """Custom endpoint: collect URL, API key, and model name.
 
     Automatically saves the endpoint to ``custom_providers`` in config.yaml
-    so it appears in the provider menu on subsequent runs.
+    so it appears in the provider menu on subsequent runs. ``preset`` is used
+    by the dedicated local llama.cpp setup entry to provide safe defaults.
     """
     from hermes_cli.main import _auto_provider_name, _prompt_custom_api_mode_selection, _save_custom_provider
     from hermes_cli.auth import _save_model_choice, deactivate_provider
@@ -909,8 +910,10 @@ def _model_flow_custom(config):
     )
     from hermes_cli.secret_prompt import masked_secret_prompt
 
-    current_url = get_env_value("OPENAI_BASE_URL") or ""
-    current_key = get_env_value("OPENAI_API_KEY") or ""
+    preset = preset if isinstance(preset, dict) else {}
+    current_url = str(preset.get("base_url") or get_env_value("OPENAI_BASE_URL") or "")
+    current_key = str(preset.get("api_key") or get_env_value("OPENAI_API_KEY") or "")
+    default_model = str(preset.get("model") or "")
 
     print("Custom OpenAI-compatible endpoint configuration:")
     if current_url:
@@ -1034,7 +1037,9 @@ def _model_flow_custom(config):
             elif pick:
                 model_name = pick
         else:
-            model_name = line_input("Model name (e.g. gpt-4, llama-3-70b): ").strip()
+            model_name = line_input(
+                f"Model name (e.g. gpt-4, llama-3-70b) [{default_model}]: "
+            ).strip() or default_model
 
         context_length_str = line_input(
             "Context length in tokens [leave blank for auto-detect]: "
@@ -1132,6 +1137,18 @@ def _model_flow_custom(config):
     _prune_replaced_custom_model_config_credentials(
         effective_url,
         provider_name=display_name,
+    )
+
+
+def _model_flow_local_llama(config):
+    """Configure a local llama.cpp/llama-server OpenAI-compatible endpoint."""
+    return _model_flow_custom(
+        config,
+        preset={
+            "base_url": "http://127.0.0.1:8080/v1",
+            "api_key": "local",
+            "model": "pi2-local",
+        },
     )
 
 

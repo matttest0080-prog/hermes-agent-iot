@@ -243,8 +243,9 @@ def _hermes_version() -> str:
     ``hermes_cli.__version__`` is the runtime source of truth used by the CLI,
     dashboard, portal tags, and release script. Prefer it over installed
     distribution metadata because editable/source checkouts can retain stale
-    ``hermes_agent-*.dist-info`` after a source update until the environment is
-    reinstalled. Never raises — a version probe must not be able to break the
+    ``hermes_agent-*.dist-info`` or ``hermes_agent_iot-*.dist-info`` after a
+    source update until the environment is reinstalled. Never raises — a
+    version probe must not be able to break the
     health endpoint.
     """
     try:
@@ -256,7 +257,7 @@ def _hermes_version() -> str:
     try:
         from importlib.metadata import version
 
-        return version("hermes-agent")
+        return version("hermes-agent-iot")
     except Exception:
         return "dev"
 

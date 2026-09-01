@@ -11,6 +11,7 @@ Coverage levels:
 """
 
 import time
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -1149,7 +1150,50 @@ class TestGetModelContextLength:
         # The local probe MUST be called exactly once
         mock_local_ctx.assert_called_once()
 
+    def test_local_context_cache_uses_configured_profile_floor(self):
+        from agent.model_metadata import _maybe_cache_local_context_length
 
+        with (
+            patch(
+                "agent.model_metadata.get_minimum_tool_context_length",
+                return_value=2048,
+            ),
+            patch("agent.model_metadata.save_context_length") as mock_save,
+        ):
+            _maybe_cache_local_context_length(
+                "tiny-local",
+                "http://pi2.local:11434/v1",
+                4096,
+            )
+
+        mock_save.assert_called_once_with(
+            "tiny-local",
+            "http://pi2.local:11434/v1",
+            4096,
+        )
+
+
+
+
+# =========================================================================
+# Active tool-context floor parsing
+# =========================================================================
+
+
+@pytest.mark.parametrize("value", [None, True, False, 0, -1, "0", "-8", "bad", object()])
+def test_minimum_tool_context_length_invalid_values_fail_closed(value):
+    from agent.model_metadata import MINIMUM_CONTEXT_LENGTH, get_minimum_tool_context_length
+
+    agent = SimpleNamespace(_minimum_tool_context_length=value)
+    assert get_minimum_tool_context_length(agent) == MINIMUM_CONTEXT_LENGTH
+
+
+def test_minimum_tool_context_length_accepts_positive_integer_string():
+    from agent.model_metadata import get_minimum_tool_context_length
+
+    assert get_minimum_tool_context_length(
+        SimpleNamespace(_minimum_tool_context_length="2048")
+    ) == 2048
 
 
 # =========================================================================

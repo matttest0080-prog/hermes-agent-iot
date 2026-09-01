@@ -20,7 +20,8 @@
         rev = inputs.self.rev or null;
       };
 
-      # All platform-portable optional integrations pre-built.
+      # Default platform-portable optional integrations. Modal is exposed as a
+      # separate package below because its ARMv7 cbor2 pin conflicts with Vercel.
       full = minimal.override {
         extraDependencyGroups = [
           "anthropic"
@@ -36,7 +37,6 @@
           "hindsight"
           "honcho"
           "messaging"
-          "modal"
           "parallel-web"
           "tts-premium"
           "vercel"
@@ -57,6 +57,13 @@
         inherit sandbox;
 
         inherit minimal;
+
+        # Modal and Vercel have mutually exclusive cbor2 requirements in the
+        # universal lock. The default/full package keeps Vercel; expose Modal
+        # as a separate sealed variant rather than selecting both branches.
+        modal = minimal.override {
+          extraDependencyGroups = [ "modal" ];
+        };
 
         # Ships discord.py + python-telegram-bot + slack-sdk so a plain
         # `nix profile install .#messaging` connects to Discord/Telegram/Slack

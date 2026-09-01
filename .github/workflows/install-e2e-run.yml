@@ -94,6 +94,14 @@ jobs:
           # copy into a fresh fake-main commit on every invocation, moving the
           # update target mid-run.
           HERMES_E2E_LOG_DIR: ${{ runner.temp }}/e2e-logs
+          # This fork's release tags (iot-v*, v*-pi2) exist only on this fork,
+          # not on NousResearch/hermes-agent. Both the E2E script and
+          # dev-sandbox.sh default their "upstream" fetch to
+          # NousResearch/hermes-agent and honour HERMES_DEV_SANDBOX_UPSTREAM to
+          # let a fork retarget it -- wire it here so `install upstream <tag>`
+          # can resolve the ref instead of dying with
+          # "error: could not resolve upstream ref: <tag>".
+          HERMES_DEV_SANDBOX_UPSTREAM: https://github.com/${{ github.repository }}.git
 
       # Artifact names cannot contain '/', and install-ref may be a full ref
       # like refs/heads/main. GitHub Actions expressions have no string-replace

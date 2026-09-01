@@ -598,7 +598,7 @@ def start_gateway_health_export(config: Dict[str, Any]) -> GatewayHealthExportRu
         except Exception:
             logger.warning(
                 "monitoring.gateway_health_export.enabled but OTLP SDK is unavailable; "
-                "install 'hermes-agent[otlp]'",
+                "install 'hermes-agent-iot[otlp]'",
                 exc_info=True,
             )
             return GatewayHealthExportRuntime(enabled=False, reason="otlp_unavailable")

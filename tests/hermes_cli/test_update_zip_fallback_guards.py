@@ -177,9 +177,11 @@ def test_update_via_zip_aborts_before_download_when_dirty(
         _porcelain_run(" M keep-me.txt\n?? agent/scratch/wip.py\n"),
     )
 
+    # IoT default branch is pi2-lite; ZIP fallback refuses that before the
+    # dirty-tree guard. Pin main so this test still covers the overlay abort.
     with patch("urllib.request.urlretrieve") as download:
         with pytest.raises(SystemExit) as exc_info:
-            hermes_main._update_via_zip(SimpleNamespace(branch=None))
+            hermes_main._update_via_zip(SimpleNamespace(branch="main"))
 
     assert exc_info.value.code == 1
     download.assert_not_called()

@@ -3081,7 +3081,7 @@ print(','.join(scripts))
             if ($LASTEXITCODE -eq 0) {
                 Write-Success "[web] extra installed; `hermes dashboard` should now work."
             } else {
-                Write-Warn "Could not install [web] extra. Run manually: uv pip install --python `"$pythonExe`" `"fastapi>=0.104,<1`" `"uvicorn[standard]>=0.24,<1`""
+                Write-Warn "Could not install [web] extra. Run manually: uv pip install --python `"$pythonExe`" `"fastapi>=0.104,<1`" `"uvicorn>=0.31,<1`""
             }
         }
         if (-not $webServerSyntaxOk) {
@@ -4372,7 +4372,12 @@ function Install-PlatformSdks {
     # Specs mirror pyproject.toml to avoid version drift.
     $sdkMap = @(
         @{ Var = "TELEGRAM_BOT_TOKEN"; Import = "telegram";  Spec = "python-telegram-bot[webhooks]>=22.6,<23" },
-        @{ Var = "DISCORD_BOT_TOKEN";  Import = "discord";   Spec = "discord.py[voice]>=2.7.1,<3" },
+        # Keep the Discord voice recovery path in lockstep with the messaging
+        # extra. discord.py 2.7.1's `voice` extra caps PyNaCl below the patched
+        # 1.6.2 release, so verify/install all three runtime packages directly.
+        @{ Var = "DISCORD_BOT_TOKEN";  Import = "discord";   Spec = "discord.py==2.7.1" },
+        @{ Var = "DISCORD_BOT_TOKEN";  Import = "nacl";      Spec = "PyNaCl==1.6.2" },
+        @{ Var = "DISCORD_BOT_TOKEN";  Import = "davey";     Spec = "davey==0.1.4" },
         @{ Var = "SLACK_BOT_TOKEN";    Import = "slack_sdk"; Spec = "slack-sdk>=3.27.0,<4" },
         @{ Var = "SLACK_APP_TOKEN";    Import = "slack_bolt";Spec = "slack-bolt>=1.18.0,<2" },
         @{ Var = "WHATSAPP_ENABLED";   Import = "qrcode";    Spec = "qrcode>=7.0,<8" }

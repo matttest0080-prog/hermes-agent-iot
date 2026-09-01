@@ -16,8 +16,16 @@ let
   workspace = uv2nix.lib.workspace.loadWorkspace { workspaceRoot = pythonSrc; };
   hacks = callPackage pyproject-nix.build.hacks { };
 
+  # uv.lock records modal and vercel as mutually exclusive because their
+  # cbor2 requirements cannot coexist on ARMv7. uv2nix requires exactly one
+  # branch while constructing an overlay, even when neither lazy extra is
+  # installed. Modal-specific package variants choose Modal; every other
+  # variant uses Vercel's patched cbor2>=6 branch.
+  conflictResolution = if lib.elem "modal" dependency-groups then "modal" else "vercel";
+
   overlay = workspace.mkPyprojectOverlay {
     sourcePreference = "wheel";
+    dependencies = { hermes-agent-iot = dependency-groups ++ [ conflictResolution ]; };
   };
 
   isAarch64Darwin = stdenv.hostPlatform.system == "aarch64-darwin";
@@ -115,7 +123,7 @@ let
           # variable, not a devShell variable: ``nix develop -c uv build``
           # must remain blocked.
           (final: prev: {
-            hermes-agent = prev.hermes-agent.overrideAttrs (_old: {
+            hermes-agent-iot = prev.hermes-agent-iot.overrideAttrs (_old: {
               HERMES_NIX_BUILD = "1";
             });
           })
@@ -138,7 +146,7 @@ let
     lib.composeManyExtensions [
       editableOverlay
       (final: prev: {
-        hermes-agent = prev.hermes-agent.overrideAttrs (old: {
+        hermes-agent-iot = prev.hermes-agent-iot.overrideAttrs (old: {
           # point straight at the real source instead of the filtered nix store copy
           src = workspaceRoot;
           nativeBuildInputs = old.nativeBuildInputs ++ final.resolveBuildSystem { editables = [ ]; };
@@ -149,9 +157,9 @@ let
 in
 {
   venv = pythonSet.mkVirtualEnv "hermes-agent-env" {
-    hermes-agent = dependency-groups;
+    hermes-agent-iot = dependency-groups;
   };
   editableVenv = editableSet.mkVirtualEnv "hermes-agent-editable-env" {
-    hermes-agent = dependency-groups;
+    hermes-agent-iot = dependency-groups;
   };
 }
