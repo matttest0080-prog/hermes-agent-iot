@@ -36,9 +36,9 @@ If Raspberry Pi OS is still on Python 3.9, install Python 3.11+ first.
 
 ## 3. Installation
 
-### 3.1 Public PyPI wheel (0.21.0.post1 published; not yet verified on physical Pi2)
+### 3.1 Public PyPI wheel (verified on physical Pi2)
 
-The currently published version is `hermes-agent-iot 0.21.0.post1`. The last physical Pi2 verification remains `0.20.6.post1`: clean-installed from public PyPI onto a physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Python 3.13.5), passing the `minimal` profile, CLI, `pip check`, and permission smoke tests.
+The currently verified version is `hermes-agent-iot 0.21.0.post1`. It has been clean-installed from public PyPI onto a physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Python 3.13.5), passing the `minimal` profile, CLI, `pip check`, and permission smoke tests.
 
 You must use a virtualenv with Python `>=3.11,<3.14`; do not use system pip, `sudo pip`, or `--break-system-packages`:
 

@@ -118,9 +118,9 @@ hermes-iot setup --profile iot
 
 This fork may intentionally lag upstream `main` while dependency changes, IoT patches, and ARMv7 compatibility are reviewed and validated. For general desktop/server Hermes Agent usage, prefer the upstream project.
 
-## Release
+## Verified Release
 
-Current published baseline:
+Current verified baseline:
 
 - PyPI: [`hermes-agent-iot 0.21.0.post1`](https://pypi.org/project/hermes-agent-iot/0.21.0.post1/)
 - Tag: `iot-v0.21.0.post1`
@@ -128,19 +128,9 @@ Current published baseline:
 - Wheel SHA-256: `83659f6b23a369f95c4b977257d54ba8f342c10155e4ce71675f059f3fd1f023`
 - Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/33470551659
 - Python: `>=3.11,<3.14`
+- Physical validation: Raspberry Pi 2 Model B Rev 1.1, 32-bit ARMv7, 921 MiB RAM, Python 3.13.5
 
-This wheel has **not** been clean-installed on physical Raspberry Pi 2 hardware yet.
-
-Last physically verified baseline:
-
-- PyPI: [`hermes-agent-iot 0.20.6.post1`](https://pypi.org/project/hermes-agent-iot/0.20.6.post1/)
-- Tag: `iot-v0.20.6.post1`
-- Commit: `cb749957c66e537e951937f49251dbf18a4fb3c8`
-- Wheel SHA-256: `1393bfd72cc96f62965e4170f707911ee1b079ce12b45c4018043228b33f3197`
-- Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/33358885842
-- Physical validation: Raspberry Pi 2 Model B Rev 1.1, 32-bit ARMv7, 921 MiB RAM, Python 3.13.5 (`pip check` clean, `hermes --version` = 0.20.6.post1, wheel SHA-256 matched)
-
-Heavier optional extras require hardware appropriate to their dependency set.
+The `minimal` wheel baseline was clean-installed from public PyPI and smoke-tested on physical Raspberry Pi 2 hardware (`pip check` clean, `hermes --version` = 0.21.0.post1, wheel SHA-256 matched). Heavier optional extras require hardware appropriate to their dependency set.
 
 ## Updating a Pi2 Source Installation
 
