@@ -36,9 +36,9 @@ If Raspberry Pi OS is still on Python 3.9, install Python 3.11+ first.
 
 ## 3. Installation
 
-### 3.1 Public PyPI wheel (verified on physical Pi2)
+### 3.1 Public PyPI wheel (0.21.0.post1 published; not yet verified on physical Pi2)
 
-The currently verified version is `hermes-agent-iot 0.20.6.post1`. It has been clean-installed from public PyPI onto a physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Python 3.13.5), passing the `minimal` profile, CLI, `pip check`, and permission smoke tests.
+The currently published version is `hermes-agent-iot 0.21.0.post1`. The last physical Pi2 verification remains `0.20.6.post1`: clean-installed from public PyPI onto a physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Python 3.13.5), passing the `minimal` profile, CLI, `pip check`, and permission smoke tests.
 
 You must use a virtualenv with Python `>=3.11,<3.14`; do not use system pip, `sudo pip`, or `--break-system-packages`:
 
@@ -48,7 +48,7 @@ python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.20.6.post1'
+python -m pip install 'hermes-agent-iot[minimal]==0.21.0.post1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -64,12 +64,12 @@ Do not install the upstream `hermes-agent` distribution into the same virtualenv
 Supply-chain identifiers:
 
 ```text
-PyPI:       https://pypi.org/project/hermes-agent-iot/0.20.6.post1/
-Tag:        iot-v0.20.6.post1
-Commit:     cb749957c66e537e951937f49251dbf18a4fb3c8
-Wheel:      hermes_agent_iot-0.20.6.post1-py3-none-any.whl
-SHA-256:    1393bfd72cc96f62965e4170f707911ee1b079ce12b45c4018043228b33f3197
-Workflow:   https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/33358885842
+PyPI:       https://pypi.org/project/hermes-agent-iot/0.21.0.post1/
+Tag:        iot-v0.21.0.post1
+Commit:     55a478a4eab64672222578d3f58086055fc911a4
+Wheel:      hermes_agent_iot-0.21.0.post1-py3-none-any.whl
+SHA-256:    83659f6b23a369f95c4b977257d54ba8f342c10155e4ce71675f059f3fd1f023
+Workflow:   https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/33470551659
 ```
 
 This release publishes a single universal wheel and no sdist; public PyPI provenance is bound to repository `matttest0080-prog/hermes-agent-iot`, workflow `publish-pypi.yml`, and the protected `pypi` Environment.
