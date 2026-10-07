@@ -2,7 +2,7 @@
 
 [project]
 name = "hermes-agent-iot"
-version = "0.21.4.post1"
+version = "0.21.5.post1"
 description = "IoT and low-resource packaging of Hermes Agent, maintained as a native-compatible fork"
 readme = "README.md"
 # Upper bound is load-bearing, not cosmetic. uv resolves the project's
@@ -74,8 +74,8 @@ dependencies = [
   # ``packaging`` is imported directly on three production paths but was never
   # declared, so it only reached users transitively (pip/uv pull it for other
   # tools). The slim official Docker image ships without it, where the
-  # try/except-ImportError fallbacks silently degrade: Hindsight's
-  # ``_meets_minimum_version`` disables update_mode='append' (#40503),
+  # try/except-ImportError fallbacks silently degrade: memory plugins'
+  # version compares disable features (#40503),
   # tools/lazy_deps.py treats every version constraint as satisfied, and
   # hermes_cli/main.py drops to naive requirement parsing. Pure-Python
   # py3-none-any wheel, no compiled extensions — safe to ship everywhere.
@@ -228,7 +228,7 @@ modal = ["modal==1.3.4", "cbor2==5.9.0; platform_machine == 'armv7l'"]
 daytona = ["daytona==0.155.0"]
 vercel = ["vercel==0.7.2"]
 hindsight = ["hindsight-client==0.6.1"]
-dev = ["hermes-agent-iot[full]==0.21.4.post1", "build==1.3.0", "twine==6.2.0", "debugpy==1.8.20", "pytest==9.1.1", "pytest-asyncio==1.3.0", "mcp==2.0.0", "httpx2==2.12.0", "starlette==1.3.1", "ty==0.0.21", "ruff==0.15.10", "setuptools==83.0.0"]  # fork [full] plus upstream dev and the release tools (build/twine) the tag-triggered publish workflow syncs; httpx2 2.12.0: clears the 2.7.0 advisories (GHSA-7mj9-2mp8-4m2p, GHSA-8xx6-hgc6-gc2m, GHSA-f2fp-rgf2-35cp, GHSA-h4x7-gw46-3wm6, GHSA-pf96-p4fj-6566); starlette: CVE-2026-48710; setuptools: 83 (torch >=2.13 requires setuptools 83)
+dev = ["hermes-agent-iot[full]==0.21.5.post1", "build==1.3.0", "twine==6.2.0", "debugpy==1.8.20", "pytest==9.1.1", "pytest-asyncio==1.3.0", "mcp==2.0.0", "httpx2==2.12.0", "starlette==1.3.1", "ty==0.0.21", "ruff==0.15.10", "setuptools==83.0.0"]  # fork [full] plus upstream dev and the release tools (build/twine) the tag-triggered publish workflow syncs; httpx2 2.12.0: clears the 2.7.0 advisories (GHSA-7mj9-2mp8-4m2p, GHSA-8xx6-hgc6-gc2m, GHSA-f2fp-rgf2-35cp, GHSA-h4x7-gw46-3wm6, GHSA-pf96-p4fj-6566); starlette: CVE-2026-48710; setuptools: 83 (torch >=2.13 requires setuptools 83)
 messaging = ["python-telegram-bot[webhooks]==22.8", "discord.py==2.7.1", "PyNaCl==1.6.2", "davey==0.1.4", "aiohttp==3.14.3", "brotlicffi==1.2.0.2", "slack-bolt==1.30.0", "slack-sdk==3.44.1", "qrcode==7.4.2"]  # explicit voice closure replaces upstream's voice extra, whose PyNaCl cap is vulnerable; aiohttp 3.14.3: prior CVEs + GHSA-cq5v-8q36-5273/GHSA-mfx4-hv73-q22v/GHSA-mq44-7p77-q5h7
 cron = []  # croniter is now a core dependency; this extra kept for back-compat
 slack = ["slack-bolt==1.30.0", "slack-sdk==3.44.1", "aiohttp==3.14.3"]
@@ -268,10 +268,12 @@ wake = [
 ]
 honcho = ["honcho-ai==2.2.0"]
 # Cloud memory providers — opt-in, lazy-installed via tools/lazy_deps.py
-# (memory.supermemory / memory.mem0) at first use. Exact pins MUST match the
-# LAZY_DEPS pins (enforced by tests/test_project_metadata.py). Deliberately
-# excluded from [all] like honcho/hindsight so a quarantined upstream release
-# can't break fresh installs.
+# (memory.supermemory / memory.mem0) at first use. Where BOTH pin exactly the
+# versions MUST match (enforced by tests/test_project_metadata.py); LAZY_DEPS
+# entries that mirror a plugin.yaml range (mem0ai) keep the
+# extra as the floor install and never downgrade a newer compatible release.
+# Deliberately excluded from [all] like honcho so a quarantined
+# upstream release can't break fresh installs.
 supermemory = ["supermemory==3.50.0"]
 mem0 = ["mem0ai==2.0.10"]
 # Image resize recovery for the vision tools. Pillow is now a CORE dependency
@@ -335,22 +337,22 @@ azure-identity = ["azure-identity==1.25.3"]
 termux = [
   # Baseline Android / Termux path for reliable fresh installs.
   "python-telegram-bot[webhooks]==22.8",
-  "hermes-agent-iot[cron]==0.21.4.post1",
-  "hermes-agent-iot[mcp]==0.21.4.post1",
-  "hermes-agent-iot[honcho]==0.21.4.post1",
-  "hermes-agent-iot[acp]==0.21.4.post1",
+  "hermes-agent-iot[cron]==0.21.5.post1",
+  "hermes-agent-iot[mcp]==0.21.5.post1",
+  "hermes-agent-iot[honcho]==0.21.5.post1",
+  "hermes-agent-iot[acp]==0.21.5.post1",
 ]
 termux-all = [
   # Best-effort "install all" profile for Termux. Same policy as [all]:
   # only includes extras that aren't covered by `tools/lazy_deps.py`.
   # Backends like telegram/slack/dingtalk/feishu/honcho lazy-install at
   # first use, so they're no longer eager-installed here.
-  "hermes-agent-iot[termux]==0.21.4.post1",
-  "hermes-agent-iot[google]==0.21.4.post1",
-  "hermes-agent-iot[homeassistant]==0.21.4.post1",
-  "hermes-agent-iot[sms]==0.21.4.post1",
-  "hermes-agent-iot[web]==0.21.4.post1",
-  "hermes-agent-iot[pty]==0.21.4.post1",
+  "hermes-agent-iot[termux]==0.21.5.post1",
+  "hermes-agent-iot[google]==0.21.5.post1",
+  "hermes-agent-iot[homeassistant]==0.21.5.post1",
+  "hermes-agent-iot[sms]==0.21.5.post1",
+  "hermes-agent-iot[web]==0.21.5.post1",
+  "hermes-agent-iot[pty]==0.21.5.post1",
 ]
 dingtalk = ["dingtalk-stream==0.24.3", "alibabacloud-dingtalk==2.2.42", "qrcode==7.4.2"]
 feishu = ["lark-oapi==1.6.8", "qrcode==7.4.2"]
@@ -416,21 +418,21 @@ all = [
   # [all], `uv sync --locked` on Windows tried to build it from sdist
   # and failed on `make`. Lazy-install routes that build to first use,
   # where the user is expected to have a toolchain available.
-  "hermes-agent-iot[cron]==0.21.4.post1",
-  "hermes-agent-iot[pty]==0.21.4.post1",
-  "hermes-agent-iot[mcp]==0.21.4.post1",
-  "hermes-agent-iot[uvloop]==0.21.4.post1",
-  "hermes-agent-iot[homeassistant]==0.21.4.post1",
-  "hermes-agent-iot[sms]==0.21.4.post1",
-  "hermes-agent-iot[acp]==0.21.4.post1",
-  "hermes-agent-iot[google]==0.21.4.post1",
-  "hermes-agent-iot[web]==0.21.4.post1",
-  "hermes-agent-iot[youtube]==0.21.4.post1",
+  "hermes-agent-iot[cron]==0.21.5.post1",
+  "hermes-agent-iot[pty]==0.21.5.post1",
+  "hermes-agent-iot[mcp]==0.21.5.post1",
+  "hermes-agent-iot[uvloop]==0.21.5.post1",
+  "hermes-agent-iot[homeassistant]==0.21.5.post1",
+  "hermes-agent-iot[sms]==0.21.5.post1",
+  "hermes-agent-iot[acp]==0.21.5.post1",
+  "hermes-agent-iot[google]==0.21.5.post1",
+  "hermes-agent-iot[web]==0.21.5.post1",
+  "hermes-agent-iot[youtube]==0.21.5.post1",
 ]
-minimal = ["hermes-agent-iot[cli,pty]==0.21.4.post1"]
-iot = ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.21.4.post1"]
-rag = ["hermes-agent-iot[iot,honcho]==0.21.4.post1"]
-full = ["hermes-agent-iot[all]==0.21.4.post1"]
+minimal = ["hermes-agent-iot[cli,pty]==0.21.5.post1"]
+iot = ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.21.5.post1"]
+rag = ["hermes-agent-iot[iot,honcho]==0.21.5.post1"]
+full = ["hermes-agent-iot[all]==0.21.5.post1"]
 
 [build-system]
 # setuptools.build_meta + our setup.py bdist_wheel guard import wheel during
@@ -442,7 +444,7 @@ build-backend = "setuptools.build_meta"
 
 [project.scripts]
 hermes = "hermes_cli.main:main"
-hermes-agent = "run_agent:main"
+hermes-agent = "agent.legacy_cli:main"
 hermes-acp = "acp_adapter.entry:main"
 hermes-iot = "hermes_cli.iot_cli:main"
 
@@ -634,7 +636,7 @@ youtube-transcript-api = false
 # and the drift broke installed wheels. Do not add the list back.
 
 [tool.setuptools.packages.find]
-include = ["agent", "agent.*", "tools", "tools.*", "hermes_cli", "hermes_cli.*", "gateway", "gateway.*", "tui_gateway", "tui_gateway.*", "cron", "cron.*", "acp_adapter", "plugins", "plugins.*", "providers", "providers.*"]
+include = ["agent", "agent.*", "tools", "tools.*", "hermes_cli", "hermes_cli.*", "gateway", "gateway.*", "tui_gateway", "tui_gateway.*", "cron", "cron.*", "acp_adapter", "plugins", "plugins.*", "providers", "providers.*", "hermes_platform", "hermes_platform.*"]
 
 [tool.setuptools.package-data]
 hermes_cli = ["observability/schemas/*.json", "data/*.json", "local_runtime/*.json", "resources/profiles/*.yaml"]
@@ -648,11 +650,15 @@ gateway = ["assets/**/*"]
 # sealed wheels with the plugin Python modules; without this declaration the
 # wheel contains adapters but discovery finds zero bundled plugins.
 plugins = ["**/plugin.yaml", "**/plugin.yml"]
+# Bot Desktop starts Xvnc + Xfce through a shell launcher and seeds the wallpaper; both are read
+# via Path(__file__).parent in tools/bot_desktop/runtime.py and vanish from sealed wheels otherwise.
+tools = ["bot_desktop/launcher.sh", "bot_desktop/wallpaper.png"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 markers = [
     "integration: marks tests requiring external services (API keys, Modal, etc.)",
+    "live: secrets-gated canaries against REAL LLM provider APIs (spends money; select with -m live)",
     "real_concurrent_gate: opt out of the autouse stub that disables _detect_concurrent_hermes_instances",
     "real_post_swap_handoff: opt out of the autouse stub that runs the update post-swap tail in-process",
     "real_agent_prewarm: opt out of the autouse stub that disables the tui_gateway deferred agent pre-warm timer",
@@ -665,7 +671,7 @@ markers = [
     "windows_only: exercises native-Windows behaviour; skipped on other hosts",
 ]
 # integration tests take way too long to run in the normal CI environments
-addopts = "-m 'not integration'"
+addopts = "-m 'not integration and not live'"
 
 [tool.ty.environment]
 python-version = "3.13"

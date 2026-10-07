@@ -89,7 +89,7 @@ def test_lazy_installable_extras_excluded_from_all():
         "voice",  # faster-whisper / sounddevice / numpy
         "modal", "daytona", "vercel",
         "messaging", "slack", "matrix", "dingtalk", "feishu", "google-chat",
-        "honcho", "hindsight",
+        "honcho",
         "supermemory", "mem0",
         "mistral",  # mistralai — Voxtral STT/TTS, lazy-installed (stt.mistral / tts.mistral)
     }
@@ -256,32 +256,6 @@ def test_every_lazy_deps_exact_pin_matches_uv_lock():
     )
 
 
-def test_huggingface_hub_lazy_pin_matches_uv_lock():
-    """The whole tree must converge on ONE huggingface-hub version (#60783).
-
-    huggingface-hub is a shared dependency: the core lock resolves it (via
-    faster-whisper/tokenizers, and transformers/sentence-transformers when
-    local Hindsight embeddings are installed), and LAZY_DEPS
-    ['tool.trace_upload'] exact-pins it. Because active_features() activates
-    a feature from mere package presence, the `hermes update` lazy-refresh
-    pass re-asserts the LAZY_DEPS pin on every install where hub is present.
-    If that pin drifts from the lock's resolved version, every update churns
-    the shared package — and a pin below transformers' floor (>=1.5.0)
-    force-downgrades it and breaks the Hindsight local daemon on startup.
-    """
-    from tools.lazy_deps import LAZY_DEPS
-
-    lazy_pin = _exact_pins(LAZY_DEPS["tool.trace_upload"]).get("huggingface-hub")
-    assert lazy_pin, "tool.trace_upload must exact-pin huggingface-hub"
-
-    locked = _uv_lock_version("huggingface-hub")
-    assert lazy_pin == locked, (
-        "LAZY_DEPS['tool.trace_upload'] pins huggingface-hub=="
-        f"{lazy_pin} but uv.lock resolves {locked}. These must move in "
-        "lockstep (bump the pin AND run `uv lock --upgrade-package "
-        "huggingface-hub`), or `hermes update` will churn/downgrade the "
-        "shared package and break Hindsight local embeddings (#60783)."
-    )
 
 
 def test_huggingface_hub_lazy_pin_inside_transformers_window():
