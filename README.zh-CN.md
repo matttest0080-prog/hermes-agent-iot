@@ -38,7 +38,7 @@ python3 --version
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.21.4.post1'
+python -m pip install 'hermes-agent-iot[minimal]==0.21.5.post1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -78,7 +78,7 @@ hermes
 让 PyPI extra 与 setup profile 保持一致。例如：
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.21.4.post1'
+python -m pip install 'hermes-agent-iot[iot]==0.21.5.post1'
 hermes-iot setup --profile iot
 ```
 
@@ -128,16 +128,16 @@ hermes-iot setup --profile iot
 
 当前已验证基线：
 
-- PyPI: [`hermes-agent-iot 0.21.4.post1`](https://pypi.org/project/hermes-agent-iot/0.21.4.post1/)
-- Tag: `iot-v0.21.4.post1`
-- Commit: `81867ce8668e6fb9c5979380eec73057ba350278`
-- Wheel: `hermes_agent_iot-0.21.4.post1-py3-none-any.whl`
-- Wheel SHA-256: `c642f6a20378806f998fbb14017046ada009a0dcdcb8cdf4f49176abb639a6a7`
-- Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/35947841028
+- PyPI: [`hermes-agent-iot 0.21.5.post1`](https://pypi.org/project/hermes-agent-iot/0.21.5.post1/)
+- Tag: `iot-v0.21.5.post1`
+- Commit: `2f6530009ada143010b6c378e09e3fbcedd18447`
+- Wheel: `hermes_agent_iot-0.21.5.post1-py3-none-any.whl`
+- Wheel SHA-256: `55b359c0031c0b12792aa000d18264638162bcd5f3dbbcd7294a51f34a224dea`
+- Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/37593895368
 - Python: `>=3.11,<3.14`
 - 物理验证：Raspberry Pi 2 Model B Rev 1.1，32-bit ARMv7，921 MiB RAM，Python 3.13.5
 
-`minimal` wheel 基线已从公开 PyPI clean-install 到实体 Raspberry Pi 2 硬件并 smoke test（`pip check` 干净、`hermes --version` = 0.21.4.post1、wheel SHA-256 一致）。更重的可选 extras 需要与其依赖集相匹配的硬件。
+`minimal` wheel 基线已从公开 PyPI clean-install 到实体 Raspberry Pi 2 硬件并 smoke test（`pip check` 干净、`hermes --version` = 0.21.5.post1、wheel SHA-256 一致）。更重的可选 extras 需要与其依赖集相匹配的硬件。
 
 ## 更新 Pi2 源码安装
 

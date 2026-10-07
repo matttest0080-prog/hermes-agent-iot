@@ -1,0 +1,59 @@
+{
+  "cli": [
+    {
+      "argv": [
+        "~/iot-verify-0.21.5/venv/bin/hermes-iot",
+        "profile",
+        "show"
+      ],
+      "exit_code": 0,
+      "peak_rss_kb": 13412,
+      "peak_rss_source": "rusage-children-of-wrapper",
+      "wall_s": 1.054,
+      "wrapper_overhead_s": 0.335
+    }
+  ],
+  "environment": {
+    "cpu_model": "ARMv7 Processor rev 5 (v7l)",
+    "disk_free_cwd_kb": 5007380,
+    "disk_free_home_kb": 5007380,
+    "disk_free_tmp_kb": 437460,
+    "hostname": "pi2",
+    "loadavg": [
+      1.23583984375,
+      2.02880859375,
+      1.2177734375
+    ],
+    "machine": "armv7l",
+    "mem_available_kb": 652276,
+    "mem_total_kb": 943124,
+    "platform": "Linux-6.12.75+rpt-rpi-v7-armv7l-with-glibc2.41",
+    "python": "3.13.5",
+    "python_impl": "CPython",
+    "swap_free_kb": 852820,
+    "swap_total_kb": 943100
+  },
+  "imports": [
+    {
+      "import_s": 0.676,
+      "module": "hermes_cli.iot_cli",
+      "peak_rss_kb": 17212,
+      "wall_s": 1.04
+    },
+    {
+      "import_s": 5.323,
+      "module": "agent.agent_init",
+      "peak_rss_kb": 36412,
+      "wall_s": 6.06
+    },
+    {
+      "import_s": 0.34,
+      "module": "tools.registry",
+      "peak_rss_kb": 17212,
+      "wall_s": 0.671
+    }
+  ],
+  "label": "iot-0.21.5.post1",
+  "measured_at": "2026-10-07T16:26:00+0800",
+  "model": []
+}

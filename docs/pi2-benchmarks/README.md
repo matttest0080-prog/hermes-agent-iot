@@ -12,6 +12,7 @@ here is estimated or extrapolated.
 | `pi2-bench-0.21.3.post1.json` | `hermes-agent-iot 0.21.3.post1` | `minimal` | public PyPI (`pip install 'hermes-agent-iot[minimal]==0.21.3.post1'`) |
 | `pi2-bench-0.21.4.post1.json` | `hermes-agent-iot 0.21.4.post1` | `minimal` | public PyPI wheel, `pip download` + SHA-256 checked on the device |
 | `pi2-bench-0.21.4.post1-run2.json` | same release, same venv, run repeated ~30 s later | `minimal` | second sample — the run-to-run noise floor used below |
+| `pi2-bench-0.21.5.post1.json` | `hermes-agent-iot 0.21.5.post1` | `minimal` | public PyPI wheel, `pip download` + index SHA-256 checked on the device |
 
 Hardware/OS for all files: Raspberry Pi 2 Model B (`armv7l`, ARMv7 rev 5),
 Raspbian trixie, CPython 3.13.5, 921 MiB RAM, 921 MiB swap, SD card.
@@ -20,7 +21,33 @@ Committed copies are the raw run JSON with `/home/pi2` collapsed to `~` (the sam
 treatment as the older files); nothing else is edited. Raw on-device digests for
 the 0.21.4.post1 pair: run 1
 `61431fac42583323e18a471762a01c2d4cce35e5e94233506c80c3d42559fd99`, run 2
-`59dcfe901e55e9abda63bacf1a17f076d854effb25fdbd801d15997d82a3f796`.
+`59dcfe901e55e9abda63bacf1a17f076d854effb25fdbd801d15997d82a3f796`; for
+`pi2-bench-0.21.5.post1.json`,
+`f9932f58bd6f124d9bb3c9f5d682b1c8ca228c2326927b006cf42f9cd6123f60`.
+
+## What the numbers say (0.21.5.post1)
+
+One sample, `--quick` (no model leg). Cold-start import cost, a fresh interpreter
+per module, against the 0.21.4.post1 run on the same board:
+
+| Module | import | peak RSS | vs 0.21.4.post1 |
+| --- | --- | --- | --- |
+| `hermes_cli.iot_cli` | 0.68 s | 16.8 MiB | −0.02 s, −48 KiB — noise |
+| `agent.agent_init` | 5.32 s | 35.6 MiB | +0.54 s (+11 %), +1,288 KiB (+3.7 %) |
+| `tools.registry` | 0.34 s | 16.8 MiB | +0.02 s — noise |
+
+Console entry point measured in this run:
+
+| Command | wall | peak RSS | exit | vs 0.21.4.post1 |
+| --- | --- | --- | --- | --- |
+| `hermes-iot profile show` | 1.05 s | 13.1 MiB | 0 | −0.01 s — flat |
+
+Two caveats before reading a regression into that middle row: this run passed a
+single `--cli-cmd`, so the `hermes --version` and `python -c pass` floors the
+0.21.4 files measured are not repeated here, and it was captured at loadavg
+1.2–2.0 against 0.16 for the 0.21.4 pair — the board was busier. +0.54 s / +1.3 MiB
+on the heaviest module is inside what a two-sample comparison at that load
+difference can produce; a repeat run on an idle board is what would settle it.
 
 ## What the numbers say (0.21.4.post1)
 
