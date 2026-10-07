@@ -34,7 +34,6 @@
           "fal"
           "feishu"
           "firecrawl"
-          "hindsight"
           "honcho"
           "messaging"
           "parallel-web"

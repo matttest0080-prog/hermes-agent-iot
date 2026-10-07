@@ -465,15 +465,15 @@ wheels = [
 
 [[package]]
 name = "anyio"
-version = "4.14.2"
+version = "4.12.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "idna" },
     { name = "typing-extensions", marker = "python_full_version < '3.13' or (extra == 'extra-16-hermes-agent-iot-modal' and extra == 'extra-16-hermes-agent-iot-vercel')" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/61/cc/a381afa6efea9f496eff839d4a6a1aed3bfafc7b3ab4b0d1b243a12573dd/anyio-4.14.2.tar.gz", hash = "sha256:cfa139f3ed1a23ee8f88a145ddb5ac7605b8bbfd8592baacd7ce3d8bb4313c7f", size = 260176, upload-time = "2026-07-12T20:29:07.082Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/96/f0/5eb65b2bb0d09ac6776f2eb54adee6abe8228ea05b20a5ad0e4945de8aac/anyio-4.12.1.tar.gz", hash = "sha256:41cfcc3a4c85d3f05c932da7c26d0201ac36f72abd4435ba90d0464a3ffed703", size = 228685, upload-time = "2026-01-06T11:45:21.246Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/da/35/f2287558c17e29fafc8ef3daf819bb9834061cfa43bff8014f7df7f63bdc/anyio-4.14.2-py3-none-any.whl", hash = "sha256:9f505dda5ac9f0c8309b5e8bd445a8c2bf7246f3ce950121e45ea15bc41d1494", size = 125813, upload-time = "2026-07-12T20:29:05.763Z" },
+    { url = "https://files.pythonhosted.org/packages/38/0e/27be9fdef66e72d64c0cdc3cc2823101b80585f8119b5c112c2e8f5f7dab/anyio-4.12.1-py3-none-any.whl", hash = "sha256:d405828884fc140aa80a3c667b8beed277f1dfedec42ba031bd6ac3db606ab6c", size = 113592, upload-time = "2026-01-06T11:45:19.497Z" },
 ]
 
 [[package]]
@@ -1824,7 +1824,7 @@ wheels = [
 
 [[package]]
 name = "hermes-agent-iot"
-version = "0.21.4.post1"
+version = "0.21.5.post1"
 source = { editable = "." }
 dependencies = [
     { name = "certifi" },
@@ -2186,31 +2186,31 @@ requires-dist = [
     { name = "google-auth-oauthlib", marker = "extra == 'google'", specifier = "==1.3.1" },
     { name = "google-auth-oauthlib", marker = "extra == 'google-chat'", specifier = "==1.3.1" },
     { name = "google-cloud-pubsub", marker = "extra == 'google-chat'", specifier = "==2.39.0" },
-    { name = "hermes-agent-iot", extras = ["acp"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["acp"], marker = "extra == 'termux'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["all"], marker = "extra == 'full'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["cli", "pty"], marker = "extra == 'minimal'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["cron"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["cron"], marker = "extra == 'termux'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["full"], marker = "extra == 'dev'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["google"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["google"], marker = "extra == 'termux-all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["homeassistant"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["homeassistant"], marker = "extra == 'termux-all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["honcho"], marker = "extra == 'termux'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["iot", "honcho"], marker = "extra == 'rag'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["mcp"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["mcp"], marker = "extra == 'termux'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["minimal", "mcp", "acp", "homeassistant", "mqtt", "sms"], marker = "extra == 'iot'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["pty"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["pty"], marker = "extra == 'termux-all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["sms"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["sms"], marker = "extra == 'termux-all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["termux"], marker = "extra == 'termux-all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["uvloop"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["web"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["web"], marker = "extra == 'termux-all'", specifier = "==0.21.4.post1" },
-    { name = "hermes-agent-iot", extras = ["youtube"], marker = "extra == 'all'", specifier = "==0.21.4.post1" },
+    { name = "hermes-agent-iot", extras = ["acp"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["acp"], marker = "extra == 'termux'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["all"], marker = "extra == 'full'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["cli", "pty"], marker = "extra == 'minimal'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["cron"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["cron"], marker = "extra == 'termux'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["full"], marker = "extra == 'dev'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["google"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["google"], marker = "extra == 'termux-all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["homeassistant"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["homeassistant"], marker = "extra == 'termux-all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["honcho"], marker = "extra == 'termux'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["iot", "honcho"], marker = "extra == 'rag'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["mcp"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["mcp"], marker = "extra == 'termux'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["minimal", "mcp", "acp", "homeassistant", "mqtt", "sms"], marker = "extra == 'iot'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["pty"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["pty"], marker = "extra == 'termux-all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["sms"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["sms"], marker = "extra == 'termux-all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["termux"], marker = "extra == 'termux-all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["uvloop"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["web"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["web"], marker = "extra == 'termux-all'", specifier = "==0.21.5.post1" },
+    { name = "hermes-agent-iot", extras = ["youtube"], marker = "extra == 'all'", specifier = "==0.21.5.post1" },
     { name = "hindsight-client", marker = "extra == 'hindsight'", specifier = "==0.6.1" },
     { name = "honcho-ai", marker = "extra == 'honcho'", specifier = "==2.2.0" },
     { name = "httplib2", marker = "extra == 'google'", specifier = "==0.32.0" },
@@ -4048,11 +4048,11 @@ wheels = [
 
 [[package]]
 name = "pyproject-hooks"
-version = "1.2.0"
+version = "1.3.3"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/e7/82/28175b2414effca1cdac8dc99f76d660e7a4fb0ceefa4b4ab8f5f6742925/pyproject_hooks-1.2.0.tar.gz", hash = "sha256:1e859bd5c40fae9448642dd871adf459e5e2084186e8d2c2a79a824c970da1f8", size = 19228, upload-time = "2024-09-29T09:24:13.293Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/6d/5d/f2ddeef4a855a102aaae5e97826a0260007522ab504421b75addfdb1517c/pyproject_hooks-1.3.3.tar.gz", hash = "sha256:defda19b854fa0d3bd4f76ea4ddcba8abd7dcfcdd585a6690ade050744fc5f43", size = 21013, upload-time = "2026-09-16T08:58:03.999Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/bd/24/12818598c362d7f300f18e74db45963dbcb85150324092410c8b49405e42/pyproject_hooks-1.2.0-py3-none-any.whl", hash = "sha256:9e5c6bfa8dcc30091c74b0cf803c81fdd29d94f01992a7707bc97babb1141913", size = 10216, upload-time = "2024-09-29T09:24:11.978Z" },
+    { url = "https://files.pythonhosted.org/packages/85/11/044d1ae1b4ec0d7af88ee5bc91e081be1022533032b906a7bdabdbb60977/pyproject_hooks-1.3.3-py3-none-any.whl", hash = "sha256:5fc53fdac9f7bd63fbcdc868fb5f90b4784d78a53a3d3388cd738b807441a20b", size = 10724, upload-time = "2026-09-16T08:58:02.96Z" },
 ]
 
 [[package]]
