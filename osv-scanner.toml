@@ -1,0 +1,31 @@
+# osv-scanner policy for this repository.
+#
+# NOTE ON LAYOUT: osv-scanner resolves its config per scanned file -- it looks
+# for `osv-scanner.toml` next to EACH lockfile it is pointed at, not only in the
+# directory the scan was launched from. Verified against the pinned image
+# (ghcr.io/google/osv-scanner-action:v2.3.8): a config in the repo root does NOT
+# cover website/package-lock.json (that scan still reported braces). Every
+# directory whose lockfile has an unfixable finding therefore carries its own
+# minimal entry.
+#
+# Keep entries narrow and honest: anything a dependency bump can fix must be
+# bumped instead of ignored, and every entry states its exit condition. The
+# workflow that consumes this file runs with fail-on-vuln: true, so an expired
+# entry starts failing the lane again (see ignoreUntil).
+
+[[IgnoredVulns]]
+id = "GHSA-hp3w-g68c-fv3c" # CVE-2026-97058
+ignoreUntil = 2027-01-31
+reason = """
+sprintf-js <= 1.1.3 aborts the calling operation on unbounded precision
+specifiers handed to toFixed/toExponential/toPrecision. Upstream
+alexei/sprintf.js#237 is still open and OSV lists last_affected 1.1.3 with NO
+patched release, so no version bump can fix it. Reachability: the only consumer
+in this lockfile is roarr@2.15.4, itself marked dev and optional, and the format
+strings it passes come from roarr's own log templates rather than from
+untrusted input. Remove as soon as a patched release exists.
+"""
+
+# braces (CVE-2026-93687) is the corresponding entry for
+# website/package-lock.json and lives in website/osv-scanner.toml, because this
+# config does not reach that directory.

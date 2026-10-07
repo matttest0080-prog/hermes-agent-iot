@@ -92,10 +92,12 @@ dependencies = [
   # it out of the lazy-install path that exists only for the heavy matrix deps.
   "Markdown==3.10.2",
   # Skills Hub (GitHub App JWT auth — optional, only needed for bot identity)
-  "PyJWT[crypto]==2.13.0",  # PYSEC-2026-175/177/178/179
-  # urllib3 2.7.0 fixes GHSA-mf9v-mfxr-j63j (decompression-bomb bypass)
-  # and GHSA-qccp-gfcp-xxvc (header leak across origins).
-  "urllib3>=2.7.0,<3",
+  "PyJWT[crypto]==2.15.0",  # CVE-2026-101917..102275 + CVE-2026-103001 (27 advisories on 2.13.0; 2.14.0 still leaves 3)
+  # urllib3 2.8.0 fixes CVE-2026-97687/97688/97689, the three advisories filed
+  # against 2.7.0 (the release that fixed GHSA-mf9v-mfxr-j63j, the
+  # decompression-bomb bypass, and GHSA-qccp-gfcp-xxvc, the header leak across
+  # origins), so the floor moves with it.
+  "urllib3>=2.8.0,<3",
   # PyJWT[crypto] pulls cryptography in transitively. Pin it here as well, so
   # that the WeCom and Weixin crypto paths cannot fall below the patched
   # version. 50.0.0 is the floor: it fixes CVE-2026-69247, a Bleichenbacher
@@ -472,8 +474,10 @@ override-dependencies = [
   "cryptography>=50,<51",
 ]
 exclude-newer = "14 days"
-# h2: temporary exclude-newer exception for the CVE-2026-71554 (GHSA-6hr6-w5qg-qmwg,
-# request-smuggling) fix in 4.4.1, published 2026-08-03. Remove after 2026-08-17.
+# h2: the temporary exclude-newer exception added for the CVE-2026-71554
+# (GHSA-6hr6-w5qg-qmwg, request-smuggling) fix in 4.4.1 was removed on
+# 2026-10-07 — 4.4.1 (published 2026-08-03) is the newest release and is long
+# past the window, and the h2>=4.4.1 override keeps the floor regardless.
 # aiohttp, cryptography: same shape — the advisory fixes are newer than the
 # 14-day window, so the resolver cannot see them without an exception.
 #
@@ -519,6 +523,12 @@ exclude-newer = "14 days"
 # (Termux/Android) it must build from sdist, and the isolated build
 # environment resolves under the same cutoff ("Failed to resolve
 # requirements from build-system.requires ... maturin>=1.9,<2").
+#
+# oauthlib: 4.0.0 (published 2026-09-28) closes the advisories against 3.3.1
+# (CVE-2026-49264, CVE-2026-49265). requests-oauthlib 2.0.0 declares only
+# `oauthlib>=3.0.0`, so the cross-major resolve is clean; the exemption exists
+# because the fixed release is newer than the 14-day window. Drop this entry
+# once 4.0.0 has aged out.
 [tool.uv.exclude-newer-package]
 agent-client-protocol = false
 ai-edge-litert = false
@@ -557,7 +567,6 @@ google-auth = false
 google-auth-httplib2 = false
 google-auth-oauthlib = false
 google-cloud-pubsub = false
-h2 = false
 hindsight-client = false
 honcho-ai = false
 hermes-agent-iot = false
@@ -578,6 +587,7 @@ mistralai = false
 modal = false
 nemo-relay = false
 numpy = false
+oauthlib = false
 onnxruntime = false
 openai = false
 opentelemetry-exporter-otlp-proto-http = false
