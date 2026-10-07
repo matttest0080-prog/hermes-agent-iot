@@ -128,6 +128,28 @@ are run before a PR, not after):
 Not yet done, and deliberately not claimed: `uv sync --locked` in CI, the JS/Rust/Nix lanes, and
 **any** hardware verification. CI on the PR is the first full-suite run of this tree.
 
+## Security-lane state on this branch (measured, then accepted)
+
+The `OSV-Scanner` lane is **red on this branch**: the scan reports **42 packages affected by 115 known
+vulnerabilities (9 critical / 47 high / 45 medium / 12 low / 2 unknown)** across `uv.lock` (278 packages)
+and the four `package-lock.json` files, and this ref carries ≥100 open code-scanning alerts. Attribution was
+measured before deciding anything:
+
+| Measurement | Result |
+| --- | --- |
+| Open alerts on `pi2-lite` **before this sync** | 100 |
+| Open alerts on `main` | 4 |
+| `OSV-Scanner` history on `pi2-lite` | 2026-09-28 success → **2026-10-05 failure** (red before this work) |
+| Flagged Python versions vs upstream's own `v2026.9.24` lock | identical — `urllib3 2.7.0`, `pyjwt 2.13.0`, `oauthlib 3.3.1` |
+| Flagged JS versions vs upstream's lock | present upstream too — `axios 1.18.1`, `undici 7.29.0` |
+| Required check on `pi2-lite`? | no (`All required checks pass`, `Pi2 install dependency guardrails`) |
+
+Decision (2026-10-07): **stay byte-identical with upstream and accept the red**, consistent with how earlier
+upstream-latency reds were handled, instead of diverging the fork's dependency graph. Recorded here for the
+next cycle: `urllib3` and `pyjwt` do reach the Pi 2 install closure
+(`requirements/pi2/{minimal,iot}.lock`) at upstream's chosen versions, so re-check whether upstream has
+moved them before the next sync.
+
 ## Follow-ups (not in this PR)
 
 - Physical Pi 2 verification of `0.21.5.post1` (isolated venv + isolated `HERMES_HOME`, `[minimal]`
