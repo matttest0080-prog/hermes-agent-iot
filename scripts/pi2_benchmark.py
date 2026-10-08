@@ -6,7 +6,7 @@ is currently answered by watching `free -h` by hand. Every number is measured
 from the running interpreter, not estimated, and the output is JSON so two runs
 can be compared mechanically:
 
-    python3 scripts/pi2_benchmark.py --label pi2-0.21.4.post1
+    python3 scripts/pi2_benchmark.py --label pi2-0.21.5.post1
     python3 scripts/pi2_benchmark.py --json --out /tmp/pi2-bench.json
     python3 scripts/pi2_benchmark.py --compare /tmp/pi2-bench-prev.json
     python3 scripts/pi2_benchmark.py --quick                  # skip the model leg
@@ -254,7 +254,7 @@ def print_summary(result: dict) -> None:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description="Pi2 / low-resource footprint benchmark")
-    ap.add_argument("--label", default="", help="name recorded in the JSON (e.g. pi2-0.21.4.post1)")
+    ap.add_argument("--label", default="", help="name recorded in the JSON (e.g. pi2-0.21.5.post1)")
     ap.add_argument("--json", action="store_true", help="print JSON instead of the summary")
     ap.add_argument("--out", default="", help="also write the JSON to this path")
     ap.add_argument("--compare", default="", help="compare against a previous JSON run")
