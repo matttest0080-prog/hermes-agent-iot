@@ -280,7 +280,12 @@ jobs:
           print(f'needs-json={json.dumps(compact)}')
           with open('$GITHUB_OUTPUT', 'a') as f:
               f.write(f'needs-json={json.dumps(compact)}\n')
-          failed = [name for name, info in needs.items() if info['result'] == 'failure']
+          # Fail closed: only a real result counts as green. Anything else --
+          # failure, cancelled (run superseded by a newer push), timed_out, or
+          # any unexpected state GitHub may add later -- fails the gate, so a
+          # job that never produced a result can never read as passing.
+          # Skipped stays benign: that is how the opt-in lanes say not-run.
+          failed = [name for name, info in needs.items() if info['result'] not in ('success', 'skipped')]
           for name, info in sorted(needs.items()):
               result = info['result']
               icon = '✅' if result in ('success', 'skipped') else '❌'
