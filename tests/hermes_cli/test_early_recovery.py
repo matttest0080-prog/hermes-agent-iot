@@ -168,7 +168,7 @@ def _project(tmp_path: Path, *, pyproject: bool = True) -> Path:
             '[project]\nname = "x"\ndependencies = [\n'
             '  "PyYAML==6.0.2",\n'
             '  "python-dotenv==1.2.2",\n'
-            '  "PyJWT[crypto]==2.13.0",\n'
+            '  "PyJWT[crypto]==2.15.0",\n'
             "]\n",
             encoding="utf-8",
         )

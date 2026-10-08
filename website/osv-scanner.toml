@@ -1,0 +1,28 @@
+# osv-scanner policy for the docs-site workspace.
+#
+# This file exists because osv-scanner resolves its config per scanned file: the
+# scan of website/package-lock.json does NOT pick up the repo-root
+# osv-scanner.toml (verified with the pinned image
+# ghcr.io/google/osv-scanner-action:v2.3.8 -- with only the root config in
+# place this scan still reported the braces finding). Keep it in step with the
+# root file's style: narrow entries only, each naming why it is not reachable
+# and what ends it.
+
+[[IgnoredVulns]]
+id = "GHSA-vfj7-8cjw-p6xm" # CVE-2026-93687
+ignoreUntil = 2027-01-31
+reason = """
+braces <= 3.0.3 is vulnerable to stack exhaustion (uncaught RangeError) via
+deeply nested brace patterns. Upstream micromatch/braces#70 is still open and
+OSV lists last_affected 3.0.3 with NO patched release, so no version bump can
+fix it. Reachability: braces reaches this workspace only through the docs-site
+build graph -- chokidar@3.6.0 (file watching) and micromatch@4.0.8 (glob
+matching); the patterns they expand come from this repo's own build
+configuration, never from untrusted input, and no first-party source file
+imports braces directly. The impact is a local build DoS, not a remotely
+triggerable one. Remove as soon as a patched release exists.
+"""
+
+# sprintf-js (CVE-2026-97058) is the corresponding entry for the root
+# package-lock.json and lives in the repo-root osv-scanner.toml, which this
+# directory's scan does not read.

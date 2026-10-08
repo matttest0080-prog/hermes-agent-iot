@@ -8,7 +8,7 @@
     "@whiskeysockets/baileys@7.0.0-rc13",
     "core-js@3.49.0",
     "electron-winstaller@5.4.0",
-    "electron@41.10.3",
+    "electron@41.10.6",
     "esbuild@0.28.1",
     "fsevents@2.3.2",
     "fsevents@2.3.3",
