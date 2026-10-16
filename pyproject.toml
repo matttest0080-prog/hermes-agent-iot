@@ -37,25 +37,25 @@ dependencies = [
   # extra and gets prepared through PM when the
   # user picks that backend. Smaller `dependencies` = smaller blast
   # radius for the next supply-chain attack.
-  "openai==2.24.0; python_version >= '3.14'",
-  "certifi==2026.5.20; python_version >= '3.14'",
+  "openai==2.24.0",
+  "certifi==2026.5.20",
   # TLS trust comes from the OS certificate store (agent/ssl_verify.py), so
   # a corporate/internal root installed on the machine just works. certifi
   # above stays a direct pin because httpx/requests/openai each depend on
   # it regardless; it is no longer OUR trust source.
   # ssl_verify uses truststore's private original SSLContext for explicit CA overrides.
   # Keep this exact until that path has a public-API replacement.
-  "truststore==0.10.4; python_version >= '3.14'",
-  "python-dotenv==1.2.2; python_version >= '3.14'",
-  "fire==0.7.1; python_version >= '3.14'",
-  "httpx[socks]==0.28.1; python_version >= '3.14'",
-  "rich==14.3.3; python_version >= '3.14'",
-  "tenacity==9.1.4; python_version >= '3.14'",
-  "tomli-w==1.2.0; python_version >= '3.14'",  # Preserve relative dependency paths in staged plugin metadata.
+  "truststore==0.10.4",
+  "python-dotenv==1.2.2",
+  "fire==0.7.1",
+  "httpx[socks]==0.28.1",
+  "rich==14.3.3",
+  "tenacity==9.1.4",
+  "tomli-w==1.2.0",  # Preserve relative dependency paths in staged plugin metadata.
   # 0.18.17 requires ruamel.yaml.clib on 3.14, which has no Windows ARM64 wheel.
-  "ruamel.yaml==0.18.16; python_version >= '3.14'",
-  "requests==2.33.0; python_version >= '3.14'",  # CVE-2026-25645
-  "jinja2==3.1.6; python_version >= '3.14'",
+  "ruamel.yaml==0.18.16",
+  "requests==2.33.0",  # CVE-2026-25645
+  "jinja2==3.1.6",
   # Document-to-Markdown extraction for read_file (PDF, legacy Office,
   # OpenDocument, RTF, EPUB) + typed NeedsOcrError for scanned pages.
   # Bundled in core by maintainer decision (read_file is a core tool and
@@ -63,24 +63,24 @@ dependencies = [
   # arrangement dated to the package's uv exclude-newer quarantine, which
   # has long expired). PM's doc-extract extra repairs lean/broken installs
   # from this same dependency declaration.
-  "firecrawl-anydoc==0.2.4; python_version >= '3.14'",
+  "firecrawl-anydoc==0.2.4",
   # Bumped from 2.12.5 to 2.13.4 to pull in pydantic-core 2.46.4.
   # pydantic-core 2.41.5 (pulled by 2.12.5) segfaults when the OpenAI SDK's
   # Responses API resource is exercised from a non-main thread, which is the
   # codex_responses dispatch in agent/chat_completion_helpers.py:_call.
-  "pydantic==2.13.4; python_version >= '3.14'",
+  "pydantic==2.13.4",
   # Interactive CLI (prompt_toolkit is used directly by cli.py)
-  "prompt_toolkit==3.0.52; python_version >= '3.14'",
+  "prompt_toolkit==3.0.52",
   # Cron scheduler (built-in feature — scheduled cron/interval jobs use croniter).
-  "croniter==6.0.0; python_version >= '3.14'",
+  "croniter==6.0.0",
   # Snowball stemming for tool_search's BM25 (tools/tool_search.py) —
   # official Snowball project package, pure Python, zero transitive deps.
   # Applied at index AND query time so morphological variants match
   # ("issues" finds create_issue).
-  "snowballstemmer==3.1.1; python_version >= '3.14'",
+  "snowballstemmer==3.1.1",
   # Requirement and version checks must work in lean installs without
   # relying on another package to bring packaging in transitively.
-  "packaging==26.0; python_version >= '3.14'",
+  "packaging==26.0",
   # Markdown -> HTML conversion for rich message delivery (Matrix
   # `formatted_body`, and the `send_message` tool's HTML path). Now on the
   # DEFAULT delivery path, not matrix-specific: without it both
@@ -90,14 +90,14 @@ dependencies = [
   # (~108KB, no compiled extensions, no platform constraints), so unlike the
   # matrix extra's `mautrix`/`python-olm` it's safe to ship everywhere — keeps
   # it out of the lazy-install path that exists only for the heavy matrix deps.
-  "Markdown==3.10.2; python_version >= '3.14'",
+  "Markdown==3.10.2",
   # Skills Hub (GitHub App JWT auth — optional, only needed for bot identity)
-  "PyJWT[crypto]==2.15.0; python_version >= '3.14'",  # CVE-2026-101917..102275 + CVE-2026-103001 (27 advisories on 2.13.0; 2.14.0 still leaves 3)
+  "PyJWT[crypto]==2.15.0",  # CVE-2026-101917..102275 + CVE-2026-103001 (27 advisories on 2.13.0; 2.14.0 still leaves 3)
   # urllib3 2.8.0 fixes CVE-2026-97687/97688/97689, the three advisories filed
   # against 2.7.0 (the release that fixed GHSA-mf9v-mfxr-j63j, the
   # decompression-bomb bypass, and GHSA-qccp-gfcp-xxvc, the header leak across
   # origins), so the floor moves with it.
-  "urllib3>=2.8.0,<3; python_version >= '3.14'",
+  "urllib3>=2.8.0,<3",
   # PyJWT[crypto] pulls cryptography in transitively. Pin it here as well, so
   # that the WeCom and Weixin crypto paths cannot fall below the patched
   # version. 50.0.0 is the floor: it fixes CVE-2026-69247, a Bleichenbacher
@@ -109,62 +109,62 @@ dependencies = [
   # A pin here is not sufficient on its own. alibabacloud-tea-openapi caps
   # cryptography<49, so [tool.uv] also holds an override. Read that comment
   # before you move this version.
-  "cryptography==50.0.1; python_version >= '3.14'",  # CVE-2026-69247, GHSA-m2h6-j472-rp4c, GHSA-jwv3-5hgf-82ww, CVE-2026-39892, CVE-2026-34073, GHSA-537c-gmf6-5ccf
+  "cryptography==50.0.1",  # CVE-2026-69247, GHSA-m2h6-j472-rp4c, GHSA-jwv3-5hgf-82ww, CVE-2026-39892, CVE-2026-34073, GHSA-537c-gmf6-5ccf
   # Windows has no IANA tzdata shipped with the OS, so Python's ``zoneinfo``
   # (PEP 615) raises ``ZoneInfoNotFoundError`` for every non-UTC timezone
   # out of the box.  ``tzdata`` ships the Olson database as a data package
   # Python resolves automatically.  No-op on Linux/macOS (which have
   # /usr/share/zoneinfo).  Credits: PR #13182 (@sprmn24).
-  "tzdata==2025.3; sys_platform == 'win32' and python_version >= '3.14'",
+  "tzdata==2025.3; sys_platform == 'win32'",
   # Cross-platform process / PID management.  `psutil` is the canonical
   # answer for "is this PID alive" and process-tree walking across Linux,
   # macOS and Windows.  It replaces POSIX-only idioms like `os.kill(pid, 0)`
   # (which is a silent killer on Windows — see CONTRIBUTING.md) and
   # `os.killpg` (which doesn't exist on Windows).
-  "psutil==7.2.2; sys_platform != 'android' and python_version >= '3.14'",
+  "psutil==7.2.2; sys_platform != 'android'",
   # Android Python 3.13+ needs upstream #2891 for platform recognition and
   # disk_partitions(). The fix is not in a published psutil release yet.
   # Keep this commit until a release includes it, then remove the source pin.
-  "psutil @ git+https://github.com/giampaolo/psutil.git@380bd2b59c67b0e1b04bbf3a90b11744f4f96644 ; sys_platform == 'android' and python_version >= '3.14'",
+  "psutil @ git+https://github.com/giampaolo/psutil.git@380bd2b59c67b0e1b04bbf3a90b11744f4f96644 ; sys_platform == 'android'",
   # Browser CDP supervisor + browser_dialog import this directly. Keep core
   # so browser tool discovery doesn't fail on lean installs.
-  "websockets==15.0.1; python_version >= '3.14'",
+  "websockets==15.0.1",
   # Engine of the default browser_exec tool (the `browser-use` CLI is a thin
   # wrapper over it). Pure Python, and its pins match Pillow/websockets above,
   # so it rides in the main venv and every install, Desktop bundle included,
   # ships it without a separate tool environment.
-  "browser-harness==0.1.13; python_version >= '3.14'",
+  "browser-harness==0.1.13",
   # .gitignore-aware file matching for desktop build stamp.
-  "pathspec==1.1.1; python_version >= '3.14'",
-  "fastapi>=0.104.0,<1; python_version >= '3.14'",
+  "pathspec==1.1.1",
+  "fastapi>=0.104.0,<1",
   # CIDR-aware forwarded_allow_ips requires uvicorn >=0.31.0.
   # uvicorn's [standard] extra bundles uvloop, httptools, and watchfiles.
   # uvloop cannot build on Android/Termux (libuv's ./configure fails), so
   # we declare the working components inline and gate uvloop behind the
   # [uvloop] optional extra — desktop/server profiles pull it via [all].
-  "uvicorn>=0.31.0,<1; python_version >= '3.14'",
-  "httptools>=0.6.3,<0.9; python_version >= '3.14'",
-  "watchfiles>=0.20,<2; python_version >= '3.14'",
+  "uvicorn>=0.31.0,<1",
+  "httptools>=0.6.3,<0.9",
+  "watchfiles>=0.20,<2",
   # Streaming multipart uploads for the dashboard file manager (NS-501).
   # FastAPI's UploadFile/Form depend on python-multipart; it is NOT pulled in
   # by fastapi itself, so the dashboard's multipart upload endpoint would 500
   # without an explicit dependency here (and in the `web` extra below).
-  "python-multipart>=0.0.9,<1; python_version >= '3.14'",
-  "ptyprocess>=0.7.0,<1; sys_platform != 'win32' and python_version >= '3.14'",
+  "python-multipart>=0.0.9,<1",
+  "ptyprocess>=0.7.0,<1; sys_platform != 'win32'",
   # Python 3.14 requires pywinpty 3.x. Version 3.0.5 includes the native
   # binaries missing from 3.0.4 wheels on both Windows architectures.
-  "pywinpty>=3.0.5,<4; sys_platform == 'win32' and python_version >= '3.14'",
+  "pywinpty>=3.0.5,<4; sys_platform == 'win32'",
   # Desktop SSH's Windows remote runtime (hermes_cli/windows_ssh_runtime.py)
   # imports win32security/win32file/etc. directly — declare pywin32 rather than
   # relying on the concurrent-log-handler → portalocker transitive chain.
-  "pywin32>=306,<312; sys_platform == 'win32' and python_version >= '3.14'",
+  "pywin32>=306,<312; sys_platform == 'win32'",
   # App Installer checks use Package from ApplicationModel. Foundation
   # supplies the URI and async result types projected when the checker runs.
-  "winrt-windows-applicationmodel>=3.2.1,<4; sys_platform == 'win32' and python_version >= '3.14'",
-  "winrt-windows-foundation>=3.2.1,<4; sys_platform == 'win32' and python_version >= '3.14'",
+  "winrt-windows-applicationmodel>=3.2.1,<4; sys_platform == 'win32'",
+  "winrt-windows-foundation>=3.2.1,<4; sys_platform == 'win32'",
   # Store update queries and request results project collection interfaces.
-  "winrt-windows-foundation-collections>=3.2.1,<4; sys_platform == 'win32' and python_version >= '3.14'",
-  "winrt-windows-services-store>=3.2.1,<4; sys_platform == 'win32' and python_version >= '3.14'",
+  "winrt-windows-foundation-collections>=3.2.1,<4; sys_platform == 'win32'",
+  "winrt-windows-services-store>=3.2.1,<4; sys_platform == 'win32'",
   # Image resize recovery for the vision tools. Pillow shrinks oversized images
   # (>5 MB or >8000px) at embed time; without it the byte AND pixel-dimension
   # shrink paths no-op, so an oversized image bakes into immutable history and
@@ -172,7 +172,7 @@ dependencies = [
   # libs required for the codecs we use, so it's safe to ship in the base
   # install rather than gating it behind an extra + a mid-session lazy install
   # (which deadlocked the CLI under prompt_toolkit — see #40490).
-  "Pillow==12.3.0; python_version >= '3.14'",
+  "Pillow==12.3.0",
   # HEIF/HEIC/AVIF decode for the vision tools is deliberately NOT declared:
   # upstream ships "pillow-heif>=1.4.0,<2" as a core dependency on the claim
   # that "prebuilt wheels bundling libheif for the common platforms" cover every
@@ -190,7 +190,7 @@ dependencies = [
   # `hermes update`), so a source install carries its renderer instead of
   # preparing a separate environment at launch. abi3 wheels for every
   # shipped platform, including Windows ARM64 and Android.
-  "resvg-py==0.4.0; python_version >= '3.14'",
+  "resvg-py==0.4.0",
   # Windows log rotation. Stdlib ``RotatingFileHandler.doRollover()`` uses
   # ``os.rename()`` which fails with ``PermissionError [WinError 32]`` on
   # Windows whenever any other process holds an append-mode handle on
@@ -204,7 +204,7 @@ dependencies = [
   # already works there and managed-mode perms depend on its exact lifecycle.
   # Hence the ``sys_platform == 'win32'`` marker: the dep (and its portalocker
   # / pywin32 tree) ships only where it's actually used.
-  "concurrent-log-handler==0.9.29; sys_platform == 'win32' and python_version >= '3.14'",
+  "concurrent-log-handler==0.9.29; sys_platform == 'win32'",
   # First-party lifecycle and shared-metrics runtime. Relay 0.10 is the supported
   # native runtime and provider-codec baseline. Managed calls pass request and
   # response data through this native module in-process; shared metrics installs
@@ -219,7 +219,7 @@ dependencies = [
   # 738 CPython reports sys_platform == 'android' and never matched.) Pre-GKI
   # devices can still slip through; they get the same resolution failure as
   # before, worked around by installing with `--no-deps` or an older release.
-  "nemo-relay>=0.10,<0.11; ((sys_platform == 'darwin' and platform_machine == 'arm64') or (sys_platform == 'linux' and platform_machine == 'x86_64' and 'android' not in platform_release) or (sys_platform == 'linux' and platform_machine == 'aarch64' and 'android' not in platform_release) or (sys_platform == 'win32' and platform_machine == 'AMD64') or (sys_platform == 'win32' and platform_machine == 'ARM64')) and python_version >= '3.14'",]
+  "nemo-relay>=0.10,<0.11; ((sys_platform == 'darwin' and platform_machine == 'arm64') or (sys_platform == 'linux' and platform_machine == 'x86_64' and 'android' not in platform_release) or (sys_platform == 'linux' and platform_machine == 'aarch64' and 'android' not in platform_release) or (sys_platform == 'win32' and platform_machine == 'AMD64') or (sys_platform == 'win32' and platform_machine == 'ARM64'))",]
 
 [project.urls]
 Homepage = "https://github.com/matttest0080-prog/hermes-agent-iot"

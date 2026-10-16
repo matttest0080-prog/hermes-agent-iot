@@ -131,7 +131,11 @@ def test_stamp_version_info_ignores_fallback_commit(tmp_path, monkeypatch):
 
     info = get_version_info()
 
-    assert info.source == "unknown"
+    # The all-zero stamp is skipped; the fork then answers with its package
+    # version (upstream reports "unknown" here).
+    from hermes_cli import _FALLBACK_VERSION
+    assert info.source == "fallback"
+    assert info.base_version == _FALLBACK_VERSION
     assert info.commit is None
 
 
@@ -140,17 +144,20 @@ def test_stamp_version_info_returns_none_when_file_missing(tmp_path, monkeypatch
     assert _stamp_version_info() is None
 
 
-def test_get_version_info_unknown_when_no_stamp_and_no_git(monkeypatch):
+def test_get_version_info_falls_back_to_package_version_without_stamp_or_git(monkeypatch):
     monkeypatch.setattr("hermes_cli.version_info._resolve_stamp_file", lambda: None)
     monkeypatch.setattr("hermes_cli.version_info._resolve_repo_dir", lambda: None)
 
     info = get_version_info()
 
-    assert info.base_version == "unknown"
-    assert info.derived_version == "unknown"
+    # Upstream reports "unknown"; the fork answers with its package version so
+    # `hermes --version` matches the wheel on a plain pip install.
+    from hermes_cli import _FALLBACK_VERSION
+    assert info.base_version == _FALLBACK_VERSION
+    assert info.derived_version == _FALLBACK_VERSION
     assert info.distance is None
     assert info.commit is None
-    assert info.source == "unknown"
+    assert info.source == "fallback"
 
 
 def test_get_version_info_derives_identity_from_reachable_release_tag(tmp_path, monkeypatch):

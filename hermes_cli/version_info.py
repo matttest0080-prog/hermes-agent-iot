@@ -297,9 +297,15 @@ def get_version_info() -> VersionInfo:
         if repo_dir is not None:
             info = _git_version_info(repo_dir)
 
-    # 3. Unknown — no stamp, no git
+    # 3. No stamp, no git (e.g. a plain `pip install` of the fork wheel into an
+    # isolated venv). Upstream reports "unknown"; the fork reports its own
+    # package version so `hermes --version` matches the installed wheel instead
+    # of printing `vunknown`. `_FALLBACK_VERSION` is the fork's package literal.
     if info is None:
-        info = VersionInfo("unknown", "unknown", None, None, None, "unknown")
+        from hermes_cli import _FALLBACK_VERSION
+        info = VersionInfo(
+            _FALLBACK_VERSION, _FALLBACK_VERSION, None, None, None, "fallback"
+        )
 
     _cached_version_info = info
     return info
