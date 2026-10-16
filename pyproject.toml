@@ -4,7 +4,7 @@
 
 [project]
 name = "hermes-agent-iot"
-version = "0.21.7.post1"
+version = "0.22.2.post1"
 description = "IoT and low-resource packaging of Hermes Agent, maintained as a native-compatible fork"
 readme = "README.md"
 # 3.14 is the newest python we know we have wheels for.
@@ -464,22 +464,22 @@ azure-identity = ["azure-identity==1.25.3"]
 termux = [
   # Baseline Android / Termux path for reliable fresh installs.
   "python-telegram-bot[webhooks]==22.8",
-  "hermes-agent-iot[cron]==0.21.7.post1",
-  "hermes-agent-iot[mcp]==0.21.7.post1",
-  "hermes-agent-iot[honcho]==0.21.7.post1",
-  "hermes-agent-iot[acp]==0.21.7.post1",
+  "hermes-agent-iot[cron]==0.22.2.post1",
+  "hermes-agent-iot[mcp]==0.22.2.post1",
+  "hermes-agent-iot[honcho]==0.22.2.post1",
+  "hermes-agent-iot[acp]==0.22.2.post1",
 ]
 termux-all = [
   # Best-effort "install all" profile for Termux. Same policy as [all]:
   # only includes extras that are not prepared on demand by PM.
   # Backends like telegram/slack/dingtalk/feishu lazy-install at
   # first use, so they're no longer eager-installed here.
-  "hermes-agent-iot[termux]==0.21.7.post1",
-  "hermes-agent-iot[google]==0.21.7.post1",
-  "hermes-agent-iot[homeassistant]==0.21.7.post1",
-  "hermes-agent-iot[sms]==0.21.7.post1",
-  "hermes-agent-iot[web]==0.21.7.post1",
-  "hermes-agent-iot[pty]==0.21.7.post1",
+  "hermes-agent-iot[termux]==0.22.2.post1",
+  "hermes-agent-iot[google]==0.22.2.post1",
+  "hermes-agent-iot[homeassistant]==0.22.2.post1",
+  "hermes-agent-iot[sms]==0.22.2.post1",
+  "hermes-agent-iot[web]==0.22.2.post1",
+  "hermes-agent-iot[pty]==0.22.2.post1",
 ]
 dingtalk = [
   "dingtalk-stream==0.24.3",
@@ -540,20 +540,20 @@ all = [
   # [all], `uv sync --locked` on Windows tried to build it from sdist
   # and failed on `make`. Lazy-install routes that build to first use,
   # where the user is expected to have a toolchain available.
-  "hermes-agent-iot[cron]==0.21.7.post1",
-  "hermes-agent-iot[pty]==0.21.7.post1",
-  "hermes-agent-iot[mcp]==0.21.7.post1",
-  "hermes-agent-iot[uvloop]==0.21.7.post1",
-  "hermes-agent-iot[sms]==0.21.7.post1",
-  "hermes-agent-iot[acp]==0.21.7.post1",
-  "hermes-agent-iot[google]==0.21.7.post1",
-  "hermes-agent-iot[web]==0.21.7.post1",
-  "hermes-agent-iot[youtube]==0.21.7.post1",
+  "hermes-agent-iot[cron]==0.22.2.post1",
+  "hermes-agent-iot[pty]==0.22.2.post1",
+  "hermes-agent-iot[mcp]==0.22.2.post1",
+  "hermes-agent-iot[uvloop]==0.22.2.post1",
+  "hermes-agent-iot[sms]==0.22.2.post1",
+  "hermes-agent-iot[acp]==0.22.2.post1",
+  "hermes-agent-iot[google]==0.22.2.post1",
+  "hermes-agent-iot[web]==0.22.2.post1",
+  "hermes-agent-iot[youtube]==0.22.2.post1",
 ]
-minimal = ["hermes-agent-iot[cli,pty]==0.21.7.post1"]
-iot = ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.21.7.post1"]
-rag = ["hermes-agent-iot[iot,honcho]==0.21.7.post1"]
-full = ["hermes-agent-iot[all]==0.21.7.post1"]
+minimal = ["hermes-agent-iot[cli,pty]==0.22.2.post1"]
+iot = ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.22.2.post1"]
+rag = ["hermes-agent-iot[iot,honcho]==0.22.2.post1"]
+full = ["hermes-agent-iot[all]==0.22.2.post1"]
 
 [dependency-groups]
 # Build and test tooling never ships in runtime payloads.

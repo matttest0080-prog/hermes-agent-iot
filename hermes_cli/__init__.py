@@ -11,7 +11,7 @@ __version__: str
 # version equals pyproject's, and Pi2 devices install the wheel with plain pip -- no install
 # stamp is written, so upstream's "0.0.0" placeholder would regress `hermes --version` there.
 # The stamp still wins whenever this tree has one (upstream's old-updater contract).
-_FALLBACK_VERSION = "0.21.7.post1"
+_FALLBACK_VERSION = "0.22.2.post1"
 
 
 def __getattr__(name: str) -> str:

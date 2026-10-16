@@ -12,7 +12,7 @@ INSTALL_SH = REPO_ROOT / "scripts" / "install.sh"
 def test_pyproject_defines_termux_all_without_known_blockers() -> None:
     text = PYPROJECT.read_text()
     assert "termux-all = [" in text
-    assert '"hermes-agent-iot[termux]==0.21.7.post1"' in text
+    assert '"hermes-agent-iot[termux]==0.22.2.post1"' in text
     block = text.split("termux-all = [", 1)[1].split("]", 1)[0]
     assert '"hermes-agent-iot[matrix]' not in block
     assert '"hermes-agent-iot[voice]' not in block
