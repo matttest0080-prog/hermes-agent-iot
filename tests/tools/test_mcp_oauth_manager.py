@@ -188,7 +188,10 @@ def _fake_response(status, url, body):
     """A minimal stand-in for the httpx.Response the SDK feeds our bridge."""
     resp = MagicMock()
     resp.status_code = status
-    resp.request = SimpleNamespace(url=url)
+    # mcp >= 2.2's redirect helper reads response.next_request and
+    # response.request.method; a bare MagicMock fabricates a redirect.
+    resp.next_request = None
+    resp.request = SimpleNamespace(url=url, method="POST")
 
     async def _aread():
         return body

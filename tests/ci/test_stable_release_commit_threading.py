@@ -4,6 +4,8 @@ from pathlib import Path
 
 from ruamel.yaml import YAML
 
+from tests.ci.fork_workflow_paths import require_upstream_ci_yaml
+
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS = ROOT / ".github/workflows"
 LOCAL_CALL = re.compile(r"^\./\.github/workflows/(?P<name>[^/@]+)$")
@@ -16,6 +18,9 @@ CONTROLLER_CHECKOUTS: dict[tuple[str, str], str] = {}
 
 
 def load(name: str) -> dict:
+    # The fork keeps ci.yml, not upstream's ci.yaml; skip this contract suite when the
+    # reachable graph asks for ci.yaml rather than crash on the missing file.
+    require_upstream_ci_yaml(WORKFLOWS / name)
     return YAML(typ="base").load((WORKFLOWS / name).read_text(encoding="utf-8"))
 
 
