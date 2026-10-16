@@ -873,6 +873,7 @@ from hermes_cli.main_install_repair import (  # frozen updater surface: update_c
     _clear_marker_file,
     _clear_update_incomplete_marker,
     _is_termux_env,
+    _default_update_branch,
     _is_windows,
     _is_windows_npm_path,
     _lazy_refresh_marker_path,

@@ -254,7 +254,8 @@ def test_stable_git_uses_remote_identity_without_moving_local_tags(update_tree, 
         request, = t.requests
         plan, = t.plans
         assert request['source'] == str(t.clone.resolve())
-        assert request['branch'] == (t.args.branch or 'main')
+        # The fork's IoT installs default to pi2-lite; official installs to main.
+        assert request['branch'] == (t.args.branch or cli_main._default_update_branch())
         assert request['plan'] == plan.to_dict()
         assert request['receipt']['plan'] == plan.to_dict()
         assert request['snapshot_id'] == 'release-snapshot'

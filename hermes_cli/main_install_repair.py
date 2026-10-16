@@ -345,6 +345,18 @@ def _resolve_node_runtime_npm() -> str | None:
     return None if _is_windows_npm_path(npm) else npm
 
 
+def _default_update_branch() -> str:
+    """The branch an install updates against when no ``--branch`` is given.
+
+    Official Hermes defaults to ``main``; hermes-agent-iot source/wheel installs
+    default to ``pi2-lite``. Callers that must distinguish "the default branch"
+    from "an explicitly requested branch" (the Windows ZIP-fallback path) use
+    this instead of hardcoding ``main``.
+    """
+    from hermes_cli import main as hermes_main
+    return "pi2-lite" if hermes_main._is_iot_install() else "main"
+
+
 def _resolve_update_branch(args) -> str:
     """Resolve the update branch without detaching IoT installs from Pi2.
 
@@ -354,5 +366,4 @@ def _resolve_update_branch(args) -> str:
     requested = (getattr(args, "branch", None) or "").strip()
     if requested:
         return requested
-    from hermes_cli import main as hermes_main
-    return "pi2-lite" if hermes_main._is_iot_install() else "main"
+    return _default_update_branch()
