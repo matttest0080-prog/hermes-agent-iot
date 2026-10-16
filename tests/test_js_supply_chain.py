@@ -15,6 +15,7 @@ def run(repo, *args):
         text=True,
         encoding="utf-8",
         errors="replace",
+        check=False,
     )
 
 

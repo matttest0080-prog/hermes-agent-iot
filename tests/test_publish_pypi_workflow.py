@@ -1,7 +1,7 @@
 import subprocess
 from pathlib import Path
 
-import yaml
+from hermes_yaml import safe_load
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -10,7 +10,7 @@ RELEASE_PYTHON = '"$RELEASE_PYTHON"'
 
 
 def workflow_jobs():
-    data = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    data = safe_load(WORKFLOW.read_text(encoding="utf-8"))
     return data["jobs"]
 
 
@@ -49,7 +49,7 @@ def test_build_job_uses_a_real_release_virtualenv_for_all_python_commands():
         if step.get("name") == "Install release test and build dependencies"
     )
     assert "uv==0.11.13" in install_run
-    assert "uv sync --frozen --extra dev --extra rag" in install_run
+    assert "uv sync --frozen --group dev --extra full --extra rag" in install_run
     assert "pip install --disable-pip-version-check\n-e" not in install_run
 
     release_test_run = next(
@@ -102,7 +102,7 @@ def test_release_ancestry_gate_accepts_current_and_ancestor_but_rejects_off_bran
 
     for accepted in (ancestor, tip):
         result = subprocess.run(
-            ["bash", str(script), accepted], cwd=repo, text=True, capture_output=True
+            ["bash", str(script), accepted], cwd=repo, text=True, capture_output=True, check=False
         )
         assert result.returncode == 0, result.stderr
 
@@ -112,7 +112,7 @@ def test_release_ancestry_gate_accepts_current_and_ancestor_but_rejects_off_bran
     _git(repo, "commit", "-qm", "off")
     off_branch = _git(repo, "rev-parse", "HEAD")
     rejected = subprocess.run(
-        ["bash", str(script), off_branch], cwd=repo, text=True, capture_output=True
+        ["bash", str(script), off_branch], cwd=repo, text=True, capture_output=True, check=False
     )
     assert rejected.returncode != 0
     assert "not an ancestor" in rejected.stderr

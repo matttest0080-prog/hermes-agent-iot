@@ -23,7 +23,8 @@
     "audit:fix:web": "npm audit fix --workspace web",
     "audit:fix:tui": "npm audit fix --workspace ui-tui",
     "check": "npm run --ws check",
-    "fix": "npm run --ws fix"
+    "fix": "npm run --ws fix",
+    "prepare": "node -e \"const {existsSync}=require('fs');const {spawnSync}=require('child_process');if(existsSync('.git'))spawnSync('lefthook',['install'],{stdio:'inherit',shell:true})\""
   },
   "repository": {
     "type": "git",
@@ -36,13 +37,19 @@
   "homepage": "https://github.com/NousResearch/Hermes-Agent#readme",
   "devDependencies": {
     "@eslint/js": "9.39.5",
-    "typescript-eslint": "8.64.0",
+    "eslint": "10.12.0",
     "eslint-plugin-perfectionist": "5.10.0",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-unused-imports": "4.4.1",
-    "globals": "17.7.0"
+    "globals": "17.7.0",
+    "lefthook": "2.1.14",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.64.0"
   },
   "overrides": {
+    "@electron/osx-sign": {
+      "isbinaryfile": "5.0.7"
+    },
     "lodash": "4.18.1",
     "yauzl": "^3.3.1",
     "protobufjs": "^8.7.1",
@@ -57,29 +64,30 @@
     "nanoid@^3": "3.3.18",
     "nanoid@^6": "6.0.0",
     "js-yaml@^4": "4.3.2",
+    "@simple-git/argv-parser": "2.0.1",
+    "@vitest/mocker@^4": "4.1.11",
     "@xmldom/xmldom@^0.8": "0.8.15",
     "@xmldom/xmldom@^0.9": "0.9.12",
     "baseline-browser-mapping": "2.11.0",
     "browserslist@^4": "4.28.7",
-    "rolldown@^1": "1.2.1",
     "colord@^2": "2.9.4",
     "fast-uri@^3": "3.1.8",
     "joi@^18": "18.2.9",
-    "postcss-selector-parser": "7.1.6",
-    "sanitize-html@^2": "2.17.7",
-    "shell-quote": "1.12.0",
-    "simple-git": "4.0.2",
-    "@simple-git/argv-parser": "2.0.1",
-    "source-map-js": "1.2.2",
-    "vitest@^4": "4.1.11",
-    "@vitest/mocker@^4": "4.1.11",
-    "undici@^6": "6.28.1",
-    "undici@^7": "7.29.1",
     "postcss": {
       ".": "8.5.23",
       "nanoid": "3.3.18"
     },
-    "tar": "7.5.22"
+    "postcss-selector-parser": "7.1.6",
+    "rolldown@^1": "1.2.1",
+    "sanitize-html@^2": "2.17.7",
+    "shell-quote": "1.12.0",
+    "simple-git": "4.0.2",
+    "source-map-js": "1.2.2",
+    "tar": "7.5.22",
+    "undici@^6": "6.29.0",
+    "undici@^7": "7.30.0",
+    "vitest@^4": "4.1.11",
+    "yaml@^2": "2.9.1"
   },
   "engines": {
     "node": "^22.22.0 || ^24.11.0 || >=26.0.0",
@@ -93,6 +101,11 @@
     "electron@41.10.6": true,
     "fsevents@2.3.2": true,
     "fsevents@2.3.3": true,
-    "get-windows@9.3.0": true
+    "get-windows@9.3.0": true,
+    "lefthook@2.1.14": true
+  },
+  "dependencies": {
+    "js-yaml": "4.3.2",
+    "semver": "7.7.4"
   }
 }

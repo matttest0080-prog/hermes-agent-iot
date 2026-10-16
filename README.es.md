@@ -183,11 +183,18 @@ Hermes Agent IoT está orientado principalmente a Raspberry Pi y despliegues edg
 iex (irm https://hermes-agent.nousresearch.com/install.ps1)
 ```
 
+El instalador de código fuente usa PM para Python 3.14, Node.js, npm,
+ripgrep, FFmpeg y las dependencias de Python. Si falta Git, descarga el archivo
+verificado de Git for Windows en el almacén de Hermes, sin reemplazar el Git
+del sistema. MSIX/App Installer es una distribución separada.
+
 ### Linux / macOS / WSL2
 
 ```bash
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 ```
+
+> **Android / Termux:** Hay un paquete APT en pruebas para dispositivos aarch64. Incluye Python, Node.js y la TUI. Sigue la [guía de Termux](https://hermes-agent.nousresearch.com/docs/getting-started/termux), no el script de instalación para escritorio y servidor.
 
 Estos instaladores upstream no instalan los perfiles específicos de Pi2 ni el empaquetado IoT de este fork.
 

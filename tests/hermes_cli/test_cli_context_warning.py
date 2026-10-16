@@ -91,7 +91,11 @@ class TestLowContextWarning:
         calls = [str(c) for c in cli_obj.console.print.call_args_list]
         warning_calls = [c for c in calls if "too low" in c]
         assert len(warning_calls) == 1
-        assert "8,192" in warning_calls[0]
+        # The i18n split moved the floor onto its own line (cli.banner.context_minimum):
+        # the warning names the window, the guidance line names the instance minimum. Both
+        # must come from the instance (8,192), never the default.
+        floor_calls = [c for c in calls if "8,192" in c]
+        assert len(floor_calls) == 1
 
     def test_ollama_specific_hint(self, cli_obj):
         """Ollama-specific fix shown when port 11434 detected."""

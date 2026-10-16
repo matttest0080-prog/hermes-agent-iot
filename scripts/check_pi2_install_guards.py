@@ -70,7 +70,7 @@ def normalize_dep(dep: str) -> str:
 
 
 def iter_pyproject_deps(pyproject: Path) -> Iterable[tuple[str, str]]:
-    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8-sig"))
     project = data.get("project", {})
     for dep in project.get("dependencies", []) or []:
         yield "project.dependencies", dep
@@ -119,7 +119,7 @@ def check_uvloop_profile_policy(repo: Path, failures: FailureCollector) -> None:
     pyproject = repo / "pyproject.toml"
     if not pyproject.exists():
         return
-    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8-sig"))
     optional = (data.get("project", {}) or {}).get("optional-dependencies", {}) or {}
 
     def uvloop_via(profile: str) -> str:
@@ -161,7 +161,7 @@ def check_pi2_locks(repo: Path, failures: FailureCollector) -> None:
         )
         return
     for lock in locks:
-        for number, line in enumerate(lock.read_text(encoding="utf-8").splitlines(), 1):
+        for number, line in enumerate(lock.read_text(encoding="utf-8-sig").splitlines(), 1):
             match = re.match(r"^([A-Za-z0-9][A-Za-z0-9._-]*)==([^\s\\]+)", line)
             if match and match.group(1).lower() in PI2_UNINSTALLABLE_PACKAGES:
                 failures.add(
@@ -172,7 +172,7 @@ def check_pi2_locks(repo: Path, failures: FailureCollector) -> None:
 
 def iter_python_string_literals(path: Path) -> Iterable[str]:
     try:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        tree = ast.parse(path.read_text(encoding="utf-8-sig"), filename=str(path))
     except SyntaxError as exc:
         raise SystemExit(f"Could not parse {path}: {exc}") from exc
     for node in ast.walk(tree):
@@ -201,7 +201,7 @@ def check_setup_pi2(repo: Path, failures: FailureCollector) -> None:
         failures.add("setup-pi2.sh is missing")
         return
 
-    text = setup.read_text(encoding="utf-8")
+    text = setup.read_text(encoding="utf-8-sig")
     commands = [
         line.strip()
         for line in text.splitlines()
@@ -228,7 +228,7 @@ def check_setup_pi2_minimal(repo: Path, failures: FailureCollector) -> None:
         failures.add("setup-pi2-minimal.sh is missing")
         return
 
-    text = setup.read_text(encoding="utf-8")
+    text = setup.read_text(encoding="utf-8-sig")
     if re.search(r"(?m)^\s*(?:source|\.)\s+.*bin/activate", text):
         failures.add(
             "setup-pi2-minimal.sh must not source an untrusted virtualenv activate script"
@@ -261,7 +261,7 @@ def check_iot_optional_deps(repo: Path, failures: FailureCollector) -> None:
     pyproject = repo / "pyproject.toml"
     if not pyproject.exists():
         return
-    data = tomllib.loads(pyproject.read_text(encoding="utf-8"))
+    data = tomllib.loads(pyproject.read_text(encoding="utf-8-sig"))
     project = data.get("project", {})
     deps = project.get("dependencies", []) or []
     optional = project.get("optional-dependencies", {}) or {}
@@ -272,9 +272,26 @@ def check_iot_optional_deps(repo: Path, failures: FailureCollector) -> None:
     if "paho-mqtt" not in mqtt_extra:
         failures.add("pyproject.toml should expose optional-dependencies.mqtt with paho-mqtt")
 
-    lazy_deps = repo / "tools" / "lazy_deps.py"
-    if lazy_deps.exists() and "tool.mqtt" not in lazy_deps.read_text(encoding="utf-8"):
-        failures.add("tools/lazy_deps.py should lazy-install paho-mqtt through the tool.mqtt feature")
+    # Upstream retired tools/lazy_deps for production code: pm.ensure_import is the only
+    # lazy-install surface (scripts/ci/check_lazy_deps_imports.py blocks the old stub), so the
+    # MQTT tool must reach its extra through pm instead of the retired registry.
+    mqtt_tool = repo / "tools" / "mqtt_tool.py"
+    if mqtt_tool.exists():
+        mqtt_text = mqtt_tool.read_text(encoding="utf-8-sig")
+        if 'ensure_import("mqtt")' not in mqtt_text:
+            failures.add(
+                "tools/mqtt_tool.py should lazy-install paho-mqtt through pm.ensure_import(\"mqtt\")"
+            )
+        # Match real import statements only: prose/comments may name the retired module.
+        retired_imports = (
+            "from tools.lazy_deps import",
+            "from tools.lazy_deps.",
+            "import tools.lazy_deps",
+        )
+        if any(marker in mqtt_text for marker in retired_imports):
+            failures.add("tools/mqtt_tool.py must not import the retired lazy-install registry")
+    else:
+        failures.add("tools/mqtt_tool.py is missing; MQTT must stay an optional Pi2 tool")
 
 
 def check_pi2_context_templates(repo: Path, failures: FailureCollector) -> None:
@@ -291,7 +308,7 @@ def check_pi2_context_templates(repo: Path, failures: FailureCollector) -> None:
         if not path.exists():
             failures.add(f"{path.relative_to(repo)} is missing")
             continue
-        text = path.read_text(encoding="utf-8")
+        text = path.read_text(encoding="utf-8-sig")
         agent_match = re.search(r"(?ms)^agent:\s*\n(?P<body>(?:^[ \t]+.*(?:\n|$))*)", text)
         body = agent_match.group("body") if agent_match else ""
         floor_match = re.search(
@@ -312,7 +329,7 @@ def check_web_server(repo: Path, failures: FailureCollector) -> None:
         failures.add("hermes_cli/web_server.py is missing")
         return
 
-    text = web_server.read_text(encoding="utf-8")
+    text = web_server.read_text(encoding="utf-8-sig")
     compact = re.sub(r"\s+", "", text)
     if "uvicorn.Config" in text and 'loop="asyncio"' not in compact and "loop='asyncio'" not in compact:
         failures.add(

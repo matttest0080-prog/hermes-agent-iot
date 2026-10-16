@@ -1,8 +1,8 @@
 from pathlib import Path
 
 import pytest
-import yaml
 
+from hermes_yaml import safe_load
 from scripts.osv_sarif_summary import summarize_sarif
 
 
@@ -16,7 +16,7 @@ def valid_sarif():
 
 
 def _steps():
-    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    workflow = safe_load(WORKFLOW.read_text(encoding="utf-8"))
     return workflow["jobs"]["emit-status"]["steps"]
 
 
@@ -31,7 +31,7 @@ def test_emit_status_fails_closed_without_sarif_artifact():
 
 
 def test_emit_status_uses_the_configured_sarif_filename():
-    workflow = yaml.safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    workflow = safe_load(WORKFLOW.read_text(encoding="utf-8"))
     configured = workflow["jobs"]["scan"]["with"]["results-file-name"]
     emit = next(step for step in _steps() if step.get("id") == "emit")
 

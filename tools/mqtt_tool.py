@@ -20,8 +20,9 @@ from __future__ import annotations
 
 from collections import deque
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime, timezone, UTC
 import json
+import logging
 import math
 import os
 import secrets
@@ -30,6 +31,8 @@ import time
 from typing import Any, Callable
 
 from tools.registry import registry, tool_error
+
+logger = logging.getLogger(__name__)
 
 
 _MAX_TOPIC_BYTES = 65535
@@ -40,13 +43,17 @@ _MAX_INBOUND_RESPONSE_BYTES = 256 * 1024
 
 def _mqtt_client_factory():
     try:
-        from tools.lazy_deps import ensure
+        # Upstream retired the tools.lazy_deps installer for production code
+        # (scripts/ci/check_lazy_deps_imports.py blocks it): pm.ensure_import is the
+        # only lazy-install surface, keyed by the pyproject extra name.
+        from pm import ensure_import
 
-        ensure("tool.mqtt", prompt=False)
+        ensure_import("mqtt")
     except Exception:
         # If lazy install is unavailable/disabled, fall through to the import so
         # the handler reports the concrete ModuleNotFoundError to the caller.
-        pass
+        logger.debug("MQTT lazy install unavailable; falling back to a plain import",
+                     exc_info=True)
 
     import paho.mqtt.client as mqtt  # type: ignore[unresolved-import]
 
@@ -200,11 +207,11 @@ def _safe_close_client(client: Any) -> None:
     try:
         client.loop_stop()
     except Exception:
-        pass
+        logger.debug("MQTT loop_stop failed during best-effort cleanup", exc_info=True)
     try:
         client.disconnect()
     except Exception:
-        pass
+        logger.debug("MQTT disconnect failed during best-effort cleanup", exc_info=True)
 
 
 def _inbound_payload_size(msg: Any) -> int:
@@ -234,7 +241,7 @@ def _message_to_dict(msg: Any) -> dict[str, Any]:
         "payload": payload,
         "qos": int(getattr(msg, "qos", 0) or 0),
         "retain": bool(getattr(msg, "retain", False)),
-        "received_at": datetime.now(timezone.utc).isoformat(),
+        "received_at": datetime.now(UTC).isoformat(),
     }
 
 
@@ -289,7 +296,7 @@ def _subscribe_recent(topic_filter: str, *, timeout_seconds: float, max_messages
     subscribed = threading.Event()
     subscribe_errors: list[str] = []
 
-    def on_message(client_obj, userdata, msg):  # noqa: ANN001 - paho callback signature
+    def on_message(client_obj, userdata, msg):
         nonlocal accepted_bytes, dropped_messages, dropped_bytes
         payload_bytes = _inbound_payload_size(msg)
         if payload_bytes > _MAX_INBOUND_PAYLOAD_BYTES:
@@ -310,7 +317,7 @@ def _subscribe_recent(topic_filter: str, *, timeout_seconds: float, max_messages
         messages.append(message)
         accepted_bytes += message_bytes
 
-    def on_connect(client_obj, userdata, flags, reason_code, properties=None):  # noqa: ANN001
+    def on_connect(client_obj, userdata, flags, reason_code, properties=None):
         rc = getattr(reason_code, "value", reason_code)
         if rc not in (0, None):
             subscribe_errors.append(f"MQTT connect failed with rc={rc}")
@@ -322,7 +329,7 @@ def _subscribe_recent(topic_filter: str, *, timeout_seconds: float, max_messages
             subscribe_errors.append(f"MQTT subscribe failed with rc={sub_rc}")
             subscribed.set()
 
-    def on_subscribe(client_obj, userdata, mid, reason_codes, properties=None):  # noqa: ANN001
+    def on_subscribe(client_obj, userdata, mid, reason_codes, properties=None):
         rejection = _subscription_rejection(reason_codes)
         if rejection is not None:
             subscribe_errors.append(f"MQTT subscription rejected: {rejection}")
@@ -375,7 +382,7 @@ def _command_and_wait(
     subscribed = threading.Event()
     subscribe_errors: list[str] = []
 
-    def on_message(client_obj, userdata, msg):  # noqa: ANN001
+    def on_message(client_obj, userdata, msg):
         nonlocal accepted_bytes, dropped_messages, dropped_bytes
         payload_bytes = _inbound_payload_size(msg)
         if payload_bytes > _MAX_INBOUND_PAYLOAD_BYTES:
@@ -396,7 +403,7 @@ def _command_and_wait(
         messages.append(message)
         accepted_bytes += message_bytes
 
-    def on_connect(client_obj, userdata, flags, reason_code, properties=None):  # noqa: ANN001
+    def on_connect(client_obj, userdata, flags, reason_code, properties=None):
         rc = getattr(reason_code, "value", reason_code)
         if rc not in (0, None):
             subscribe_errors.append(f"MQTT connect failed with rc={rc}")
@@ -408,7 +415,7 @@ def _command_and_wait(
             subscribe_errors.append(f"MQTT subscribe failed with rc={sub_rc}")
             subscribed.set()
 
-    def on_subscribe(client_obj, userdata, mid, reason_codes, properties=None):  # noqa: ANN001
+    def on_subscribe(client_obj, userdata, mid, reason_codes, properties=None):
         rejection = _subscription_rejection(reason_codes)
         if rejection is not None:
             subscribe_errors.append(f"MQTT state subscription rejected: {rejection}")
@@ -465,6 +472,7 @@ def _handle_mqtt_publish(args: dict, **kw) -> str:
         )
         return json.dumps({"result": _publish(topic, payload, qos=qos, retain=retain)})
     except Exception as exc:
+        logger.debug("_handle_mqtt_publish failed", exc_info=True)
         return tool_error(str(exc))
 
 
@@ -477,6 +485,7 @@ def _handle_mqtt_subscribe_recent(args: dict, **kw) -> str:
         result = _subscribe_recent(topic_filter, timeout_seconds=timeout_seconds, max_messages=max_messages, qos=qos)
         return json.dumps({"result": result})
     except Exception as exc:
+        logger.debug("_handle_mqtt_subscribe_recent failed", exc_info=True)
         return tool_error(str(exc))
 
 
@@ -506,6 +515,7 @@ def _handle_mqtt_device_command(args: dict, **kw) -> str:
         publish_result = _publish(command_topic, payload, qos=qos, retain=retain)
         return json.dumps({"result": {**publish_result, "command_topic": command_topic, "state_messages": []}})
     except Exception as exc:
+        logger.debug("_handle_mqtt_device_command failed", exc_info=True)
         return tool_error(str(exc))
 
 

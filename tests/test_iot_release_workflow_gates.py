@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import yaml
+from hermes_yaml import safe_load
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -15,6 +15,6 @@ def test_iot_pr_ci_preserves_the_default_branch_workflow_path() -> None:
 
 
 def test_vercel_release_deploy_is_gated_to_upstream_repository() -> None:
-    jobs = yaml.safe_load(DEPLOY_SITE.read_text(encoding="utf-8"))["jobs"]
+    jobs = safe_load(DEPLOY_SITE.read_text(encoding="utf-8"))["jobs"]
     condition = str(jobs["deploy-vercel"]["if"])
     assert "github.repository == 'NousResearch/hermes-agent'" in condition

@@ -4,9 +4,32 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { afterEach, test } from 'vitest'
+// The fork pins simple-git 4.0.2 (OSV remediation) where upstream pins 3.36.0.
+// v4 dropped the callable default export, so the escape hatch has to be reached
+// through the named factory — the same shape production uses in
+// `git-review-ops.ts` (`import { simpleGit } from 'simple-git'`).
+import { simpleGit } from 'simple-git'
+import { afterEach, test, vi } from 'vitest'
 
-import { gitFor, repoStatus, resolveRenamePath, REVIEW_FILE_CAP, reviewList } from './git-review-ops'
+import {
+  gitFor,
+  repoStatus,
+  resolveRenamePath,
+  REVIEW_FILE_CAP,
+  reviewCreatePr,
+  reviewList,
+  SIMPLE_GIT_UNSAFE_BINARY_WARN
+} from './git-review-ops'
+import type * as NoConsoleGit from './no-console-git'
+
+// `runGh` shells to the `gh` CLI via execFile. Mock it so reviewCreatePr's gh
+// invocation is controllable (real `gh` may be absent or slow in CI) while the
+// repo setup below still uses the real execFileSync.
+vi.mock('node:child_process', async importOriginal => {
+  const actual = await importOriginal<{ execFile: unknown; execFileSync: unknown }>()
+
+  return { ...actual, execFile: vi.fn() }
+})
 
 const tempDirs: string[] = []
 
@@ -36,6 +59,101 @@ test('resolveRenamePath: plain path is unchanged', () => {
 
 test('gitFor accepts an internally resolved git binary path containing spaces', () => {
   assert.doesNotThrow(() => gitFor(process.cwd(), 'C:\\Program Files\\Git\\cmd\\git.exe'))
+})
+
+test('gitFor accepts internally resolved git paths with restricted non-space characters', () => {
+  // simple-git's whitelist is `/^([a-z]:)?([a-z0-9/.\_~-]+)$/i`, so parentheses
+  // (`Program Files (x86)`), `+`, and accented profile dirs (`C:\Users\João\...`)
+  // are rejected exactly like a space — a `/\s/` guess still throws on them.
+  const restrictedBinaries = [
+    String.raw`C:\Git(x86)\cmd\git.exe`,
+    String.raw`C:\tools\git+portable\cmd\git.exe`,
+    String.raw`C:\Users\João\AppData\Local\hermes\git\cmd\git.exe`
+  ]
+
+  for (const binary of restrictedBinaries) {
+    assert.doesNotThrow(() => gitFor(process.cwd(), binary), `should accept ${binary}`)
+  }
+})
+
+test('gitFor accepts a Windows no-console host tuple with restricted characters', async () => {
+  vi.resetModules()
+  vi.doMock('./no-console-git', async importOriginal => {
+    const actual = await importOriginal<typeof NoConsoleGit>()
+
+    return {
+      ...actual,
+      windowsGitHost: () => ({
+        isWindows: true,
+        pythonBin: String.raw`C:\Tools\python-3.14+build\python.exe`,
+        scriptPath: String.raw`C:\Hermes\hermes-no-console-git.py`
+      })
+    }
+  })
+
+  try {
+    const { gitFor: gitForWithHostTuple } = await import('./git-review-ops')
+
+    assert.doesNotThrow(() => gitForWithHostTuple(process.cwd(), 'git'))
+  } finally {
+    vi.doUnmock('./no-console-git')
+    vi.resetModules()
+  }
+})
+
+test('gitFor suppresses only the known custom-binary warning and restores console.warn', () => {
+  const spacedBin = String.raw`C:\Program Files\Git\cmd\git.exe`
+  // `windowsGitHost()` resolves nothing in this process (no configured roots, no
+  // HERMES_DESKTOP_PYTHON), so `gitBin` itself is what simple-git validates — the
+  // spaced `Program Files` path, which warns once per factory call.
+  const warnings: unknown[][] = []
+  const originalWarn = console.warn
+
+  const recordingWarn = (...args: unknown[]) => {
+    warnings.push(args)
+  }
+
+  const isKnownCustomBinaryWarning = (args: unknown[]) =>
+    typeof args[0] === 'string' && (args[0] as string).startsWith(SIMPLE_GIT_UNSAFE_BINARY_WARN)
+
+  // What the installed factory emits for this path, recorded once before gitFor
+  // runs: simple-git 3.x emits the known custom-binary warning (upstream's pin),
+  // while the fork's OSV pin 4.0.2 emits none. Asserting on the live emission keeps
+  // the filter honest — a reworded message still fails this test, not production —
+  // without hard-coding either release's behaviour.
+  const emitted: unknown[][] = []
+  console.warn = (...args: unknown[]) => {
+    emitted.push(args)
+  }
+  try {
+    simpleGit({ baseDir: process.cwd(), binary: spacedBin, unsafe: { allowUnsafeCustomBinary: true } })
+  } finally {
+    console.warn = recordingWarn
+  }
+  assert.ok(
+    emitted.every(isKnownCustomBinaryWarning),
+    `unexpected emissions: ${JSON.stringify(emitted)}`
+  )
+
+  console.warn = recordingWarn
+
+  try {
+    for (let i = 0; i < 5; i += 1) {
+      gitFor(process.cwd(), spacedBin)
+    }
+
+    assert.equal(console.warn, recordingWarn)
+
+    // Every gitFor call site produced only known emissions, so the filter swallowed
+    // all of them and the recorder saw nothing (0 when the factory emits none).
+    assert.deepEqual(warnings, [])
+
+    console.warn('unrelated warning')
+  } finally {
+    console.warn = originalWarn
+  }
+
+  assert.deepEqual(warnings, [['unrelated warning']])
 })
 
 test('resolveRenamePath: simple rename resolves to the new path', () => {
@@ -96,4 +214,45 @@ test('reviewList caps the file payload returned to the renderer', async () => {
   const result = await reviewList(dir, 'uncommitted', null, 'git')
 
   assert.equal(result.files.length, REVIEW_FILE_CAP)
+})
+
+const mockExecFile = vi.mocked(await import('node:child_process')).execFile
+
+type ExecFileCallback = (error: Error | null, stdout?: string, stderr?: string) => void
+
+// `execFile` has overloaded declarations returning ChildProcess; the mock
+// implementation only needs to drive its callback, so view it as a plain
+// callable and set the implementation through the Mock typing.
+function failGh(stderr: string): void {
+  ;(
+    mockExecFile as unknown as {
+      mockImplementation: (
+        impl: (file: string, args: string[], options: object, callback: ExecFileCallback) => void
+      ) => unknown
+    }
+  ).mockImplementation((_bin: string, _args: string[], _opts: object, callback: ExecFileCallback) => {
+    const error = new Error('command failed')
+
+    if (stderr) {
+      ;(error as Error & { stderr?: string }).stderr = stderr
+    }
+
+    callback(error, '', stderr)
+  })
+}
+
+test('reviewCreatePr surfaces gh stderr when pr create fails', async () => {
+  const dir = makeRepo()
+
+  failGh('no commits between main and feature')
+
+  await assert.rejects(reviewCreatePr(dir, 'git', 'gh'), /no commits between main and feature/)
+})
+
+test('reviewCreatePr falls back to the generic message when gh reports no stderr', async () => {
+  const dir = makeRepo()
+
+  failGh('')
+
+  await assert.rejects(reviewCreatePr(dir, 'git', 'gh'), /is gh installed and authenticated\?/)
 })

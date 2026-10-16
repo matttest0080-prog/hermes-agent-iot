@@ -19,6 +19,7 @@ import pytest
 
 import agent.model_metadata as model_meta_mod
 from hermes_cli import model_switch
+from tests.waiting import async_wait_until
 
 PROBE_SECONDS = 0.05
 
@@ -39,6 +40,7 @@ def slow_probe(monkeypatch):
 
     def _probe(model, **kwargs):
         calls["thread"] = threading.current_thread()
+        # health: allow HX013 -- PROBE_SECONDS is the probe latency the responsiveness assertion measures; an Event would deadlock the await
         time.sleep(PROBE_SECONDS)
         return 128000
 
@@ -81,12 +83,13 @@ async def test_event_loop_stays_responsive_during_resolution(slow_probe):
             t0 = time.monotonic()
             try:
                 await asyncio.wait_for(stop.wait(), timeout=interval)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
             lags.append(time.monotonic() - t0 - interval)
 
     hb = asyncio.create_task(heartbeat())
-    await asyncio.sleep(0.05)  # let the heartbeat settle
+    # Wait for the heartbeat to tick rather than betting on a fixed 50 ms.
+    await async_wait_until(lambda: len(lags) >= 2, what="the heartbeat to tick")
 
     ctx = await model_switch.resolve_display_context_length_async(**RESOLVE_ARGS)
 

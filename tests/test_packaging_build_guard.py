@@ -9,9 +9,7 @@ from pathlib import Path
 
 import pytest
 
-
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
-
 
 def _build_artifact(
     kind: str,
@@ -53,9 +51,7 @@ def _build_artifact(
         [
             sys.executable,
             "-c",
-            "from setuptools.build_meta import build_{kind}; build_{kind}(r'{out}')".format(
-                kind=kind, out=tmp_path
-            ),
+            f"from setuptools.build_meta import build_{kind}; build_{kind}(r'{tmp_path}')",
         ],
         cwd=PROJECT_ROOT,
         env=env,
@@ -63,7 +59,6 @@ def _build_artifact(
         capture_output=True,
         check=False,
     )
-
 
 @pytest.mark.parametrize("kind", ["sdist", "wheel"])
 def test_artifact_build_rejects_nix_development_shell_environment(kind, tmp_path):

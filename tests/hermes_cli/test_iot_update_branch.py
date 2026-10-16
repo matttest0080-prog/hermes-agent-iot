@@ -2,6 +2,7 @@ import json
 from argparse import Namespace
 from importlib import metadata
 
+from hermes_cli import iot_install
 import hermes_cli.main as hermes_main
 
 
@@ -10,7 +11,7 @@ def test_iot_source_defaults_update_to_pi2_lite(tmp_path, monkeypatch):
         '[project]\nname = "hermes-agent-iot"\nversion = "0.20.4"\n',
         encoding="utf-8",
     )
-    monkeypatch.setattr(hermes_main, "PROJECT_ROOT", tmp_path)
+    monkeypatch.setattr(iot_install, "PROJECT_ROOT", tmp_path)
     monkeypatch.setattr(metadata, "distribution", lambda name: (_ for _ in ()).throw(metadata.PackageNotFoundError(name)))
     monkeypatch.delenv("HERMES_HOME", raising=False)
 
@@ -27,7 +28,7 @@ def test_iot_install_profile_without_iot_distribution_cannot_redirect_update(tmp
     )
     project = tmp_path / "project"
     project.mkdir()
-    monkeypatch.setattr(hermes_main, "PROJECT_ROOT", project)
+    monkeypatch.setattr(iot_install, "PROJECT_ROOT", project)
     monkeypatch.setenv("HERMES_HOME", str(home))
     monkeypatch.setattr(metadata, "distribution", lambda name: (_ for _ in ()).throw(metadata.PackageNotFoundError(name)))
 
@@ -44,7 +45,7 @@ def test_official_distribution_ignores_stale_user_writable_iot_profile(tmp_path,
     )
     project = tmp_path / "project"
     project.mkdir()
-    monkeypatch.setattr(hermes_main, "PROJECT_ROOT", project)
+    monkeypatch.setattr(iot_install, "PROJECT_ROOT", project)
     monkeypatch.setenv("HERMES_HOME", str(home))
 
     def installed_distribution(name):
@@ -61,7 +62,7 @@ def test_official_distribution_ignores_stale_user_writable_iot_profile(tmp_path,
 def test_actual_iot_distribution_defaults_to_pi2_lite(tmp_path, monkeypatch):
     project = tmp_path / "project"
     project.mkdir()
-    monkeypatch.setattr(hermes_main, "PROJECT_ROOT", project)
+    monkeypatch.setattr(iot_install, "PROJECT_ROOT", project)
     monkeypatch.setenv("HERMES_HOME", str(tmp_path / "home"))
 
     def installed_distribution(name):

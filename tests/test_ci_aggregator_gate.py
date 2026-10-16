@@ -57,6 +57,7 @@ def _run_gate(results: dict[str, str], tmp_path: pathlib.Path) -> subprocess.Com
         env=env,
         capture_output=True,
         text=True,
+        check=False,
     )
 
 
@@ -98,7 +99,7 @@ def test_any_unexpected_result_state_fails_the_gate(tmp_path):
 
 
 def test_needs_json_output_is_written_for_the_comment_assembler(tmp_path):
-    proc = _run_gate({"tests": "failure", "lint": "skipped"}, tmp_path)
+    _run_gate({"tests": "failure", "lint": "skipped"}, tmp_path)
     written = (tmp_path / "github_output.txt").read_text(encoding="utf-8")
     match = re.search(r"^needs-json=(.+)$", written, re.MULTILINE)
     assert match, written

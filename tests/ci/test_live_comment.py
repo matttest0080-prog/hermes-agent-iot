@@ -14,6 +14,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.ci.fork_workflow_paths import require_upstream_ci_yaml
+
 _PATH = Path(__file__).resolve().parents[2] / "scripts" / "ci" / "live_comment.py"
 _spec = importlib.util.spec_from_file_location("live_comment", _PATH)
 if _spec is None or _spec.loader is None:
@@ -94,7 +96,7 @@ def test_workflow_watch_list_names_a_workflow_that_exists():
     A name that matches nothing makes the poller silently drop that run
     from the comment, which no unit test on its own would notice.
     """
-    yaml = pytest.importorskip("yaml")
+    yaml = pytest.importorskip("hermes_yaml")
     root = Path(__file__).resolve().parents[2]
     caller = yaml.safe_load(
         (root / ".github/workflows/ci-review-comment.yml").read_text(encoding="utf-8")
@@ -123,7 +125,7 @@ def test_poller_never_watches_its_own_workflow():
     itself would make the loop wait for itself and only ever exit on
     timeout.
     """
-    yaml = pytest.importorskip("yaml")
+    yaml = pytest.importorskip("hermes_yaml")
     root = Path(__file__).resolve().parents[2]
     doc = yaml.safe_load(
         (root / ".github/workflows/ci-review-comment.yml").read_text(encoding="utf-8")
@@ -135,6 +137,18 @@ def test_poller_never_watches_its_own_workflow():
     )
     watched = _mod.parse_watch_workflows(step["env"]["WATCH_WORKFLOWS"])
     assert own_name not in watched
+
+
+def test_the_merge_gate_never_shows_as_a_job_in_the_comment():
+    """The gate's display name is versioned (bumped to void pre-change greens);
+    every rename must reach the infra list, or the comment lists the gate as a job."""
+    yaml = pytest.importorskip("hermes_yaml")
+    root = Path(__file__).resolve().parents[2]
+    require_upstream_ci_yaml(root / ".github/workflows/ci.yaml")
+    ci = yaml.safe_load((root / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    gate = ci["jobs"]["all-checks-pass"]["name"]
+    completed, pending, _ = classify_jobs([{"name": gate, "status": "completed", "conclusion": "success"}])
+    assert (completed, pending) == ({}, [])
 
 
 # ─── runs_all_completed ───────────────────────────────────────────────

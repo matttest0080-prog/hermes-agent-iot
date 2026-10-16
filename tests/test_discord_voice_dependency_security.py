@@ -2,6 +2,13 @@
 
 The Discord recovery paths must not use ``discord.py[voice]`` because
 ``discord.py==2.7.1`` constrains that extra to vulnerable ``PyNaCl<1.6``.
+
+Upstream v0.21.7 retired ``tools/lazy_deps.py`` — production code is barred from
+importing it (``scripts/ci/check_lazy_deps_imports.py``) and ``pm.ensure_import``
+is the only lazy-install surface — and rewrote ``scripts/install.ps1``, dropping
+its platform-SDK map. Both were hosts for the voice pins when the fork branched;
+the surviving authorities are pyproject.toml's ``messaging`` extra and
+``scripts/discord-voice-doctor.py``, which is where this module now pins them.
 """
 
 import importlib.util
@@ -14,12 +21,19 @@ from packaging.utils import canonicalize_name
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = (REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8")
-LAZY_DEPS = (REPO_ROOT / "tools" / "lazy_deps.py").read_text(encoding="utf-8")
-INSTALL_PS1 = (REPO_ROOT / "scripts" / "install.ps1").read_text(encoding="utf-8")
 VOICE_DOCTOR = (REPO_ROOT / "scripts" / "discord-voice-doctor.py").read_text(
     encoding="utf-8"
 )
 PI2_INSTALLER = (REPO_ROOT / "setup-pi2-minimal.sh").read_text(encoding="utf-8")
+
+# The fork's explicit voice closure lives in the ``messaging`` extra. Upstream's
+# bare ``discord`` alias extra still declares ``discord.py[voice]==2.7.1``, but the
+# vulnerable ``PyNaCl<1.6`` cap it drags in is neutralised by the ``[tool.uv]``
+# override ``pynacl>=1.6,<1.7``; ``messaging`` remains the recovery path, so the
+# "never use discord.py[voice]" guarantee is asserted against it (and the doctor).
+MESSAGING_EXTRA = tomllib.loads(PYPROJECT)["project"]["optional-dependencies"][
+    "messaging"
+]
 
 PATCHED_VOICE_SPECS = (
     "discord.py==2.7.1",
@@ -37,21 +51,16 @@ def _load_voice_doctor():
     return module
 
 
-def test_all_discord_install_paths_use_patched_voice_specs():
+def test_surviving_voice_install_authorities_use_patched_specs():
+    # Upstream retired tools/lazy_deps.py and rewrote install.ps1 (its SDK map is
+    # gone), so the pins' surviving hosts are the messaging extra and the voice
+    # doctor. discord.py[voice] must stay out of both recovery paths.
     for spec in PATCHED_VOICE_SPECS:
-        assert spec in PYPROJECT
-        assert spec in LAZY_DEPS
-        assert spec in INSTALL_PS1
+        assert spec in MESSAGING_EXTRA
+        assert spec in VOICE_DOCTOR
 
-    assert "discord.py[voice]" not in PYPROJECT
-    assert "discord.py[voice]" not in LAZY_DEPS
-    assert "discord.py[voice]" not in INSTALL_PS1
-
-
-def test_windows_recovery_verifies_every_voice_import():
-    for import_name in ("discord", "nacl", "davey"):
-        expected = f'Var = "DISCORD_BOT_TOKEN";  Import = "{import_name}"'
-        assert expected in INSTALL_PS1
+    assert not any("discord.py[voice]" in spec for spec in MESSAGING_EXTRA)
+    assert "discord.py[voice]" not in VOICE_DOCTOR
 
 
 def test_voice_doctor_never_recommends_vulnerable_pynacl_floor():
