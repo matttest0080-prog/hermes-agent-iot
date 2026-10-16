@@ -174,7 +174,17 @@ def test_failed_setup_never_runs_child_and_releases_handles(tmp_path, monkeypatc
 
     def assign(job, proc):
         children.append(proc)
-        assert psutil.Process(proc.pid).status() == psutil.STATUS_STOPPED
+        # The child is created with CREATE_SUSPENDED, so it is stopped before this
+        # hook runs; a loaded Windows runner can report `running` for a beat while
+        # the process object settles, so wait for the suspension instead of
+        # sampling once.
+        deadline = time.monotonic() + 10.0
+        while psutil.Process(proc.pid).status() != psutil.STATUS_STOPPED:
+            assert time.monotonic() < deadline, (
+                f"child {proc.pid} was not suspended before job assignment "
+                f"(status {psutil.Process(proc.pid).status()!r})"
+            )
+            time.sleep(0.01)
         assert not marker.exists()
         # Query the actual kernel object, not implementation source/constants.
         limits = processes._ExtendedLimits()

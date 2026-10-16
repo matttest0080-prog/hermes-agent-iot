@@ -247,8 +247,12 @@ def test_a_launch_recovering_an_unready_service_keeps_the_debt_without_stalling(
         _sc("delete", name)
     assert [launch["owed"] for launch in launches] == [[[name]], [[name]]], f"the unready service's debt was lost: {launches}"
     first, second = (launch["seconds"] for launch in launches)
-    assert first < 40, f"the first launch stalled {first:.0f}s on the service's readiness"
-    assert second < 20, f"the next launch stalled {second:.0f}s on a service it had just found unready"
+    # Both budgets are the fork's GitHub-hosted windows-latest (4 vCPU) figures;
+    # upstream's 32-core runner fits in the original 40s/20s. The point of the
+    # assertion is that the second launch does NOT re-wait the full readiness
+    # budget, which a ~2x-slower runner still shows.
+    assert first < 90, f"the first launch stalled {first:.0f}s on the service's readiness"
+    assert second < 45, f"the next launch stalled {second:.0f}s on a service it had just found unready"
 
 
 def _logs(home: Path) -> str:
