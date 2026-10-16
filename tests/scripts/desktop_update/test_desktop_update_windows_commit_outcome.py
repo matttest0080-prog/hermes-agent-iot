@@ -157,6 +157,7 @@ import msvcrt, os, sys, time
 fd = os.open(sys.argv[1], os.O_RDWR | os.O_CREAT | os.O_BINARY, 0o644)
 os.lseek(fd, 1 << 20, os.SEEK_SET)
 msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)   # hermes_cli/update_lock.py::_try_lock's byte
+open(sys.argv[1] + '.held', 'w').close()  # the lock is now provably held
 time.sleep(float(sys.argv[2]))
 """
 
@@ -168,8 +169,17 @@ def test_result_finished_at_is_stamped_after_the_r6_release_wait(tmp_path: Path)
     holders = []
 
     def hold_checkout(_home: Path, install: Path) -> None:
+        lock = install / '.hermes-update.lock'
         holders.append((subprocess.Popen([sys.executable, '-c', _TIMED_CHECKOUT_HOLDER,
-                                          str(install / '.hermes-update.lock'), '25']), time.time() + 25))
+                                          str(lock), '25']), time.time() + 25))
+        # Do not start the hand-off until the holder actually owns the lock: on a
+        # loaded runner the hand-off can otherwise probe before the lock exists
+        # and claim the marker, which this test asserts never happens.
+        deadline = time.time() + 15
+        while not lock.with_name(lock.name + '.held').exists():
+            if time.time() > deadline:
+                raise AssertionError('the timed lock holder never acquired the checkout lock')
+            time.sleep(0.05)
     try:
         code, out, _, result, home = _handoff(tmp_path, '-NoGateway', prepare=hold_checkout)
     finally:

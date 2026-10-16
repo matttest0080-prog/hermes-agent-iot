@@ -1447,6 +1447,10 @@ exit 3
     # A sleep-per-chunk drain moves 16 KiB/150ms ~ 107 KB/s, so 8 MiB takes
     # ~76s. Generous enough for a loaded CI runner, far under the trickle.
     $floodBudget = 25
+    # IoT fork: the GitHub-hosted windows-latest (4 vCPU) drains the 8 MiB flood
+    # slower than upstream's 32-core runner; the caller raises this without
+    # letting it reach the ~76s sleep-per-chunk trickle the budget guards against.
+    if ($env:HERMES_SELFTEST_FLOOD_BUDGET) { $floodBudget = [int]$env:HERMES_SELFTEST_FLOOD_BUDGET }
     $problems = @()
     if (-not $leakAlive) { $problems += "handle-holding grandchild was not alive on return (fixture did not reproduce the leak)" }
     if ($elapsed -ge $budget) { $problems += "leak arm returned in ${elapsed}s, over the ${budget}s budget" }

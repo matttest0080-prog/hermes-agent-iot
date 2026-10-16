@@ -113,6 +113,9 @@ def test_update_step_survives_pipe_leak_flood_and_live_child_stall(
         # Cold PowerShell children can take more than three seconds to emit.
         "HERMES_UPDATE_STEP_IDLE_SECONDS": "15",
         "HERMES_SELFTEST_HOLD_SECONDS": "45",
+        # The GitHub-hosted 4-vCPU runner drains the 8 MiB flood slower than
+        # upstream's large runner; keep it under the ~76s trickle budget.
+        "HERMES_SELFTEST_FLOOD_BUDGET": "55",
     }
 
     result = subprocess.run(
