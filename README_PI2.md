@@ -73,16 +73,17 @@ the upstream `hermes-agent` distribution into this virtual environment because
 the two distributions provide overlapping Python modules and CLI commands.
 
 The public extras aggregate the retained internal extras: `minimal=cli+pty`,
-`iot=minimal+mcp+acp+homeassistant+mqtt+sms`, `rag=iot+honcho`, `full=all`, and
-`dev=full+developer tools`. `full` and `dev` are not recommended on Pi2/1 GB.
+`iot=minimal+mcp+acp+homeassistant+mqtt+sms`, `rag=iot+honcho`, and `full=all`.
+The separate `dev` install profile adds developer tooling from
+`requirements/pi2/dev.lock`. `full` and `dev` are not recommended on Pi2/1 GB.
 If config already exists, setup leaves it untouched and prints the packaged
 template path for comparison.
 
 The PyPI wheel deliberately excludes repository-level bundled/optional skills,
 optional MCP catalogs, and Desktop/TUI/Web build assets. Install from the
-`pi2-lite` Git branch when those source-tree assets are needed. The `full` and
-`dev` PyPI extras select broader Python dependencies; they are not Desktop
-application bundles.
+`pi2-lite` Git branch when those source-tree assets are needed. The `full`
+PyPI extra selects broader Python dependencies; it is not a Desktop
+application bundle.
 
 The wheel also excludes the repository's non-English locale catalog. It does
 not silently download missing skills, MCP catalogs, locale files, Dashboard, or

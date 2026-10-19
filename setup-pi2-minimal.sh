@@ -156,6 +156,12 @@ PY
 # dependency list.
 
 EXTRAS="$PROFILE"
+# 0.22.2 retired the public `dev` extra. The dev profile is full plus the
+# tooling pinned in requirements/pi2/dev.lock, so the editable install must
+# use the existing [full] extra instead of a name pip would only warn about.
+if [[ "$PROFILE" == "dev" ]]; then
+  EXTRAS="full"
+fi
 
 echo "==> [Pi2] Installing Hermes Agent through native package metadata"
 LOCK_FILE="$REPO_DIR/requirements/pi2/$PROFILE.lock"
