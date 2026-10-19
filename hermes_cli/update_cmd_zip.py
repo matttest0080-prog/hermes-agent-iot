@@ -624,7 +624,10 @@ def _update_via_zip(args, *, had_desktop_app_before_update: bool = False,
     # The static archive would silently ignore --branch — the exact silent-divergence bug it exists to
     # prevent. Refuse rather than lie.
     branch = _m()._resolve_update_branch(args)
-    if branch != _m()._default_update_branch():
+    # ``main`` is always addressable through the static archive; the fork's own
+    # default (``pi2-lite`` for IoT installs) is the branch the no-flag update
+    # resolves to, so both are allowed here.
+    if branch not in {"main", _m()._default_update_branch()}:
         print(f"✗ --branch={branch} is not supported on the Windows ZIP-fallback update path.")
         print(
             "  This path runs when git file I/O is broken on the system. "
