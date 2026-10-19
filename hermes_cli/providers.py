@@ -28,6 +28,11 @@ class HermesOverlay:
 HERMES_OVERLAYS: dict[str, HermesOverlay] = {
     "moa": HermesOverlay(auth_type="virtual", base_url_override="moa://local"),
     "openrouter": HermesOverlay(is_aggregator=True, base_url_env_var="OPENROUTER_BASE_URL"),
+    # models.dev lists CommandCode with CMD_API_KEY, but the plugin profile and the
+    # documented key are COMMANDCODE_API_KEY. Accept both and keep the plugin's
+    # base-URL override so switching providers does not lose the configured key.
+    "commandcode": HermesOverlay(extra_env_vars=("COMMANDCODE_API_KEY",),
+                                 base_url_env_var="COMMANDCODE_BASE_URL"),
     "nous": HermesOverlay(auth_type="oauth_device_code", base_url_override="https://inference-api.nousresearch.com/v1"),
     "openai-codex": HermesOverlay(transport="codex_responses", auth_type="oauth_external",
                                   base_url_override="https://chatgpt.com/backend-api/codex"),
