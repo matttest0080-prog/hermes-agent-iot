@@ -89,7 +89,7 @@ jobs:
           from importlib import metadata, resources
           assert metadata.version("hermes-agent-iot") == os.environ["TAG"].removeprefix("iot-v")
           extras = set(metadata.metadata("hermes-agent-iot").get_all("Provides-Extra") or [])
-          assert {"minimal", "iot", "rag", "full", "dev"} <= extras
+          assert {"minimal", "iot", "rag", "full"} <= extras
           root = resources.files("hermes_cli").joinpath("resources").joinpath("profiles")
           assert sorted(p.name for p in root.iterdir()) == [
               "config.pi2-core.yaml", "config.pi2-full.yaml",

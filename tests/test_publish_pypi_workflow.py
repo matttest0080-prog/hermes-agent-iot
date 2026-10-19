@@ -59,6 +59,20 @@ def test_build_job_uses_a_real_release_virtualenv_for_all_python_commands():
     assert "tests/test_publish_pypi_workflow.py" in release_test_run
 
 
+def test_clean_wheel_smoke_asserts_only_current_public_extras():
+    """0.22.2 retired the public `dev` extra (dev tooling is a dependency group).
+
+    The release smoke test must check the extras the wheel actually publishes;
+    asserting `dev` there failed every tag build while the pyproject correctly
+    kept it out.
+    """
+    steps = workflow_jobs()["build"]["steps"]
+    smoke = next(step for step in steps if step.get("name") == "Clean wheel smoke test")
+    run = smoke["run"]
+    assert '{"minimal", "iot", "rag", "full"} <= extras' in run
+    assert '"dev"' not in run
+
+
 def test_publish_jobs_are_gated_to_the_canonical_iot_repository():
     jobs = workflow_jobs()
     expected = "github.repository == 'matttest0080-prog/hermes-agent-iot'"
