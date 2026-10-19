@@ -19,7 +19,6 @@ import pytest
 
 from run_agent import AIAgent
 
-
 def _make_agent_openrouter():
     """Agent on openrouter (openai-compatible) with sentinel client + kwargs."""
     agent = AIAgent.__new__(AIAgent)
@@ -50,7 +49,6 @@ def _make_agent_openrouter():
 
     return agent
 
-
 def _make_agent_anthropic():
     """Agent on native anthropic with a sentinel anthropic client."""
     agent = AIAgent.__new__(AIAgent)
@@ -77,7 +75,6 @@ def _make_agent_anthropic():
     agent.runtime_capabilities = {"native_compaction": False}
 
     return agent
-
 
 def test_openai_client_rebuild_failure_rolls_back_to_original_state():
     """When OpenAI client construction fails, every mutated field must restore."""
@@ -183,7 +180,6 @@ def test_anthropic_client_rebuild_failure_rolls_back_to_original_state():
     assert agent.base_url == "https://api.anthropic.com"
     assert agent.api_mode == "anthropic_messages"
     assert agent.api_key == "sk-ant-original"
-
 
 def test_cross_branch_anthropic_to_openai_rebuild_failure_rolls_back():
     """Switching from anthropic_messages to chat_completions: failure must

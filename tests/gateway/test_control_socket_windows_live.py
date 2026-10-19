@@ -30,7 +30,9 @@ from pathlib import Path
 
 import pytest
 
-pytestmark = pytest.mark.windows_only
+from tests.live_process_fixtures import sleeper_script_path
+
+pytestmark = pytest.mark.platforms("windows")  # live Windows named-pipe E2E
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
@@ -112,15 +114,17 @@ def _kill_tree(proc: subprocess.Popen) -> None:
         subprocess.run(
             ["taskkill", "/PID", str(proc.pid), "/T", "/F"],
             capture_output=True,
+            check=False,
         )
         proc.wait()
 
 
 def test_named_pipe_identify_status_and_fleet_consumer(live_server, monkeypatch):
-    proc, home, server_pid = live_server
+    _proc, home, server_pid = live_server
     from gateway.control_socket import identify_gateway, query_gateway_control
 
-    ident = identify_gateway(home, timeout=5.0)
+    # fork: standard-runner budget — upstream CI runs this lane on a 32-core Windows runner.
+    ident = identify_gateway(home, timeout=20.0)
     assert ident is not None, "identify returned None against a live pipe server"
     # Compare against the server's SELF-reported pid, not Popen.pid — uv's
     # Windows trampoline makes the spawner's view wrong (see _CHILD_CODE).
@@ -129,7 +133,7 @@ def test_named_pipe_identify_status_and_fleet_consumer(live_server, monkeypatch)
     assert ident["kind"] == "hermes-gateway"
     assert ident["supervisor"] in {"systemd", "launchd", "desktop", "external", "manual"}
 
-    status = query_gateway_control(home, "status", timeout=5.0)
+    status = query_gateway_control(home, "status", timeout=20.0)
     assert status is not None
     assert status["answering_pid"] == server_pid
 
@@ -137,7 +141,7 @@ def test_named_pipe_identify_status_and_fleet_consumer(live_server, monkeypatch)
     import hermes_cli.update_receipt as ur
 
     monkeypatch.setattr(
-        "hermes_cli.build_info.get_code_identity",
+        "hermes_cli.version_info.get_code_identity",
         lambda refresh=False: {"sha": ident.get("code_sha") or "X", "version": "t"},
     )
     monkeypatch.setattr("hermes_cli.profiles._get_default_hermes_home", lambda: home)
@@ -152,10 +156,10 @@ def test_named_pipe_identify_status_and_fleet_consumer(live_server, monkeypatch)
 
 @pytest.mark.spawns_gateway_lookalike
 def test_pipe_gone_after_kill_falls_back(live_server, monkeypatch):
-    proc, home, server_pid = live_server
+    proc, home, _server_pid = live_server
     from gateway.control_socket import identify_gateway
 
-    assert identify_gateway(home, timeout=5.0) is not None
+    assert identify_gateway(home, timeout=20.0) is not None
     _kill_tree(proc)
 
     # taskkill /T returns once the tree is signalled; the pipe disappears when
@@ -170,7 +174,7 @@ def test_pipe_gone_after_kill_falls_back(live_server, monkeypatch):
     import hermes_cli.update_receipt as ur
 
     monkeypatch.setattr(
-        "hermes_cli.build_info.get_code_identity",
+        "hermes_cli.version_info.get_code_identity",
         lambda refresh=False: {"sha": "NEW", "version": "t"},
     )
     monkeypatch.setattr("hermes_cli.profiles._get_default_hermes_home", lambda: home)
@@ -190,7 +194,11 @@ def test_pipe_gone_after_kill_falls_back(live_server, monkeypatch):
         )
 
     standin = subprocess.Popen(
-        [sys.executable, "-c", "import time; time.sleep(120)", "hermes", "gateway", "run"],
+        # Use the real interpreter: a Windows venv's python.exe can be a shim
+        # whose PID differs from the process running the command line. The
+        # stand-in runs a SCRIPT, not `-c`: gateway identity is no longer
+        # inferred from inline `-c` source (#107002).
+        [sys._base_executable, sleeper_script_path(), "hermes", "gateway", "run"],
         stdout=subprocess.DEVNULL,
         stderr=subprocess.DEVNULL,
     )

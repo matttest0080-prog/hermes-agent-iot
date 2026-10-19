@@ -54,7 +54,7 @@ def load_baseline(repo: str) -> dict:
     path = baseline_path(repo)
     if not os.path.isfile(path):
         return {"pinned_exceptions": [], "lifecycle": []}
-    with open(path, encoding="utf-8") as fh:
+    with open(path, encoding="utf-8-sig") as fh:
         data = json.load(fh)
     data.setdefault("pinned_exceptions", [])
     data.setdefault("lifecycle", [])
@@ -94,7 +94,7 @@ def check_pinned(repo: str, baseline: dict):
     violations, seen = [], []
     for rel in sorted(walk_package_jsons(repo)):
         try:
-            with open(os.path.join(repo, rel), encoding="utf-8") as fh:
+            with open(os.path.join(repo, rel), encoding="utf-8-sig") as fh:
                 data = json.load(fh)
         except (OSError, ValueError) as exc:
             print(f"  ! cannot read {rel}: {exc}")
@@ -123,7 +123,7 @@ def _pkg_name_from_lock_key(key: str) -> str:
 
 def lock_lifecycle_entries(repo: str, rel: str):
     """Yield 'lockfile::name@version' for every package with an install script."""
-    with open(os.path.join(repo, rel), encoding="utf-8") as fh:
+    with open(os.path.join(repo, rel), encoding="utf-8-sig") as fh:
         data = json.load(fh)
     out = []
     packages = data.get("packages")

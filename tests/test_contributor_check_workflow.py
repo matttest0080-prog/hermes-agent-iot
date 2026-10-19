@@ -49,6 +49,7 @@ def _resolve(repo, **values):
         env=env,
         text=True,
         capture_output=True,
+        check=False,
     )
 
 

@@ -17,6 +17,7 @@ def run(*args):
         encoding="utf-8",
         errors="replace",
         timeout=180,
+        check=False,
     )
 
 

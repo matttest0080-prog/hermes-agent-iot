@@ -26,14 +26,29 @@ def _official_update_default():
 
 
 @pytest.fixture(autouse=True)
+def _in_process_completion(isolated_source_completion):
+    """Keep the update tail in-process, like the sibling updater suites do.
+
+    v0.21.7 splits `hermes update` into a prepare step and a detached completion
+    child (``update_completion`` spawns it with ``subprocess.Popen``). These
+    tests patch ``subprocess.run``, so the child is a *real* process: it exits on
+    its own and the parent returns before the interactive prompts this file
+    covers. ``isolated_source_completion`` (conftest) replaces that hand-off with
+    an in-process ``run_completion``, which is what these assertions need.
+    """
+    yield
+
+
+@pytest.fixture(autouse=True)
 def _isolate_update(isolated_update_runtime, monkeypatch):
     import shutil
-    from hermes_cli import managed_uv, update_cmd, update_cmd_deps, update_cmd_fleet
+    from hermes_cli import managed_uv, update_cmd, update_cmd_fleet
 
     # The post-restart survivor sweep real-sleeps 3s; no gateways exist here.
     monkeypatch.setattr(update_cmd_fleet, "_force_kill_stuck_gateways", lambda *a, **k: None)
     # The post-pull import probe spawns a real interpreter (~2.5s); the tree is unchanged here.
-    monkeypatch.setattr(update_cmd_deps, "_critical_module_import_failures", lambda *a, **k: {})
+    # The symbol moved to `update_cmd_validation` upstream; `update_cmd` re-exports it.
+    monkeypatch.setattr(update_cmd, "_critical_module_import_failures", lambda *a, **k: {})
     monkeypatch.setattr(managed_uv, "resolve_uv", lambda **kw: shutil.which("uv"))
     monkeypatch.setattr(managed_uv, "ensure_uv", lambda **kw: shutil.which("uv"))
     monkeypatch.setattr(managed_uv, "update_managed_uv", lambda **kw: None)
@@ -41,7 +56,8 @@ def _isolate_update(isolated_update_runtime, monkeypatch):
 
 
 def _make_run_side_effect(
-    branch="main", verify_ok=True, commit_count="1", dirty=False
+    branch="main", verify_ok=True, commit_count="1", dirty=False,
+    target_sha="a" * 40,
 ):
     """Minimal subprocess.run side_effect for the update flow."""
 
@@ -51,8 +67,14 @@ def _make_run_side_effect(
         if "rev-parse" in joined and "--abbrev-ref" in joined:
             return subprocess.CompletedProcess(cmd, 0, stdout=f"{branch}\n", stderr="")
         if "rev-parse" in joined and "--verify" in joined:
+            # v0.21.7 resolves the target commit before the tree moves: the pull
+            # marker must name the commit git writes, so an empty answer (exit 0
+            # but no object id) refuses the update and exits 1. Hand back a real
+            # object id whenever the ref is meant to resolve.
             return subprocess.CompletedProcess(
-                cmd, 0 if verify_ok else 128, stdout="", stderr=""
+                cmd, 0 if verify_ok else 128,
+                stdout=f"{target_sha}\n" if verify_ok else "",
+                stderr="",
             )
         if "rev-list" in joined:
             return subprocess.CompletedProcess(
@@ -75,7 +97,7 @@ def _make_run_side_effect(
 class TestUpdateYesConfigMigration:
     """--yes auto-answers the config-migration prompt and skips API-key prompts."""
 
-    @patch("hermes_cli.update_cmd._run_migrate_config_fresh")
+    @patch("hermes_cli.config.migrate_config")
     @patch("hermes_cli.update_cmd._run_config_check_fresh", return_value=(1, 2))
     @patch("hermes_cli.config.get_missing_config_fields", return_value=[])
     @patch("hermes_cli.config.get_missing_env_vars", return_value=["NEW_KEY"])
@@ -109,7 +131,7 @@ class TestUpdateYesConfigMigration:
         _, kwargs = mock_migrate.call_args
         assert kwargs.get("interactive") is False
 
-    @patch("hermes_cli.update_cmd._run_migrate_config_fresh")
+    @patch("hermes_cli.config.migrate_config")
     @patch("hermes_cli.update_cmd._run_config_check_fresh", return_value=(1, 2))
     @patch("hermes_cli.config.get_missing_config_fields", return_value=[])
     @patch("hermes_cli.config.get_missing_env_vars", return_value=["NEW_KEY"])
@@ -162,7 +184,7 @@ class TestUnicodeDecodeErrorInUpdatePrompts:
     the exception escape and crash `hermes update` mid-flight.
     """
 
-    @patch("hermes_cli.update_cmd._run_migrate_config_fresh")
+    @patch("hermes_cli.config.migrate_config")
     @patch("hermes_cli.update_cmd._run_config_check_fresh", return_value=(1, 2))
     @patch("hermes_cli.config.get_missing_config_fields", return_value=[])
     @patch("hermes_cli.config.get_missing_env_vars", return_value=["NEW_KEY"])

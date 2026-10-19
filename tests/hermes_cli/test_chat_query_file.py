@@ -14,8 +14,6 @@ import pytest
 
 REPO = Path(__file__).resolve().parents[2]
 
-
-
 def _parse(argv):
     sys.path.insert(0, str(REPO))
     try:
@@ -27,14 +25,10 @@ def _parse(argv):
     finally:
         sys.path.remove(str(REPO))
 
-
 def test_chat_parser_accepts_query_file():
     args = _parse(["chat", "--query-file", "/tmp/x.txt"])
     assert args.query_file == "/tmp/x.txt"
     assert args.query is None
-
-
-
 
 def test_query_and_query_file_mutually_exclusive(tmp_path, capsys):
     """argparse rejects -q + --query-file at parse time (exit 2), no env needed."""
@@ -44,5 +38,3 @@ def test_query_and_query_file_mutually_exclusive(tmp_path, capsys):
         _parse(["chat", "-q", "x", "--query-file", str(f)])
     assert exc_info.value.code == 2
     assert "not allowed with argument" in capsys.readouterr().err
-
-

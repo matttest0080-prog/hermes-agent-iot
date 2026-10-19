@@ -37,7 +37,7 @@ jobs:
           UV_PROJECT_ENVIRONMENT: .release-venv
         run: |
           "$RELEASE_PYTHON" -m pip install --disable-pip-version-check uv==0.11.13
-          "$RELEASE_PYTHON" -m uv sync --frozen --extra dev --extra rag
+          "$RELEASE_PYTHON" -m uv sync --frozen --group dev --extra full --extra rag
       - name: Run release-focused tests
         run: >-
           "$RELEASE_PYTHON" -m pytest

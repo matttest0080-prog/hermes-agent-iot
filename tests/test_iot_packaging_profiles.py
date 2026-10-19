@@ -4,11 +4,15 @@ import stat
 import subprocess
 import sys
 import tomllib
+from importlib import metadata as importlib_metadata
 from pathlib import Path
 
 import pytest
 
+from tests.pi2_python import supported_python
+
 ROOT = Path(__file__).resolve().parents[1]
+DISTRIBUTION = "hermes-agent-iot"
 
 
 def metadata():
@@ -20,21 +24,27 @@ def test_distribution_version_scripts_and_aggregate_extras():
 
     project = metadata()["project"]
     assert project["name"] == "hermes-agent-iot"
-    assert project["version"] == "0.21.5.post2"
+    assert project["version"] == "0.22.2.post1"
     assert __version__ == project["version"]
     assert __release_date__ == "2026.9.24"
     assert project["scripts"]["hermes-iot"] == "hermes_cli.iot_cli:main"
     assert {"hermes", "hermes-agent", "hermes-acp"} <= project["scripts"].keys()
     extras = project["optional-dependencies"]
-    assert extras["minimal"] == ["hermes-agent-iot[cli,pty]==0.21.5.post2"]
-    assert extras["iot"] == ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.21.5.post2"]
-    assert extras["rag"] == ["hermes-agent-iot[iot,honcho]==0.21.5.post2"]
-    assert extras["full"] == ["hermes-agent-iot[all]==0.21.5.post2"]
-    assert "hermes-agent-iot[full]==0.21.5.post2" in extras["dev"]
-    assert "pytest==9.1.1" in extras["dev"]
+    assert extras["minimal"] == ["hermes-agent-iot[cli,pty]==0.22.2.post1"]
+    assert extras["iot"] == ["hermes-agent-iot[minimal,mcp,acp,homeassistant,mqtt,sms]==0.22.2.post1"]
+    assert extras["rag"] == ["hermes-agent-iot[iot,honcho]==0.22.2.post1"]
+    assert extras["full"] == ["hermes-agent-iot[all]==0.22.2.post1"]
+    # The fork retired its `dev` extra: uv records build/test tooling in
+    # [dependency-groups] dev only (asserted against the lock in
+    # tests/test_packaging_metadata.py), and `uv sync --extra full` covers the
+    # [full] self-reference the retired extra used to carry.
+    assert "dev" not in extras
+    dev_group = metadata()["dependency-groups"]["dev"]
+    assert "pytest==9.1.1" in dev_group
+    assert {"build==1.3.0", "twine==6.2.0"} <= set(dev_group)
     assert extras["vercel"] == ["vercel==0.7.2"]
-    from tools.lazy_deps import LAZY_DEPS
-    assert LAZY_DEPS["terminal.vercel"] == ("vercel==0.7.2",)
+    # Upstream retired tools.lazy_deps for production code (pm.ensure_import is the only
+    # lazy-install surface), so the vercel pin is asserted where it now lives: the extra itself.
     assert metadata()["tool"]["uv"]["exclude-newer-package"]["vercel"] is False
     for profile in ("minimal", "iot", "rag"):
         assert "vercel" not in " ".join(extras[profile]).lower()
@@ -45,11 +55,14 @@ def test_distribution_version_scripts_and_aggregate_extras():
     assert not any("hermes-agent[" in spec for spec in all_specs)
 
 
-def test_vercel_recovery_guidance_uses_the_locked_sdk_version():
+def test_vercel_recovery_guidance_defers_to_the_setup_installer():
     doctor = (ROOT / "hermes_cli" / "doctor_tools.py").read_text(encoding="utf-8")
-    assert "python -m pip install vercel==0.7.2" in doctor
-    assert "python -m pip install vercel)" not in doctor
-    assert 'python -m pip install vercel"' not in doctor
+    # Upstream moved vercel recovery onto `hermes setup terminal`, which installs the
+    # pinned [vercel] extra itself: the doctor must not hardcode an SDK version that can
+    # drift from the extra (the pin is asserted on extras["vercel"] above).
+    assert "run hermes setup terminal" in doctor
+    assert "select Vercel Sandbox" in doctor
+    assert "python -m pip install vercel" not in doctor
 
 
 def test_profile_templates_are_packaged_and_dev_reuses_full():
@@ -93,6 +106,50 @@ def _run_cli(tmp_path, *args, extra_env=None, installed_distributions=()):
     )
 
 
+@pytest.fixture(autouse=True)
+def installed_application_distribution(tmp_path_factory, monkeypatch):
+    """Present the app's own distribution, as an installed virtualenv would.
+
+    The profile checks read ``importlib.metadata`` for the running distribution,
+    and the test runner's environment carries the locked dependencies only — it
+    never installs the checkout. Synthesize the distribution the way ``_run_cli``
+    already synthesizes the profile dependencies, so these tests read the same
+    metadata on a device and on a bare test runner.
+    """
+    try:
+        importlib_metadata.version(DISTRIBUTION)
+        return
+    except importlib_metadata.PackageNotFoundError:
+        pass
+    project = metadata()["project"]
+    site = tmp_path_factory.mktemp("application-dist")
+    dist_info = site / f"{DISTRIBUTION.replace('-', '_')}-{project['version']}.dist-info"
+    dist_info.mkdir()
+    # `_requirements_for_extra` reads the distribution's own requires list and
+    # expands the self-referencing aggregate extras, so the synthetic metadata
+    # must carry the same Requires-Dist lines a real wheel would.
+    lines = [
+        "Metadata-Version: 2.4",
+        f"Name: {DISTRIBUTION}",
+        f"Version: {project['version']}",
+    ]
+    lines += [f"Requires-Dist: {dependency}" for dependency in project["dependencies"]]
+    for extra, dependencies in project["optional-dependencies"].items():
+        for dependency in dependencies:
+            spec, _, marker = dependency.partition(";")
+            marker = marker.strip()
+            # setuptools parenthesises the declared marker before adding the
+            # extra condition; `A or B and extra == "x"` would otherwise read as
+            # `A or (B and ...)`, selecting the requirement for every extra.
+            condition = f'({marker}) and extra == "{extra}"' if marker else f'extra == "{extra}"'
+            lines.append(f"Requires-Dist: {spec.rstrip()} ; {condition}")
+    (dist_info / "METADATA").write_text("\n".join(lines) + "\n\n", encoding="utf-8")
+    monkeypatch.syspath_prepend(str(site))
+    monkeypatch.setenv(
+        "PYTHONPATH", os.pathsep.join(filter(None, (str(site), os.environ.get("PYTHONPATH"))))
+    )
+
+
 def test_setup_atomically_creates_private_config_and_secret_free_manifest(tmp_path):
     result = _run_cli(
         tmp_path,
@@ -112,7 +169,7 @@ def test_setup_atomically_creates_private_config_and_secret_free_manifest(tmp_pa
     data = json.loads(manifest.read_text())
     assert data == {
         "distribution": "hermes-agent-iot",
-        "version": "0.21.5.post2",
+        "version": "0.22.2.post1",
         "profile": "iot",
         "template": "config.pi2-native.yaml",
         "environment": str(sys.prefix),
@@ -295,7 +352,7 @@ def test_pi_installer_rejects_symlinked_venv_without_sourcing_activate(tmp_path)
             str(venv),
         ],
         cwd=ROOT,
-        env={**os.environ, "PYTHON": sys.executable, "HERMES_HOME": str(tmp_path / "home")},
+        env={**os.environ, "PYTHON": supported_python(), "HERMES_HOME": str(tmp_path / "home")},
         text=True,
         capture_output=True,
         check=False,
@@ -332,7 +389,6 @@ def test_setup_race_leaves_config_and_record_untouched(tmp_path, monkeypatch, ca
     def competing_create(path, content):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text("competing-config\n", encoding="utf-8")
-        return None
 
     monkeypatch.setattr(iot_cli, "_atomic_private_create", competing_create)
     assert iot_cli.setup_profile("minimal") == 0
@@ -376,7 +432,7 @@ def test_profile_show_reports_install_record(tmp_path):
     assert _run_cli(tmp_path, "setup", "--profile", "dev").returncode == 0
     result = _run_cli(tmp_path, "profile", "show")
     assert result.returncode == 0
-    for value in ("hermes-agent-iot", "0.21.5.post2", "dev", "config.pi2-full.yaml", str(sys.prefix)):
+    for value in ("hermes-agent-iot", "0.22.2.post1", "dev", "config.pi2-full.yaml", str(sys.prefix)):
         assert value in result.stdout
 
 

@@ -20,7 +20,7 @@ from urllib.request import urlopen
 
 import pytest
 
-pytestmark = pytest.mark.windows_only
+pytestmark = pytest.mark.platforms("windows")
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 WINDOWS_UPDATE_PS1 = REPO_ROOT / "scripts" / "desktop-update" / "windows.ps1"
@@ -74,7 +74,8 @@ def test_progress_advances_while_the_orchestrator_blocks(tmp_path: Path) -> None
     # stability window + retry sleeps), so: 30s, and every sampling deadline
     # below is derived from the moment the held stage lands, keeping the
     # whole window comfortably inside the hold.
-    env["HERMES_SELFTEST_HOLD_SECONDS"] = "30"
+    # fork: standard-runner budget — upstream CI runs this lane on a 32-core Windows runner.
+    env["HERMES_SELFTEST_HOLD_SECONDS"] = "60"
 
     with output_path.open("wb") as output:
         process = subprocess.Popen(
@@ -94,7 +95,7 @@ def test_progress_advances_while_the_orchestrator_blocks(tmp_path: Path) -> None
         )
 
     try:
-        deadline = time.monotonic() + 20
+        deadline = time.monotonic() + 240
         shim_url = None
         while time.monotonic() < deadline:
             text = output_path.read_text(encoding="utf-8", errors="replace")
@@ -134,8 +135,13 @@ def test_progress_advances_while_the_orchestrator_blocks(tmp_path: Path) -> None
         # -- which is what a stalled update looks like to the user.
         assert int(second["elapsed_seconds"]) > int(first["elapsed_seconds"])
 
-        assert process.wait(timeout=60) == 0
+        # fork: standard-runner budget — upstream CI runs this lane on a 32-core Windows runner.
+        assert process.wait(timeout=240) == 0
     finally:
         if process.poll() is None:
-            process.kill()
-            process.wait(timeout=5)
+            subprocess.run(
+                ["taskkill", "/PID", str(process.pid), "/T", "/F"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=15,
+                check=False,
+            )
+            process.wait(timeout=15)

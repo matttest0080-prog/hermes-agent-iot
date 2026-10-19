@@ -180,11 +180,19 @@ Hermes Agent IoT is primarily for Raspberry Pi and edge deployments. For general
 iex (irm https://hermes-agent.nousresearch.com/install.ps1)
 ```
 
+The source installer delegates Python 3.14, Node.js, npm, ripgrep, FFmpeg,
+and Python dependencies to PM. If Git is absent, it stages the verified Git
+for Windows archive in Hermes' tool store. It does not replace your system Git.
+See [installation methods](https://hermes-agent.nousresearch.com/docs/getting-started/installation)
+for the separate MSIX/App Installer package and its update ownership.
+
 ### Linux / macOS / WSL2
 
 ```bash
 curl -fsSL https://hermes-agent.nousresearch.com/install.sh | bash
 ```
+
+> **Android / Termux:** A signed APT repository is available for aarch64 devices, with a `stable` channel (tagged releases) and a prerelease `canary` channel. The package includes Python, Node.js, and the TUI. Use the [Termux guide](https://hermes-agent.nousresearch.com/docs/getting-started/termux), not the desktop/server installer script.
 
 These upstream installers do not install this fork's Pi2-specific profiles or IoT packaging.
 
