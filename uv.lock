@@ -2701,7 +2701,7 @@ mcp = [
     { name = "starlette", marker = "python_full_version >= '3.14' or (extra == 'extra-16-hermes-agent-iot-modal' and extra == 'extra-16-hermes-agent-iot-vercel')" },
 ]
 mem0 = [
-    { name = "mem0ai", marker = "python_full_version >= '3.14' or (extra == 'extra-16-hermes-agent-iot-modal' and extra == 'extra-16-hermes-agent-iot-vercel')" },
+    { name = "mem0ai", marker = "(python_full_version >= '3.14' and platform_machine != 'ARM64') or (python_full_version < '3.14' and platform_machine != 'ARM64' and extra == 'extra-16-hermes-agent-iot-modal' and extra == 'extra-16-hermes-agent-iot-vercel') or (python_full_version >= '3.14' and sys_platform != 'win32') or (platform_machine == 'ARM64' and extra == 'extra-16-hermes-agent-iot-modal' and extra == 'extra-16-hermes-agent-iot-vercel') or (sys_platform != 'win32' and extra == 'extra-16-hermes-agent-iot-modal' and extra == 'extra-16-hermes-agent-iot-vercel')" },
 ]
 messaging = [
     { name = "aiohttp", marker = "python_full_version >= '3.14' or (extra == 'extra-16-hermes-agent-iot-modal' and extra == 'extra-16-hermes-agent-iot-vercel')" },
@@ -2953,7 +2953,7 @@ requires-dist = [
     { name = "mautrix", extras = ["encryption"], marker = "sys_platform == 'linux' and extra == 'matrix'", specifier = "==0.21.1" },
     { name = "mcp", marker = "extra == 'computer-use'", specifier = "==2.2.0" },
     { name = "mcp", marker = "extra == 'mcp'", specifier = "==2.2.0" },
-    { name = "mem0ai", marker = "extra == 'mem0'", specifier = "==2.0.10" },
+    { name = "mem0ai", marker = "(platform_machine != 'ARM64' and extra == 'mem0') or (sys_platform != 'win32' and extra == 'mem0')", specifier = "==2.0.10" },
     { name = "microsoft-teams-apps", marker = "extra == 'teams'", specifier = "==2.0.13.4" },
     { name = "misaki", extras = ["en"], marker = "(platform_machine != 'x86_64' and sys_platform == 'darwin' and extra == 'kittentts') or (platform_machine != 'ARM64' and sys_platform == 'win32' and extra == 'kittentts') or (sys_platform != 'darwin' and sys_platform != 'win32' and extra == 'kittentts')", git = "https://github.com/NousResearch/misaki.git?rev=f03fd2be7346952a83d3d4845c217fc7667f322d" },
     { name = "mistralai", marker = "extra == 'mistral'", specifier = "==2.4.8" },

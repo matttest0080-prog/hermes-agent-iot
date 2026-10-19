@@ -65,6 +65,39 @@ def test_wake_dependencies_and_runtime_gate_agree_on_supported_targets():
             assert gate is None or Marker(gate).evaluate(environment)
 
 
+def test_mem0_extra_is_gated_off_win32_arm64():
+    """mem0ai pulls qdrant-client -> grpcio, which has no win_arm64 wheel.
+
+    The payload bundle syncs with --all-extras, so an ungated mem0 extra made
+    the win32-arm64 leg compile grpcio from sdist and fail. Keep the package
+    marker and the PM platform gate in agreement so both the bundle and an
+    explicit install refuse the unsupported target.
+    """
+    from packaging.markers import Marker, default_environment
+    from packaging.requirements import Requirement
+
+    root = Path(__file__).resolve().parents[1]
+    metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8-sig"))
+    optional = metadata["project"]["optional-dependencies"]
+    gates = metadata["tool"]["hermes"]["extras-platforms"]
+    requirement = next(
+        req for spec in optional["mem0"]
+        if (req := Requirement(spec)).name == "mem0ai"
+    )
+    targets = [
+        ("darwin", "Darwin", "arm64", True),
+        ("linux", "Linux", "aarch64", True),
+        ("win32", "Windows", "AMD64", True),
+        ("win32", "Windows", "ARM64", False),
+    ]
+    for system, platform_system, machine, supported in targets:
+        environment = {**default_environment(), "sys_platform": system,
+                       "platform_system": platform_system,
+                       "platform_machine": machine}
+        assert requirement.marker.evaluate(environment) is supported, (system, machine)
+        assert Marker(gates["mem0"]).evaluate(environment) is supported, (system, machine)
+
+
 def test_direct_overrides_preserve_the_declared_exact_version():
     from packaging.requirements import Requirement
 

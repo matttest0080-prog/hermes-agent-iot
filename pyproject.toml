@@ -389,7 +389,10 @@ trace-upload = ["huggingface-hub==1.24.0"]
 # so a quarantined release cannot break fresh installs.
 honcho = ["honcho-ai==2.2.0"]
 supermemory = ["supermemory==3.50.0"]
-mem0 = ["mem0ai==2.0.10"]
+# mem0ai -> qdrant-client -> grpcio: grpcio has no win_arm64 wheel (any
+# Python version), so gate the extra off there instead of building it from
+# sdist in the payload bundle.
+mem0 = ["mem0ai==2.0.10; platform_machine != 'ARM64' or sys_platform != 'win32'"]
 # Image resize recovery for the vision tools. Pillow is now a CORE dependency
 # (see the main `dependencies` list above) since the byte/pixel shrink paths are on
 # the default vision-embed path and the mid-session lazy install deadlocked the
@@ -624,6 +627,8 @@ opt-in-extras = ["kittentts", "modal"]
 matrix = "sys_platform == 'linux'"
 # grpcio (via google-cloud-pubsub) has no win_arm64 wheel.
 google-chat = "platform_machine != 'ARM64' or sys_platform != 'win32'"
+# mem0ai -> qdrant-client -> grpcio: same missing win_arm64 wheel.
+mem0 = "platform_machine != 'ARM64' or sys_platform != 'win32'"
 # Match the engine dependency markers so PM refuses an unsupported install.
 wake-openwakeword = "(platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')"
 # faster-whisper's closure is prebuilt-only: ctranslate2 has no win_arm64 wheel and onnxruntime
