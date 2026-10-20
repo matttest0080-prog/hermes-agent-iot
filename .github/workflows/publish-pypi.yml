@@ -46,6 +46,7 @@ jobs:
           tests/test_packaging_metadata.py
           tests/test_project_metadata.py
           tests/test_publish_pypi_workflow.py
+          tests/test_sanitize_release_wheel.py
           tests/test_pi2_install_guards.py
           tests/test_termux_all_extra_compat.py
           tests/agent/test_bedrock_integration.py
@@ -66,6 +67,7 @@ jobs:
           HERMES_IOT_RELEASE_BUILD: "1"
         run: |
           "$RELEASE_PYTHON" -m build --wheel
+          "$RELEASE_PYTHON" scripts/sanitize_release_wheel.py dist/*.whl
           "$RELEASE_PYTHON" -m twine check --strict dist/*
       - name: Clean wheel smoke test
         env:
