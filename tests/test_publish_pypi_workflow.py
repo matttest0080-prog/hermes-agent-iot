@@ -57,6 +57,15 @@ def test_build_job_uses_a_real_release_virtualenv_for_all_python_commands():
         if step.get("name") == "Run release-focused tests"
     )
     assert "tests/test_publish_pypi_workflow.py" in release_test_run
+    assert "tests/test_sanitize_release_wheel.py" in release_test_run
+
+    build_run = next(
+        step["run"] for step in steps
+        if step.get("name") == "Build and check artifacts"
+    )
+    sanitize_at = build_run.index("scripts/sanitize_release_wheel.py")
+    twine_at = build_run.index("twine check")
+    assert sanitize_at < twine_at, "sanitize the wheel before twine validates it"
 
 
 def test_clean_wheel_smoke_asserts_only_current_public_extras():
