@@ -31,14 +31,14 @@ Hermes Agent IoT es un fork de [NousResearch/hermes-agent](https://github.com/No
 
 ## Inicio rápido — Raspberry Pi 2
 
-Hermes Agent IoT requiere Python `>=3.11,<3.14`. Instálalo en un entorno virtual:
+Hermes Agent IoT requiere Python `>=3.11,<3.15`. Instálalo en un entorno virtual:
 
 ```bash
 python3 --version
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[minimal]==0.22.2.post1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -78,7 +78,7 @@ hermes
 Mantén alineados el extra de PyPI y el perfil de setup. Por ejemplo:
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[iot]==0.22.2.post1'
 hermes-iot setup --profile iot
 ```
 
@@ -128,16 +128,16 @@ Este fork puede quedarse intencionalmente atrás del `main` upstream mientras se
 
 Línea base verificada actual:
 
-- PyPI: [`hermes-agent-iot 0.21.5.post2`](https://pypi.org/project/hermes-agent-iot/0.21.5.post2/)
-- Tag: `iot-v0.21.5.post2`
-- Commit: `c8992a283a1e932d3f87df06d6ca397a3e80dc41`
-- Wheel: `hermes_agent_iot-0.21.5.post2-py3-none-any.whl`
-- Wheel SHA-256: `a181ad3201509a3c4aeed1b2a7c1b775f9df13fdbb449f1e32748b7d4f4f6439`
-- Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/38189041741
-- Python: `>=3.11,<3.14`
+- PyPI: [`hermes-agent-iot 0.22.2.post1`](https://pypi.org/project/hermes-agent-iot/0.22.2.post1/)
+- Tag: `iot-v0.22.2.post1`
+- Commit: `2c08f4ec97445d8f26ab5c35515b2f94652aaddf`
+- Wheel: `hermes_agent_iot-0.22.2.post1-py3-none-any.whl`
+- Wheel SHA-256: `e46b7049940f14928d0dd014f44494126faca261363e9240fa700fb84d13fd8f`
+- Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/39356318990
+- Python: `>=3.11,<3.15`
 - Validación física: Raspberry Pi 2 Model B Rev 1.1, ARMv7 de 32 bits, 921 MiB RAM, Python 3.13.5
 
-La línea base del wheel `minimal` se instaló en limpio desde PyPI público y se sometió a smoke tests en hardware físico Raspberry Pi 2 (`pip check` limpio, `hermes --version` = 0.21.5.post2, SHA-256 del wheel coincidente). Los extras opcionales más pesados requieren hardware acorde a su conjunto de dependencias.
+La línea base del wheel `minimal` se instaló en limpio desde PyPI público en hardware físico Raspberry Pi 2 el 2026-10-20: `pip check` limpio, `hermes --version` = 0.22.2.post1, SHA-256 del wheel coincidente y un turno one-shot real devolvió `PI2-OK` en 81,6 s usando un modelo remoto por SSH. Esto valida la ruta cliente/runtime del Pi 2, no la inferencia local. Los extras opcionales más pesados requieren hardware acorde a su conjunto de dependencias.
 
 ## Actualizar una instalación de código fuente en Pi2
 

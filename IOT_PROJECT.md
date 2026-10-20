@@ -30,13 +30,13 @@ Hermes Agent IoT is a low-resource IoT and robotics fork of [NousResearch/hermes
 
 ## Quick start: Raspberry Pi 2
 
-Hermes Agent IoT requires Python `>=3.11,<3.14`. Use a virtual environment.
+Hermes Agent IoT requires Python `>=3.11,<3.15`. Use a virtual environment.
 
 ```bash
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[minimal]==0.22.2.post1'
 python -m pip check
 
 hermes-iot setup --profile minimal

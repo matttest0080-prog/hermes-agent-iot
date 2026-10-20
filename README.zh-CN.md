@@ -31,14 +31,14 @@ Hermes Agent IoT 是 [NousResearch/hermes-agent](https://github.com/NousResearch
 
 ## 快速开始 — Raspberry Pi 2
 
-Hermes Agent IoT 需要 Python `>=3.11,<3.14`。在虚拟环境中安装：
+Hermes Agent IoT 需要 Python `>=3.11,<3.15`。在虚拟环境中安装：
 
 ```bash
 python3 --version
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[minimal]==0.22.2.post1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -78,7 +78,7 @@ hermes
 让 PyPI extra 与 setup profile 保持一致。例如：
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[iot]==0.22.2.post1'
 hermes-iot setup --profile iot
 ```
 
@@ -128,16 +128,16 @@ hermes-iot setup --profile iot
 
 当前已验证基线：
 
-- PyPI: [`hermes-agent-iot 0.21.5.post2`](https://pypi.org/project/hermes-agent-iot/0.21.5.post2/)
-- Tag: `iot-v0.21.5.post2`
-- Commit: `c8992a283a1e932d3f87df06d6ca397a3e80dc41`
-- Wheel: `hermes_agent_iot-0.21.5.post2-py3-none-any.whl`
-- Wheel SHA-256: `a181ad3201509a3c4aeed1b2a7c1b775f9df13fdbb449f1e32748b7d4f4f6439`
-- Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/38189041741
-- Python: `>=3.11,<3.14`
+- PyPI: [`hermes-agent-iot 0.22.2.post1`](https://pypi.org/project/hermes-agent-iot/0.22.2.post1/)
+- Tag: `iot-v0.22.2.post1`
+- Commit: `2c08f4ec97445d8f26ab5c35515b2f94652aaddf`
+- Wheel: `hermes_agent_iot-0.22.2.post1-py3-none-any.whl`
+- Wheel SHA-256: `e46b7049940f14928d0dd014f44494126faca261363e9240fa700fb84d13fd8f`
+- Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/39356318990
+- Python: `>=3.11,<3.15`
 - 物理验证：Raspberry Pi 2 Model B Rev 1.1，32-bit ARMv7，921 MiB RAM，Python 3.13.5
 
-`minimal` wheel 基线已从公开 PyPI clean-install 到实体 Raspberry Pi 2 硬件并 smoke test（`pip check` 干净、`hermes --version` = 0.21.5.post2、wheel SHA-256 一致）。更重的可选 extras 需要与其依赖集相匹配的硬件。
+`minimal` wheel 基线已于 2026-10-20 在实体 Raspberry Pi 2 上从公开 PyPI clean-install：`pip check` 干净、`hermes --version` = 0.22.2.post1、wheel SHA-256 一致，并以远程模型通过 SSH 完成一次真实 one-shot 回合（`PI2-OK`，81.6 秒）。这验证的是 Pi 2 客户端/runtime 路径，不包含 Pi 本地推論。更重的可选 extras 需要与其依赖集相匹配的硬件。
 
 ## 更新 Pi2 源码安装
 
