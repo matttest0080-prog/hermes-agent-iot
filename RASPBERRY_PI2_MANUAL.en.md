@@ -26,7 +26,7 @@ Hard real-time control, motor protection, obstacle-avoidance reflex, and emergen
 
 ## 2. System Requirements
 
-- Python `>=3.11,<3.14`
+- Python `>=3.11,<3.15` (PyPI wheel); the source installer currently validates 3.11–3.13
 - Git
 - Python venv
 - About 1 GB RAM; enabling swap for installation is recommended
@@ -38,9 +38,18 @@ If Raspberry Pi OS is still on Python 3.9, install Python 3.11+ first.
 
 ### 3.1 Public PyPI wheel (verified on physical Pi2)
 
-The currently verified version is `hermes-agent-iot 0.21.5.post2`. It has been clean-installed from public PyPI onto a physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Python 3.13.5), passing the `minimal` profile, CLI, `pip check`, and console-script/import smoke tests.
+The currently verified version is `hermes-agent-iot 0.22.2.post1`. It has been clean-installed from public PyPI onto a physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Python 3.13.5), passing the `minimal` profile, CLI, `pip check`, and console-script/import smoke tests.
 
-You must use a virtualenv with Python `>=3.11,<3.14`; do not use system pip, `sudo pip`, or `--break-system-packages`:
+The 2026-10-20 hardware run used an isolated venv and `HERMES_HOME`; the existing `~/.hermes` was not touched:
+
+- Install time: **627 s** (including the pip upgrade and PyPI/piwheels dependency downloads); `pip check` reported `No broken requirements found.`
+- `hermes --version` = `Hermes Agent v0.22.2.post1 (2026.9.24)`; `hermes-iot profile show` = `0.22.2.post1` / `minimal`.
+- A real one-shot turn returned `PI2-OK` in **81.6 s** using a remote model (LM Studio on a PC over an SSH tunnel); a terminal-tool round trip (`uname -m`) also executed. This verifies the Pi 2 client/runtime/tool path, **not local inference on the Pi**.
+- Isolated venv size: **219 MiB**; available RAM after the run: **724 MiB**.
+
+Known findings: Raspbian 13 ships SQLite **3.46.1** with the WAL-reset advisory; the packaged `config.pi2-core.yaml` starts at config version 0 and `hermes doctor --fix` migrates it to v50; on a plain PyPI wheel install `hermes doctor` reports a false entry-point path (`.../site-packages/venv/bin/hermes`) even though the `hermes` command works.
+
+You must use a virtualenv with Python `>=3.11,<3.15`; do not use system pip, `sudo pip`, or `--break-system-packages`:
 
 ```bash
 python3 --version
@@ -48,7 +57,7 @@ python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[minimal]==0.22.2.post1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -64,12 +73,12 @@ Do not install the upstream `hermes-agent` distribution into the same virtualenv
 Supply-chain identifiers:
 
 ```text
-PyPI:       https://pypi.org/project/hermes-agent-iot/0.21.5.post2/
-Tag:        iot-v0.21.5.post2
-Commit:     c8992a283a1e932d3f87df06d6ca397a3e80dc41
-Wheel:      hermes_agent_iot-0.21.5.post2-py3-none-any.whl
-SHA-256:    a181ad3201509a3c4aeed1b2a7c1b775f9df13fdbb449f1e32748b7d4f4f6439
-Workflow:   https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/38189041741
+PyPI:       https://pypi.org/project/hermes-agent-iot/0.22.2.post1/
+Tag:        iot-v0.22.2.post1
+Commit:     2c08f4ec97445d8f26ab5c35515b2f94652aaddf
+Wheel:      hermes_agent_iot-0.22.2.post1-py3-none-any.whl
+SHA-256:    e46b7049940f14928d0dd014f44494126faca261363e9240fa700fb84d13fd8f
+Workflow:   https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/39356318990
 ```
 
 This release publishes a single universal wheel and no sdist; public PyPI provenance is bound to repository `matttest0080-prog/hermes-agent-iot`, workflow `publish-pypi.yml`, and the protected `pypi` Environment.
@@ -566,7 +575,7 @@ Footprint benchmark — run it once on the **physical Pi2** per release or sync.
 runs inside the `minimal` profile venv as-is:
 
 ```bash
-python scripts/pi2_benchmark.py --label pi2-0.21.5.post2 --out ~/pi2-bench.json
+python scripts/pi2_benchmark.py --label pi2-0.22.2.post1 --out ~/pi2-bench.json
 python scripts/pi2_benchmark.py --compare ~/pi2-bench.json   # diff against the previous run
 python scripts/pi2_benchmark.py --max-rss-kb 180000             # exit 1 above the budget
 # optional: per-turn latency against a local llama-server

@@ -25,14 +25,14 @@ Hermes Agent IoT is an IoT/robotics-focused fork of [NousResearch/hermes-agent](
 
 ## Quick Start — Raspberry Pi 2
 
-Hermes Agent IoT requires Python `>=3.11,<3.14`. Install it in a virtual environment:
+Hermes Agent IoT requires Python `>=3.11,<3.15`. Install it in a virtual environment:
 
 ```bash
 python3 --version
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[minimal]==0.22.2.post1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -72,7 +72,7 @@ hermes
 Keep the PyPI extra and setup profile aligned. For example:
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[iot]==0.22.2.post1'
 hermes-iot setup --profile iot
 ```
 
@@ -122,16 +122,16 @@ This fork may intentionally lag upstream `main` while dependency changes, IoT pa
 
 Current verified baseline:
 
-- PyPI: [`hermes-agent-iot 0.21.5.post2`](https://pypi.org/project/hermes-agent-iot/0.21.5.post2/)
-- Tag: `iot-v0.21.5.post2`
-- Commit: `c8992a283a1e932d3f87df06d6ca397a3e80dc41`
-- Wheel: `hermes_agent_iot-0.21.5.post2-py3-none-any.whl`
-- Wheel SHA-256: `a181ad3201509a3c4aeed1b2a7c1b775f9df13fdbb449f1e32748b7d4f4f6439`
-- Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/38189041741
-- Python: `>=3.11,<3.14`
+- PyPI: [`hermes-agent-iot 0.22.2.post1`](https://pypi.org/project/hermes-agent-iot/0.22.2.post1/)
+- Tag: `iot-v0.22.2.post1`
+- Commit: `2c08f4ec97445d8f26ab5c35515b2f94652aaddf`
+- Wheel: `hermes_agent_iot-0.22.2.post1-py3-none-any.whl`
+- Wheel SHA-256: `e46b7049940f14928d0dd014f44494126faca261363e9240fa700fb84d13fd8f`
+- Workflow: https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/39356318990
+- Python: `>=3.11,<3.15`
 - Physical validation: Raspberry Pi 2 Model B Rev 1.1, 32-bit ARMv7, 921 MiB RAM, Python 3.13.5
 
-The `minimal` wheel baseline was clean-installed from public PyPI and smoke-tested on physical Raspberry Pi 2 hardware (`pip check` clean, `hermes --version` = 0.21.5.post2, wheel SHA-256 matched). Heavier optional extras require hardware appropriate to their dependency set.
+The `minimal` wheel baseline was clean-installed from public PyPI on physical Raspberry Pi 2 hardware on 2026-10-20: `pip check` clean, `hermes --version` = 0.22.2.post1, wheel SHA-256 matched, and a one-shot agent turn returned `PI2-OK` in 81.6 s using a remote model over SSH. That verifies the Pi 2 client/runtime path, not local inference on the Pi. Heavier optional extras require hardware appropriate to their dependency set.
 
 ## Updating a Pi2 Source Installation
 

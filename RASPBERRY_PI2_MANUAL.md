@@ -26,7 +26,7 @@ Pi2 Hermes Agent -> MQTT/HTTP -> MCU、感測器、Home Assistant
 
 ## 2. 系統需求
 
-- Python `>=3.11,<3.14`
+- Python `>=3.11,<3.15`（PyPI wheel）；source installer 目前驗證 3.11–3.13
 - Git
 - Python venv
 - 約 1 GB RAM；建議啟用 swap 供安裝使用
@@ -38,12 +38,29 @@ Raspberry Pi OS 若仍是 Python 3.9，必須先安裝 Python 3.11+。
 
 ### 3.1 公開 PyPI wheel（已完成實體 Pi2 驗證）
 
-目前已驗證版本是 `hermes-agent-iot 0.21.5.post2`。它已從公開 PyPI
+目前已驗證版本是 `hermes-agent-iot 0.22.2.post1`。它已從公開 PyPI
 clean-install 到實體 Raspberry Pi 2 Model B Rev 1.1（`armv7l`、32-bit、
 921 MiB RAM、Python 3.13.5），並通過 `minimal` Profile、CLI、`pip check`
 與 console script／import smoke test。
 
-必須使用 Python `>=3.11,<3.14` 的 virtualenv；不要使用 system pip、
+2026-10-20 的實機驗證使用獨立 venv 與獨立 `HERMES_HOME`，沒有改動既有
+`~/.hermes`：
+
+- 安裝時間 **627 秒**（含 pip 升級與 PyPI／piwheels 依賴下載）；`pip check`
+  回報 `No broken requirements found.`。
+- `hermes --version` = `Hermes Agent v0.22.2.post1 (2026.9.24)`；
+  `hermes-iot profile show` = `0.22.2.post1` / `minimal`。
+- 以遠端模型（PC 上的 LM Studio，經 SSH tunnel）完成一次真實 one-shot：
+  `PI2-OK`，**81.6 秒**；terminal tool round trip（`uname -m`）也實際執行。
+  這驗證 Pi 2 的 client／runtime／tool path，**不包含 Pi 本地推論**。
+- 隔離 venv 大小 **219 MiB**；測試後可用 RAM **724 MiB**。
+
+已知事項：Raspbian 13 的 SQLite **3.46.1** 有 WAL-reset advisory；內附的
+`config.pi2-core.yaml` 仍從 config v0 開始，`hermes doctor --fix` 會遷移到
+v50；純 PyPI wheel 安裝下 `hermes doctor` 會誤報 entry point 路徑
+（`.../site-packages/venv/bin/hermes`），但 `hermes` 指令可正常執行。
+
+必須使用 Python `>=3.11,<3.15` 的 virtualenv；不要使用 system pip、
 `sudo pip` 或 `--break-system-packages`：
 
 ```bash
@@ -52,7 +69,7 @@ python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[minimal]==0.22.2.post1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -70,12 +87,12 @@ distribution 會提供重疊的 Python modules 與 CLI。`hermes-iot setup` 不�
 供應鏈識別：
 
 ```text
-PyPI:       https://pypi.org/project/hermes-agent-iot/0.21.5.post2/
-Tag:        iot-v0.21.5.post2
-Commit:     c8992a283a1e932d3f87df06d6ca397a3e80dc41
-Wheel:      hermes_agent_iot-0.21.5.post2-py3-none-any.whl
-SHA-256:    a181ad3201509a3c4aeed1b2a7c1b775f9df13fdbb449f1e32748b7d4f4f6439
-Workflow:   https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/38189041741
+PyPI:       https://pypi.org/project/hermes-agent-iot/0.22.2.post1/
+Tag:        iot-v0.22.2.post1
+Commit:     2c08f4ec97445d8f26ab5c35515b2f94652aaddf
+Wheel:      hermes_agent_iot-0.22.2.post1-py3-none-any.whl
+SHA-256:    e46b7049940f14928d0dd014f44494126faca261363e9240fa700fb84d13fd8f
+Workflow:   https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/39356318990
 ```
 
 此版本只發布一個 universal wheel，沒有 sdist；公開 PyPI provenance 綁定
@@ -575,7 +592,7 @@ python scripts/check_js_supply_chain.py --repo .        # JS 相依：精確釘�
 profile 的 venv 執行）：
 
 ```bash
-python scripts/pi2_benchmark.py --label pi2-0.21.5.post2 --out ~/pi2-bench.json
+python scripts/pi2_benchmark.py --label pi2-0.22.2.post1 --out ~/pi2-bench.json
 python scripts/pi2_benchmark.py --compare ~/pi2-bench.json   # 與上次的 JSON 比較
 python scripts/pi2_benchmark.py --max-rss-kb 180000             # 超過門檻即 exit 1
 # 選用：對本機 llama-server 量單輪延遲

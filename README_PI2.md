@@ -51,16 +51,16 @@ profiles** managed by `hermes profile`. The former pair a PyPI dependency extra
 with a packaged default config; the latter isolate running Hermes instances.
 
 PyPI users install exactly one public extra into a virtual environment, then
-apply its config without invoking pip. Release `0.21.5.post2` is the current
+apply its config without invoking pip. Release `0.22.2.post1` is the current
 verified Pi2 baseline:
 
 ```bash
-python3 --version  # must be >=3.11,<3.14
+python3 --version  # must be >=3.11,<3.15
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.21.5.post2'
+python -m pip install 'hermes-agent-iot[minimal]==0.22.2.post1'
 hermes-iot setup --profile minimal
 hermes-iot profile show
 python -m pip check
@@ -90,13 +90,15 @@ not silently download missing skills, MCP catalogs, locale files, Dashboard, or
 TUI assets. Use the `pi2-lite` source installer for catalog browsing/install,
 localized UI, Dashboard/TUI operation, or frontend/source development.
 
-Release `0.21.5.post2` completed both the x86_64 GitHub release gates and an
+Release `0.22.2.post1` completed both the x86_64 GitHub release gates and an
 exact-wheel clean-install/profile smoke test on a physical Raspberry Pi 2 Model
-B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Python 3.13.5). The GitHub artifact,
-Pi2-tested wheel, and public PyPI download all had SHA-256
-`a181ad3201509a3c4aeed1b2a7c1b775f9df13fdbb449f1e32748b7d4f4f6439`.
-This evidence verifies the `minimal` baseline; heavier optional extras retain
-their own hardware requirements.
+B Rev 1.1 (`armv7l`, 32-bit, 921 MiB RAM, Raspbian 13, Python 3.13.5). The
+GitHub artifact, Pi2-tested wheel, and public PyPI download all had SHA-256
+`e46b7049940f14928d0dd014f44494126faca261363e9240fa700fb84d13fd8f`. The Pi 2
+install took 627 s and `pip check` was clean; a real one-shot turn returned
+`PI2-OK` in 81.6 s using a remote model over SSH (the client/runtime path is
+verified, not local inference). This evidence verifies the `minimal` baseline;
+heavier optional extras retain their own hardware requirements.
 
 The release is wheel-only; no source distribution is published. Its public
 PyPI provenance identifies `matttest0080-prog/hermes-agent-iot`, workflow
@@ -149,7 +151,7 @@ hermes setup model
 hermes
 ```
 
-Hermes requires Python `>=3.11,<3.14`. If your Raspberry Pi OS image ships older Python, install Python 3.11+ first.
+The PyPI wheel metadata allows Python `>=3.11,<3.15`; the source installer currently validates Python 3.11–3.13. If your Raspberry Pi OS image ships older Python, install a supported version first.
 
 ## Updating the Pi2 installation
 
