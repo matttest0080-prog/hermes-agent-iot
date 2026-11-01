@@ -75,7 +75,11 @@ let
     # Replace the node-gyp path with the newer one that supports the new config var
     substituteInPlace $out/nix-support/setup-hook \
       --replace-fail 'npm_config_nodedir' 'npm_package_config_node_gyp_nodedir' \
-      --replace-fail 'npm_config_node_gyp' 'npm_config_node_gyp=${node_gyp_11_4_0}/bin/node-gyp'
+      --replace-fail 'npm_config_node_gyp' 'npm_config_node_gyp=${node_gyp_11_4_0}/bin/node-gyp' \
+      --replace-fail 'echo "Installing dependencies"' \
+        '${nodejs}/bin/node ${../scripts/nix/freeze-npm-graph.mjs} prepare "$PWD"; echo "Installing dependencies"' \
+      --replace-fail '# Revert to pre-patched package.json/package-lock.json for closure size reductions' \
+        '${nodejs}/bin/node ${../scripts/nix/freeze-npm-graph.mjs} restore "$PWD"; # Revert to pre-patched package.json/package-lock.json for closure size reductions'
   '';
 
   # ── npm workspace discovery ────────────────────────────────────────
@@ -235,7 +239,8 @@ let
     # The lock already records override resolutions. importNpmLock changes
     # direct specs to file:/nix/store tarballs, which conflict with the
     # original semver overrides (EOVERRIDE). Drop them only from this offline
-    # build manifest; the hook restores the repository manifest afterwards.
+    # build manifest. The hook freezes transitive/workspace edges to that same
+    # integrity-pinned graph before installing, then restores original manifests.
     package = builtins.removeAttrs rootPackageJson [ "overrides" ];
   };
 

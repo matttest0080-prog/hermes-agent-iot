@@ -7,7 +7,7 @@ import pytest
 import hermes_state_reconcile as reconcile
 
 
-@pytest.mark.parametrize("phase", ["begin", "ddl"])
+@pytest.mark.parametrize("phase", ["configure", "begin", "ddl"])
 @pytest.mark.parametrize("expired", [False, True])
 @pytest.mark.parametrize("error_type", [sqlite3.OperationalError, sqlite3.DatabaseError])
 def test_budget_interrupt_including_begin_rolls_back(tmp_path, monkeypatch, phase, expired, error_type):
@@ -27,7 +27,13 @@ def test_budget_interrupt_including_begin_rolls_back(tmp_path, monkeypatch, phas
         budget.expired = expired
         raise error_type("interrupted")
 
+    progress = {"armed": False}
+
     class Connection:
+        def set_progress_handler(self, callback, interval):
+            progress["armed"] = callback is not None
+            return conn.set_progress_handler(callback, interval)
+
         def __getattr__(self, name):
             return getattr(conn, name)
 
@@ -41,8 +47,13 @@ def test_budget_interrupt_including_begin_rolls_back(tmp_path, monkeypatch, phas
         cursor.execute("INSERT INTO history VALUES ('must roll back')")
         interrupt()
 
+    def configure(connection):
+        if phase == "configure":
+            assert progress["armed"], "connection setup must be inside the SQL deadline"
+            interrupt()
+
     monkeypatch.setattr(sqlite_safe_read, "connect_tracked", lambda *a, **kw: Connection())
-    monkeypatch.setattr(hermes_state_repair, "_reapply_durability_barriers", lambda c: None)
+    monkeypatch.setattr(hermes_state_repair, "_reapply_durability_barriers", configure)
     monkeypatch.setattr(hermes_state_schema, "apply_declared_schema", interrupted_ddl)
     expected = reconcile.BrowseBudgetExceeded if expired else error_type
     with pytest.raises(expected) as caught:

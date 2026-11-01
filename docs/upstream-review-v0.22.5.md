@@ -99,6 +99,15 @@ Desktop UI 初輪 11,509 passed、3 failed：已確認 storage instance spy 在 
 - Nix PR CI **失敗**：offline npm install 對 zod 發出 registry request，遭 `ENOTCACHED`。尚未釐清 root override／workspace manifest 與 importNpmLock 改寫的相容性；未刪除 Nix check、開放 sandbox 網路或停用 14 日 age gate。
 - 仍須完整最新 CI、Pillow 正式相容解法與獨立 reviewer；PR 維持草稿，沒有啟用 auto-merge 或繞過保護。
 
+### 2026-11-01 後續：Nix closed-graph 安裝與 macOS deadline
+
+- 先保留舊 CI 的 jobs／結論，再取消被取代且卡住的兩個 run（不是將它們改判成功）。其中 `2622c537af` 的 45 個已完成 jobs 都成功，但仍有一個 queued job；force-cancel 後，最新 `75cb1d0f77` 的完整 CI 才真正開始執行。
+- Nix 已重現真正原因：importNpmLock 為避免 file: dependency 的 EOVERRIDE 而移除 root overrides，但原 workspace／transitive specs 與鎖定的 override 版本不一致，offline npm 因而要求 registry metadata。新增 `scripts/nix/freeze-npm-graph.mjs`，只在 hook 已保存原 manifest 的 disposable build tree 中將 dependency edges 表達成既有鎖圖版本；tarball resolved／integrity／version、peer constraints 不變，不解析新版本，安裝後還原 workspace 原檔。未停用 age gate、未開 sandbox 網路、未修改正式 npm manifests 或鎖定 artifact。
+- 新增 3 個行為測試，含真實 npm 完全 offline 安裝：對照組移除 overrides 後必須 ENOTCACHED；修正組模擬 importNpmLock 的 file tarball 與 workspace-link 改寫，從無 node_modules 狀態安裝成功、執行實際模組、確認原 dependency package metadata 未改，並 byte-identical 還原 workspace。Node 26 完整 tests-js 為 **38 檔、218 passed、1 skipped**；CLI 最終定向 3 項通過。仍須真正 Nix CI 驗證，不能稱已完成 Nix 實測。
+- 最新 macOS CI 另揭露 browse lease 超時：connection durability PRAGMAs 在 progress deadline 啟用之前執行，忙碌磁碟可能把 gateway 的 5 秒保留等待用盡。將連線設定也納入原有 budget／rollback 範圍，沒有放寬時限。擴充 configure／BEGIN／DDL 共 12 項正負控制；乾淨上游 **7 failed、5 passed**，修正後連既有 browse 檔 **41 passed**。等待新版 macOS CI 重驗。
+- 重新查證公開 advisory **GHSA-8g5g-8vmr-9782**：Pillow <=12.3.0 為 critical JPEG heap-buffer overflow，first patched 13.0.0。不能把此問題降格為單純版號差異。browser-harness 的正式 0.1.x 發布 metadata 均固定 Pillow 12.2.0／12.3.0，最新 0.1.13 及其原始碼仍固定 12.3.0；目前沒有可直接換上的已修補正式 artifact。尚未發布第三方 fork、偽造 METADATA 或用 no-deps 規避；此項仍阻擋安全合併。
+- reviewer 已在 `75cb1d0f77` 核准；後續 production code 提交仍須依 last-push approval 規則重新審查，不能沿用舊核准繞過保護。
+
 ## 繼續順序
 
 1. 先以可回溯的本機 merge commit 固定候選，讓從 HEAD 建 fixture 的安裝／復原測試確實測到本次合併；收齊 Python／JS 結果並重跑受影響範圍。
