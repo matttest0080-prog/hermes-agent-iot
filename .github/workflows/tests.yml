@@ -37,12 +37,10 @@ concurrency:
 
 jobs:
   test:
-    # Two 32-core slices instead of one box: on one runner the suite is ~10 min of
-    # nearly fully packed work, and a single bigger runner (96-core) scaled ~1.8x for
-    # 3x the price because files contend for the shared machine. Separate machines
-    # scale linearly. run_tests_parallel.py partitions from the checkout alone, so
-    # both slices agree on the split without a planning job.
-    name: Run tests (${{ matrix.slice }}/2)
+    # The public fork has 2-core runners, not upstream's two 32-core boxes.
+    # Eight deterministic slices retain the complete suite within the job budget;
+    # the partition is independent of each runner's local duration cache.
+    name: Run tests (${{ matrix.slice }}/8)
     # IoT fork: this repo has no GitHub larger runners. Upstream's lane assumes
     # ubuntu-latest-32-core (Nous-hosted). Public ubuntu-latest is required or
     # the job queues forever.
@@ -51,7 +49,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        slice: [1, 2]
+        slice: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
       - name: Checkout code
         uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
@@ -115,7 +113,7 @@ jobs:
         run: |
           scripts/run_tests.sh
         env:
-          HERMES_TEST_SLICE: ${{ matrix.slice }}/2
+          HERMES_TEST_SLICE: ${{ matrix.slice }}/8
           # IoT fork on public ubuntu-latest (~2 cores, ~7GB). Do not keep
           # upstream's 32 (sized for a 32-core box); that OOMs this runner.
           HERMES_TEST_WORKERS: 2

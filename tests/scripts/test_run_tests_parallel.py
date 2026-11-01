@@ -680,7 +680,8 @@ def test_off_host_note_names_platforms_specs_that_exclude_this_host(tmp_path: Pa
     assert all("they run on the" in n for n in notes), proc.stdout
 
 
-def test_slices_partition_the_suite_exactly_even_with_different_duration_caches(capsys) -> None:
+@pytest.mark.parametrize("slice_count", [3, 8])
+def test_slices_partition_the_suite_exactly_even_with_different_duration_caches(capsys, slice_count) -> None:
     """Each CI slice job restores its own duration cache; the slices must still cover every file once."""
     import importlib.util
 
@@ -691,6 +692,6 @@ def test_slices_partition_the_suite_exactly_even_with_different_duration_caches(
     root = Path("/repo")
     files = [root / f"tests/t_{i:03d}.py" for i in range(101)]
     caches = [{f"tests/t_{i:03d}.py": float(i) for i in range(101)}, {"tests/t_000.py": 500.0}, {}]
-    slices = [rtp._slice_files(list(reversed(files)) if i % 2 else files, i % 3 + 1, 3, caches[i % 3], root)
-              for i in range(3)]
+    slices = [rtp._slice_files(list(reversed(files)) if i % 2 else files, i + 1, slice_count, caches[i % 3], root)
+              for i in range(slice_count)]
     assert sorted(f for s in slices for f in s) == sorted(files)
