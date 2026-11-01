@@ -1,6 +1,6 @@
 # v0.22.5 同步審查（尚未完成驗收）
 
-日期：2026-10-30。工作分支：`sync/upstream-v0.22.5`。
+建立：2026-10-30；補記：2026-11-01。工作分支：`sync/upstream-v0.22.5`。
 
 > 本文件是合併候選的驗證紀錄，不是遠端已合併或可發布聲明。本機 merge commit 用於驗證依賴 Git HEAD 的 fixture；遠端仍須完整 CI 與獨立 reviewer，禁止繞過分支保護。
 
@@ -77,6 +77,17 @@ Desktop UI 初輪 11,509 passed、3 failed：已確認 storage instance spy 在 
 - 版本挑選器恢復 origin 為準及 tagless clone 支援，保留 fork 的可達性／tagger 日期規則，支援正式 SemVer／CalVer／IoT／Pi2，拒絕 RC、canary 與 backup；只發布所選 local tag，private refs 離開即清除。7 項實際 Git fixture 通過。
 - 將 website dependency guard 移至 JS lane，改測安全 floor 與 exact-pin，不再凍結已更新的舊版號。
 - provider discovery 測試隔離真實本機 Ollama/native catalog；first-run 無 executor 測試明確停用 free tier，並隔離主機 keyring-backed gh 認證。合計 20 項通過，未變更正式認證策略。
+
+## 2026-11-01 候選與遠端 CI 補記
+
+- 已建立並推送本機 merge commit `ec5b3254922ecf66b0374513b568a214fb0c756b`；另以 `593d3158d8` 將完整 Python CI 分成 8 個公開 runner 分片，未刪減測試，新增分片完整分割測試通過。草稿 PR：[#47](https://github.com/matttest0080-prog/hermes-agent-iot/pull/47)，**尚未遠端合併**。
+- repository Actions 原先停用，現已啟用；workflow token 維持 read，禁止 workflow 核准 PR，分支保護未修改。已 dispatch 真實 CI 與 Pi2 install guards；後者通過，完整 CI 尚未全綠。後續提交須以 PR synchronize 事件取得真正 PR checks，不能將 dispatch 的成功當成已滿足全部 PR gates。
+- 四個完整 JS 測試 lane 已完成：Desktop UI **11,512 passed**；Electron **3,681 passed、25 skipped**；tests-js **215 passed、1 skipped**；TUI **1,881 passed**。這是完整 lane 重跑，不再只引用局部測試；不等同最終遠端全部 CI 通過。
+- 發現本機先前 `pm.build_env` 的測試環境誤裝 editable 專案，會讓復原 fixture 跨入原 checkout。改用與 CI `ensure_testenv` 一致的 `--no-install-project` 獨立環境後，復原 closure **14 passed**，未豁免或略過測試。
+- 冷啟動 fixture 補齊真正 source-completion 所需的 agent／platform／根層 bootstrap helpers，以及 dotenv 依賴；保留舊 Python 3.11 啟動、切換 managed Python 3.14、原設定遷移及修復不覆寫的斷言。兩種 cold-runtime 情境通過。
+- 兩項 PTY 測試明確標記需要向**自身建立的 process group**送真實訊號，因 leader 離開後 helper 不再位於 ancestry allowlist；不是 skip，也未修改全域防護。兩檔 **22 passed**，全域 live-system guard 自測 **47 passed**。附件路由測試的 driver lease 改為 5 秒，避免無關的 0.4 秒租約在忙碌 runner 先到期；保留拒絕附件與不提交 turn 的斷言。
+- 真實 macOS CI 揭露 SQLite browse 的 `BEGIN IMMEDIATE` 中斷不在 rollback／逾時分類範圍。修正將 BEGIN 納入相同錯誤處理，清除 progress handler 後 rollback，僅在 deadline 已觸發時將 SQLite error 分類為 browse budget exceeded。新增 8 個 deterministic 正／負控制：乾淨上游 **3 failed、5 passed**，修正後 **8 passed**；無逾時的 SQLite error 保持原錯誤，並逐 byte 確認歷史／schema 回滾。既有 browse schema 檔 **29 passed**；仍須 macOS CI 重驗，不能把 Linux 測試稱為 macOS 實測。
+- Pillow/browser-harness 阻擋仍在：最新 PyPI metadata 再查仍是 `browser-harness==0.1.13` 精確要求 Pillow 12.3.0，沒有以不相容 override 或 `--no-deps` 假裝修復。
 
 ## 繼續順序
 

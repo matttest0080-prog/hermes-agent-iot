@@ -414,7 +414,10 @@ class TestPtyBridgeClose:
         os.kill(helper, signal.SIGKILL)
         pytest.fail(f"helper pid {helper} survived close() of its non-leader parent")
 
+    @pytest.mark.live_system_guard_bypass
     def test_close_lets_a_helper_finish_its_sighup_shutdown(self, tmp_path):
+        # Real signals target only this test's spawned PTY group; its leader may
+        # exit before the owned helper finishes, so an ancestry-only guard cannot track it.
         # The TUI gateway saves its sessions on SIGHUP within a 1 s grace. Once the group got
         # SIGHUP, close() must wait for it, not re-signal or SIGKILL it early.
         marker = tmp_path / "saved"
