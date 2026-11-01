@@ -1,8 +1,10 @@
-# v0.22.5 同步審查（尚未完成驗收）
+# v0.22.5 同步審查與驗證紀錄
 
 建立：2026-10-30；補記：2026-11-01。工作分支：`sync/upstream-v0.22.5`。
 
-> 本文件是合併候選的驗證紀錄，不是遠端已合併或可發布聲明。本機 merge commit 用於驗證依賴 Git HEAD 的 fixture；遠端仍須完整 CI 與獨立 reviewer，禁止繞過分支保護。
+> 本文件記錄合併候選各階段的驗證，不代表已發布至 PyPI 或已部署。遠端合併狀態以 [PR #47](https://github.com/matttest0080-prog/hermes-agent-iot/pull/47) 為準；舊段落屬歷史紀錄，最新決議列於本輪補記。禁止繞過必要 CI 與獨立 reviewer。
+>
+> **最新交付決議：** Pillow 相依阻擋已透過獨立、保留 MIT 的真實相容性 artifact 解決，不再保留 Pillow 12.3.0。此 Hermes 候選暫不發布至 PyPI；來源／雜湊／四個 Python matrix receipts 見 [browser-harness-compat.md](browser-harness-compat.md)。
 
 ## 固定來源
 
@@ -32,9 +34,9 @@
 - 根 workspace `npm ci` 成功，後續 npm audit 為 0 項；Desktop typecheck 與 simple-git 16 項測試通過。
 - website 安全 pins 與鎖檔也已更新：npm audit 為 **5 項 low，0 moderate/high/critical**，不是全專案零漏洞。原始 JSON 在本機證據目錄。
 
-### 尚未解決：Pillow 與 browser-harness
+### 初始阻擋：Pillow 與 browser-harness（已由後述獨立產物處理）
 
-上游以 uv override 將 Pillow 提至 13.0.0；`browser-harness==0.1.13` 發布 metadata 仍精確要求 `pillow==12.3.0`。fork 目前仍維持 12.3.0，不能宣稱已涵蓋上游 Pillow 13 的安全修補。Pi 2 已確認能下載 Pillow 13 的 cp313／ARMv7 wheel，所以不是「ARMv7 沒有 wheel」。但直接提高 pin 會破壞一般 pip 的依賴解析與 `pip check`；必須先設計並驗證合法的相容處理，不能以 `--no-deps`、偽造 metadata 或忽略檢查當作正式解法。
+初始候選中，上游以 uv override 將 Pillow 提至 13.0.0；`browser-harness==0.1.13` 發布 metadata 仍精確要求 `pillow==12.3.0`。當時 fork 仍維持 12.3.0，因此不能宣稱已涵蓋上游 Pillow 13 的安全修補。Pi 2 已確認能下載 Pillow 13 的 cp313／ARMv7 wheel，所以不是「ARMv7 沒有 wheel」。但直接提高 pin 會破壞一般 pip 的依賴解析與 `pip check`；必須先設計並驗證合法的相容處理，不能以 `--no-deps`、偽造 metadata 或忽略檢查當作正式解法。
 
 ## 已實測範圍
 
@@ -107,6 +109,17 @@ Desktop UI 初輪 11,509 passed、3 failed：已確認 storage instance spy 在 
 - 最新 macOS CI 另揭露 browse lease 超時：connection durability PRAGMAs 在 progress deadline 啟用之前執行，忙碌磁碟可能把 gateway 的 5 秒保留等待用盡。將連線設定也納入原有 budget／rollback 範圍，沒有放寬時限。擴充 configure／BEGIN／DDL 共 12 項正負控制；乾淨上游 **7 failed、5 passed**，修正後連既有 browse 檔 **41 passed**。等待新版 macOS CI 重驗。
 - 重新查證公開 advisory **GHSA-8g5g-8vmr-9782**：Pillow <=12.3.0 為 critical JPEG heap-buffer overflow，first patched 13.0.0。不能把此問題降格為單純版號差異。browser-harness 的正式 0.1.x 發布 metadata 均固定 Pillow 12.2.0／12.3.0，最新 0.1.13 及其原始碼仍固定 12.3.0；目前沒有可直接換上的已修補正式 artifact。尚未發布第三方 fork、偽造 METADATA 或用 no-deps 規避；此項仍阻擋安全合併。
 - reviewer 已在 `75cb1d0f77` 核准；後續 production code 提交仍須依 last-push approval 規則重新審查，不能沿用舊核准繞過保護。
+
+### 本輪：相容性 fork、完整 relock 與可執行的 fork CI
+
+- 使用者延續上一則 GitHub-only／獨立 fork 提案後，建立 `matttest0080-prog/browser-harness-hermes-compat`，保留原 MIT、README 與全部 `src/`。正式版本識別為 0.1.13.post1，Pillow 13.0.0／可選 MCP 2.3.0；不是官方 Browser Use release，也不是修改現成 wheel 的 METADATA。新 repo 的 PyPI publisher 改成只讀 CI，沒有向 PyPI 發布。
+- fork 的 Python 3.11–3.14 真實 CI 各 257 passed；從 wheel 安裝、pip check、實際 import 路徑與同 epoch 重建 wheel byte-identical 全過。使用 CI 3.11 的 artifact 發布 GitHub tag，匿名下載再驗 SHA256。Root project、uv.lock、Pi2 locks 固定同一 URL／hash。
+- root 經 PM 重新 lock，版本／來源差異只有 browser-harness 0.1.13 → 0.1.13.post1 URL 與 Pillow 12.3.0 → 13.0.0；其他套件版本未刷新。14 日政策保留，browser-harness 使用逐套件、附 critical 修補理由的已審查例外。
+- UV 0.13.5 的完整 universal relock 揭露上游 wheel-only optional engines 被錯誤放入 Android／ARMv7 分支。為 Google Meet／local speech engine 加上與 PM refusal gate 一致的平台限制；不移除可用平台的功能，也不限制 core／portable audio。Google Meet 的 websockets 已是 core dependency，移除重複 extra 宣告。兩個 mobile／ARMv7 負控在舊樹全紅，修正後含既有 platform contract 21 passed。
+- Pi2 generator 現在明確建立 Linux payload，先依 Linux ARMv7／CPython 3.11–3.13 facts 移除不適用的 Android source-only／Windows requirements，保留 Python 條件分域，不放寬 no-build；直接 URL 的依賴閉包也只跟隨已審查根鎖。五 profile 已生成，uvloop／pillow-heif 仍排除。新的真實裝機／再生一致性結果以後續 receipt 為準。
+- 新的 no-install-project PM test environment 實裝 Pillow 13／browser-harness post1，172 packages 的 dependency check 通過；影像與 browser_exec 整合、generator／PyPI guard 共 230 passed。原 PyPI sanitizer 仍拒絕未知 core URL；新增負控確認拒絕時 artifact bytes 完全不變。GitHub wheel 保留原 PEP 508 metadata，不執行 PyPI sanitizer。
+- 發現 18 個 CI jobs 長時間 queued 的實際原因是 upstream Blacksmith runner labels，不是單純工作未結束。將本次會阻擋 PR 的 19 個 workflows 改為 ownership-conditional 公開 Ubuntu 24.04／Windows 2025／ARM64 runner，NousResearch 仍使用原 labels；沒有註冊本機 self-hosted runner、付費開通 vendor 或刪減 tests／steps。38 個 CI 回歸檔為 586 passed、100 個既有 selection／他平台 skipped。仍須新 head 的真實遠端 CI 驗證。
+- 修正 Nix fixture child npm 繼承 parent workspace selector 的問題；保留 offline ENOTCACHED 負控，清除 fixture 子程序的 workspace selection，Node 26 完整 tests-js 218 passed、1 skipped。
 
 ## 繼續順序
 

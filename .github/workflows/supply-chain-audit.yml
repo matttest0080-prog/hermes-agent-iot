@@ -55,7 +55,7 @@ jobs:
   scan:
     name: Scan PR for critical supply chain risks
     if: inputs.scan
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     outputs:
       review_status: ${{ steps.emit-status.outputs.review_status }}
@@ -164,7 +164,7 @@ jobs:
   dep-bounds:
     name: Check PyPI dependency upper bounds
     if: inputs.deps
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     outputs:
       review_status: ${{ steps.emit-status.outputs.review_status }}
@@ -244,7 +244,7 @@ jobs:
     name: Aggregate review statuses
     needs: [scan, dep-bounds]
     if: always()
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     outputs:
       review_status: ${{ steps.merge.outputs.review_status }}

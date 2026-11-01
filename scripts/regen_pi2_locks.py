@@ -87,6 +87,29 @@ def expand_profile(metadata: dict, profile: str) -> list[str]:
     return [req for req in requirements if requirement_name(req) not in EXCLUDED]
 
 
+def linux_armv7_requirements(requirements: list[str]) -> list[str]:
+    """Do not ask the resolver to build inactive Android/Windows source pins."""
+    from packaging.markers import default_environment
+    from packaging.requirements import Requirement
+
+    targets = [
+        {**default_environment(), "sys_platform": "linux", "platform_system": "Linux",
+         "platform_machine": "armv7l", "os_name": "posix",
+         "platform_python_implementation": "CPython", "implementation_name": "cpython",
+         "python_version": version, "python_full_version": version + ".0"}
+        for version in ("3.11", "3.12", "3.13")
+    ]
+    selected = []
+    for text in requirements:
+        marker = Requirement(text).marker
+        # Keep fine-grained patch-version conditions for the universal resolver.
+        if marker is None or "python_full_version" in str(marker) or any(
+            marker.evaluate(target) for target in targets
+        ):
+            selected.append(text)
+    return selected
+
+
 def refreshed_dependency_pins(repo: Path, lock: Path, requirements: list[str]) -> dict[str, str]:
     """Refresh only changed direct pins and their closure from the reviewed source lock."""
     old_pins = {
@@ -104,6 +127,10 @@ def refreshed_dependency_pins(repo: Path, lock: Path, requirements: list[str]) -
         if (match := REQ_LINE.match(requirement))
         and old_pins.get(canonicalize(match.group(1))) != match.group(2)
     ]
+    # A reviewed direct artifact also owns its dependency closure (not PyPI metadata).
+    from packaging.requirements import Requirement
+    pending.extend(canonicalize(parsed.name) for text in requirements
+                   if (parsed := Requirement(text)).url)
     visited: set[str] = set()
     preferred = {}
     while pending:
@@ -198,7 +225,7 @@ def main() -> int:
     with tempfile.TemporaryDirectory(prefix="hermes-pi2-locks-") as temp:
         staging = Path(temp)
         for profile in PROFILES:
-            requirements = expand_profile(metadata, profile)
+            requirements = linux_armv7_requirements(expand_profile(metadata, profile))
             direct = {requirement_name(req) for req in requirements}
             old_lock = repo / "requirements" / "pi2" / f"{profile}.lock"
             preferred = refreshed_dependency_pins(repo, old_lock, requirements)
@@ -212,6 +239,8 @@ def main() -> int:
                 'requires-python = ">=3.11,<3.14"\n'
                 f"dependencies = {json.dumps(requirements)}\n\n"
                 "[tool.uv]\n"
+                # These locks install on Linux Pi2, not the source-only Android bridge.
+                'environments = ["sys_platform == \'linux\'"]\n'
                 f"constraint-dependencies = {json.dumps(constraints)}\n"
             )
             (project / "pyproject.toml").write_text(synthetic, encoding="utf-8")

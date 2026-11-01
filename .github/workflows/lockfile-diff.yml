@@ -40,7 +40,7 @@ concurrency:
 jobs:
   diff:
     name: package-lock.json semantic diff
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: 5
     outputs:
       changed: ${{ steps.diff.outputs.changed }}

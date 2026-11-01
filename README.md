@@ -15,6 +15,8 @@
 
 Hermes Agent IoT is an IoT/robotics-focused fork of [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent). The maintained `pi2-lite` branch focuses on constrained Raspberry Pi and edge deployments while preserving the upstream Hermes Agent runtime and ecosystem.
 
+> **此來源分支的交付注意事項：** v0.22.5 同步版使用保留 MIT 署名的 browser-harness 相容性 fork 與 Pillow 13 修補。此候選採固定雜湊的 GitHub 產物，暫不發布至 PyPI；下方 `0.22.2.post1` 指令僅代表既有 PyPI 發行版，不包含此來源分支的新修補。新版本驗證、安裝與發布狀態請先看 [相容性與交付說明](docs/browser-harness-compat.md) 和 [同步驗證紀錄](docs/upstream-review-v0.22.5.md)，勿把來源合併當成已發布或已部署。
+
 ## Why Hermes Agent IoT?
 
 - **Raspberry Pi 2 / ARMv7:** verified low-resource installation path for 1 GB-class hardware.

@@ -26,7 +26,7 @@ concurrency:
 jobs:
   posix:
     name: install.sh protocol + small fresh-install E2E
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     # NOTE: `runner.temp` is only available in step-level env, not job-level
     # env — a job-env `${{ runner.temp }}` makes GitHub reject the workflow
@@ -134,7 +134,7 @@ jobs:
 
   windows:
     name: install.ps1 protocol surface
-    runs-on: blacksmith-2vcpu-windows-2025
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-2vcpu-windows-2025' || 'windows-2025' }}
     timeout-minutes: 10
     steps:
       - uses: useblacksmith/checkout@25227e61ff9dafe400e22fa487b673eac4e4409a  # v1

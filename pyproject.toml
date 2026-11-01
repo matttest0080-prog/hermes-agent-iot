@@ -135,7 +135,9 @@ dependencies = [
   # wrapper over it). Pure Python, and its pins match Pillow/websockets above,
   # so it rides in the main venv and every install, Desktop bundle included,
   # ships it without a separate tool environment.
-  "browser-harness==0.1.13",
+  # Independent, MIT-preserving compatibility build; source and CI receipt:
+  # docs/browser-harness-compat.md. Hash-pinned GitHub artifact, not a PyPI release.
+  "browser-harness @ https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl#sha256=63a2fb36e398d8a764fb5961a70f0deb63dc60472ff0345b739105d17e2e059e",
   # .gitignore-aware file matching for desktop build stamp.
   "pathspec==1.1.1",
   "fastapi>=0.104.0,<1",
@@ -174,7 +176,7 @@ dependencies = [
   # libs required for the codecs we use, so it's safe to ship in the base
   # install rather than gating it behind an extra + a mid-session lazy install
   # (which deadlocked the CLI under prompt_toolkit — see #40490).
-  "Pillow==12.3.0",
+  "Pillow==13.0.0",
   # HEIF/HEIC/AVIF decode for the vision tools is deliberately NOT declared:
   # upstream ships "pillow-heif>=1.4.0,<2" as a core dependency on the claim
   # that "prebuilt wheels bundling libheif for the common platforms" cover every
@@ -256,19 +258,21 @@ edge-tts = ["edge-tts==7.2.7"]
 # Keep dependency markers and PM gates together: bundles omit them, explicit
 # setup requests report unavailable rather than succeeding with an empty set.
 neutts = ["neutts[all]==1.4.1; python_version < '3.14'"]
+# Wheel-only local speech engines have no stock Android / Linux ARMv7 build.
+# Keep their markers and PM refusal gates aligned; core and portable audio stay available.
 kittentts = [
-  "kittentts @ https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl ; (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+  "kittentts @ https://github.com/KittenML/KittenTTS/releases/download/0.8.1/kittentts-0.8.1-py3-none-any.whl ; sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
   # KittenTTS requires misaki[en]>=0.9.4, and PyPI's misaki 0.9.4 caps Python
   # below 3.13. The NousResearch fork is the same 0.9.4 code with the cap
   # raised to <3.15. Declaring it here makes KittenTTS's transitive
   # requirement resolve to the fork. Drop this line when upstream misaki
   # publishes a release that allows 3.14.
-  "misaki[en] @ git+https://github.com/NousResearch/misaki.git@f03fd2be7346952a83d3d4845c217fc7667f322d ; (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
-  "soundfile==0.14.0; (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+  "misaki[en] @ git+https://github.com/NousResearch/misaki.git@f03fd2be7346952a83d3d4845c217fc7667f322d ; sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+  "soundfile==0.14.0; sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
 ]
 # onnxruntime has no Intel macOS wheel. Piper has no Windows ARM64 wheel.
 piper = [
-  "piper-tts==1.8.0; (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+  "piper-tts==1.8.0; sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
 ]
 modal = ["modal==1.5.5", "cbor2==5.9.0; platform_machine == 'armv7l'"]
 daytona = ["daytona==0.155.0"]
@@ -280,7 +284,9 @@ hindsight = ["hindsight-client==0.6.1"]
 # advisories (GHSA-7mj9-2mp8-4m2p, GHSA-8xx6-hgc6-gc2m, GHSA-f2fp-rgf2-35cp,
 # GHSA-h4x7-gw46-3wm6, GHSA-pf96-p4fj-6566); starlette: CVE-2026-48710;
 # setuptools: 83 (torch >=2.13 requires setuptools 83).
-google-meet = ["playwright==1.62.0", "websockets==15.0.1"]
+# Playwright publishes no Android or Linux ARMv7 wheel; keep the optional
+# capability out of unsupported resolver splits rather than breaking core installs.
+google-meet = ["playwright==1.62.0; sys_platform != 'android' and platform_machine != 'armv7l' and ((sys_platform in 'linux darwin' and platform_machine in 'x86_64 aarch64 arm64') or (sys_platform == 'win32' and platform_machine in 'AMD64 x86_64 ARM64 arm64 x86 i386 i686'))"]
 messaging = [
   "python-telegram-bot[webhooks]==22.8",
   "discord.py==2.7.1",
@@ -318,11 +324,10 @@ wecom = ["defusedxml==0.7.1"]
 tts-premium = ["elevenlabs==1.59.0"]
 voice = [
   # Local STT pulls in wheel-only transitive deps (ctranslate2, onnxruntime).
-  # faster-whisper's closure is prebuilt-only and missing pieces on two
-  # targets: ctranslate2 has no win_arm64 wheel/sdist (win32-arm64), and
-  # onnxruntime has no darwin-x64 wheel/sdist (darwin-x64). Gate the local
-  # STT path off both; sounddevice/numpy still ship.
-  "faster-whisper==1.2.1; (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or platform_system != 'Darwin')",
+  # faster-whisper's closure is prebuilt-only: no Android / Linux ARMv7,
+  # ctranslate2 on win_arm64, or onnxruntime on darwin-x64. Gate only local
+  # STT on these targets; sounddevice/numpy still ship.
+  "faster-whisper==1.2.1; sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or platform_system != 'Darwin')",
   "sounddevice==0.5.5",
   "numpy==2.4.3",
 ]
@@ -332,7 +337,7 @@ wake = [
   # pyopen-wakeword includes the TFLite library and shared feature models.
   # Its universal2 wheel contains an ARM64-only library, so Intel Macs cannot
   # load it. There is no native Windows ARM64 wheel either.
-  "pyopen-wakeword==1.1.0; (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+  "pyopen-wakeword==1.1.0; sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
   "sherpa-onnx==1.13.8",
   # uv reads sherpa-onnx metadata from its cp311-linux_armv7l wheel, which
   # omits this pin. Every wheel the bundles install requires it. Without the
@@ -355,7 +360,7 @@ telegram = ["python-telegram-bot[webhooks]==22.8"]
 discord = ["discord.py[voice]==2.7.1"]
 # stt-whisper + audio-io compose [voice] (faster-whisper / sounddevice / numpy).
 stt-whisper = [
-  "faster-whisper==1.2.1; (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or platform_system != 'Darwin')",
+  "faster-whisper==1.2.1; sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or platform_system != 'Darwin')",
 ]
 audio-io = ["sounddevice==0.5.5", "numpy==2.4.3"]
 # WeChat voice decode (tools/transcription_tools.py self-heal path).
@@ -363,7 +368,7 @@ silk = ["pilk==0.2.4"]
 # Wake-engine sub-extras — lazy per-engine installs so a user who only wants
 # sherpa-onnx doesn't pull the whole [wake] bundle. Pins match [wake].
 wake-openwakeword = [
-  "pyopen-wakeword==1.1.0; (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
+  "pyopen-wakeword==1.1.0; sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')",
 ]
 wake-sherpa = [
   "sherpa-onnx==1.13.8",
@@ -631,20 +636,22 @@ matrix = "sys_platform == 'linux'"
 google-chat = "platform_machine != 'ARM64' or sys_platform != 'win32'"
 # mem0ai -> qdrant-client -> grpcio: same missing win_arm64 wheel.
 mem0 = "platform_machine != 'ARM64' or sys_platform != 'win32'"
+# Match the Playwright wheel targets; explicitly refuse unsupported extra requests.
+google-meet = "(sys_platform in 'linux darwin' and platform_machine in 'x86_64 aarch64 arm64') or (sys_platform == 'win32' and platform_machine in 'AMD64 x86_64 ARM64 arm64 x86 i386 i686')"
 # Match the engine dependency markers so PM refuses an unsupported install.
-wake-openwakeword = "(platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')"
+wake-openwakeword = "sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')"
 # faster-whisper's closure is prebuilt-only: ctranslate2 has no win_arm64 wheel and onnxruntime
 # none for darwin-x64. Its ANCHOR is faster_whisper, so an unsupported machine could install the
 # extra, rebuild the whole dependency environment and still fail the anchor on every retry.
 # Gate the extra that carries only faster-whisper; [voice] also has ungated deps (sounddevice,
 # numpy) and stays installable, see test_declared_extra_gates_match_dependency_selection.
-stt-whisper = "(platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or platform_system != 'Darwin')"
+stt-whisper = "sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or platform_system != 'Darwin')"
 # NeuTTS excludes Python 3.14.
 neutts = "python_version < '3.14'"
 # KittenTTS: onnxruntime has no Intel macOS wheel; misaki[en]'s torch has no
 # Windows ARM64 wheel.
-kittentts = "(platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')"
-piper = "(platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')"
+kittentts = "sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')"
+piper = "sys_platform != 'android' and platform_machine != 'armv7l' and (platform_machine != 'ARM64' or sys_platform != 'win32') and (platform_machine != 'x86_64' or sys_platform != 'darwin')"
 
 [tool.uv]
 # uv otherwise enables the dev group by default, including in payload builds.
@@ -761,6 +768,8 @@ asyncpg = false
 azure-identity = false
 boto3 = false
 brotlicffi = false
+# Reviewed compatibility post-release for critical GHSA-8g5g-8vmr-9782.
+# Its fixed artifact SHA256 and unchanged upstream src are recorded in docs/browser-harness-compat.md.
 browser-harness = false
 build = false
 cbor2 = false

@@ -42,7 +42,7 @@ concurrency:
 jobs:
   contracts:
     name: Termux packaging contracts on Linux
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
       - uses: useblacksmith/checkout@25227e61ff9dafe400e22fa487b673eac4e4409a  # v1
@@ -72,7 +72,7 @@ jobs:
 
   tui:
     name: Prebuilt TUI checks
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: 15
     steps:
       - uses: useblacksmith/checkout@25227e61ff9dafe400e22fa487b673eac4e4409a  # v1
@@ -101,7 +101,7 @@ jobs:
   r2-provisioned:
     name: Detect R2 credentials
     if: github.event_name != 'pull_request' && github.event_name != 'pull_request_target'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     environment: release-signing
     timeout-minutes: 5
     outputs:
@@ -120,7 +120,7 @@ jobs:
     # A stable-release candidate run still fails loudly on missing R2: the
     # release must not pass on a skipped verification.
     if: needs.r2-provisioned.outputs.configured == 'true' || inputs.release == true
-    runs-on: blacksmith-4vcpu-ubuntu-2404-arm
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404-arm' || 'ubuntu-24.04-arm' }}
     environment: release-signing
     timeout-minutes: 45
     env:

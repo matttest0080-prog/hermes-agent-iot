@@ -60,6 +60,11 @@ describe('integrity-pinned Nix npm graph', () => {
       npm_config_cache: join(root, 'cache'), npm_config_offline: 'true',
       npm_config_registry: 'http://127.0.0.1:9', npm_config_audit: 'false', npm_config_fund: 'false'
     }
+    // The parent workspace runner exports workspace selection; synthetic pack
+    // roots must not inherit that selection (npm otherwise packs zero packages).
+    for (const key of Object.keys(env)) {
+      if (/^npm_config_(workspace|workspaces|include_workspace_root)$/i.test(key)) delete env[key]
+    }
     const npmCli = process.env.npm_execpath
     if (!npmCli) throw new Error('Run the suite through npm so its pinned CLI is available')
     const npm = (args, cwd = app) => spawnSync(process.execPath, [npmCli, ...args], {
@@ -72,7 +77,9 @@ describe('integrity-pinned Nix npm graph', () => {
       writeFileSync(join(source, 'index.js'), name === 'edge-a' ? "module.exports = require('edge-b')" : 'module.exports = 2')
       const result = npm(['pack', '--ignore-scripts', '--json', '--pack-destination', root], source)
       expect(result.status, result.stdout + result.stderr).toBe(0)
-      return `file:${join(root, JSON.parse(result.stdout)[0].filename)}`
+      const packed = JSON.parse(result.stdout)
+      expect(packed).toHaveLength(1)
+      return `file:${join(root, packed[0].filename)}`
     }
     const a = pack('edge-a', '1.0.0', { 'edge-b': '1.0.0' })
     const b = pack('edge-b', '2.0.0')
