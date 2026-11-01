@@ -89,10 +89,7 @@ def _wait_for_reader_close(session):
 
 
 @_POSIX_PTY
-@pytest.mark.live_system_guard_bypass
 def test_kill_returns_while_escaped_descendant_holds_the_pty(tmp_path, unscoped):
-    # Only the spawned registry session is terminated. Its leader can exit before
-    # its owned helpers, which then leave the ancestry-based signal allowlist.
     pytest.importorskip("ptyprocess")
     registry = ProcessRegistry()
     session = _spawn_with_escapee(registry, tmp_path)

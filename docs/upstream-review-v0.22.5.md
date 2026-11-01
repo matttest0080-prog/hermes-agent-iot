@@ -85,9 +85,19 @@ Desktop UI 初輪 11,509 passed、3 failed：已確認 storage instance spy 在 
 - 四個完整 JS 測試 lane 已完成：Desktop UI **11,512 passed**；Electron **3,681 passed、25 skipped**；tests-js **215 passed、1 skipped**；TUI **1,881 passed**。這是完整 lane 重跑，不再只引用局部測試；不等同最終遠端全部 CI 通過。
 - 發現本機先前 `pm.build_env` 的測試環境誤裝 editable 專案，會讓復原 fixture 跨入原 checkout。改用與 CI `ensure_testenv` 一致的 `--no-install-project` 獨立環境後，復原 closure **14 passed**，未豁免或略過測試。
 - 冷啟動 fixture 補齊真正 source-completion 所需的 agent／platform／根層 bootstrap helpers，以及 dotenv 依賴；保留舊 Python 3.11 啟動、切換 managed Python 3.14、原設定遷移及修復不覆寫的斷言。兩種 cold-runtime 情境通過。
-- 兩項 PTY 測試明確標記需要向**自身建立的 process group**送真實訊號，因 leader 離開後 helper 不再位於 ancestry allowlist；不是 skip，也未修改全域防護。兩檔 **22 passed**，全域 live-system guard 自測 **47 passed**。附件路由測試的 driver lease 改為 5 秒，避免無關的 0.4 秒租約在忙碌 runner 先到期；保留拒絕附件與不提交 turn 的斷言。
+- PTY 局部兩檔 **22 passed**，但 40 檔併跑仍出現兩項 PTY 失敗，因此不能宣稱已修復。曾試加的兩個 live-system-guard bypass marker 已撤回：沒有證據證明防護是原因，撤回後相同局部測試仍 22 passed。全域 live-system guard 自測 **47 passed**。附件路由測試的 driver lease 改為 5 秒，避免無關的 0.4 秒租約在忙碌 runner 先到期；保留拒絕附件與不提交 turn 的斷言。
 - 真實 macOS CI 揭露 SQLite browse 的 `BEGIN IMMEDIATE` 中斷不在 rollback／逾時分類範圍。修正將 BEGIN 納入相同錯誤處理，清除 progress handler 後 rollback，僅在 deadline 已觸發時將 SQLite error 分類為 browse budget exceeded。新增 8 個 deterministic 正／負控制：乾淨上游 **3 failed、5 passed**，修正後 **8 passed**；無逾時的 SQLite error 保持原錯誤，並逐 byte 確認歷史／schema 回滾。既有 browse schema 檔 **29 passed**；仍須 macOS CI 重驗，不能把 Linux 測試稱為 macOS 實測。
 - Pillow/browser-harness 阻擋仍在：最新 PyPI metadata 再查仍是 `browser-harness==0.1.13` 精確要求 Pillow 12.3.0，沒有以不相容 override 或 `--no-deps` 假裝修復。
+
+### 最新實測與未過項目
+
+- `2622c537af`：8 檔定向測試 **126 passed**；其後 40 檔重跑 **525 passed、4 failed、6 skipped**，PTY、update-lock 併發嘗試數及 delegation queue timeout 仍未過，不以單次局部綠燈豁免。hosted-room service 亦出現過 transient 失敗，最後重試通過不代表穩定性已證明。
+- `2622c537af` 真實 PR CI 的 macOS 兩個分片均成功，已補足上段 SQLite 修正的 macOS 重驗；整體 CI 仍未通過。
+- 同 commit 的新 wheel SHA256：`18536a8c7eb7ec16564c03151cf58632ae916cbcf96ff245cbc6062c1e1f3895`。Pi 2 隔離環境以一般 pip 重新安裝（未用 `--no-deps`），`pip check` 與 7 項 smoke 再通過；仍不代表 Pillow 缺口已解決。
+- 完整 JS lane 先前本機使用 Node 22；遠端 PM 釘選 Node **26.12.1**，其 Storage fallback 是 own-method object，不是 jsdom prototype。修正 spy 選取真正 method owner，新增確實嘗試持久化的斷言；Node 26 的 voice/debounce 兩檔 **32 passed**，不是以 Node 22 的全量結果宣稱 Node 26 全量通過。
+- 遠端 Python 第 2 分片揭露 DST 當天測試誤拿「現在」offset 比較「下次排程」offset，以及 no-sqlite fixture 未隔離 import-time unsafe CLI refusal。修正測試的參照時刻與真正讀取 seam，兩檔 **14 passed、4 個需 SQLite salvage shell 的既有 skipped**；未修改 cron 時區或 SQLite 安全政策。
+- Nix PR CI **失敗**：offline npm install 對 zod 發出 registry request，遭 `ENOTCACHED`。尚未釐清 root override／workspace manifest 與 importNpmLock 改寫的相容性；未刪除 Nix check、開放 sandbox 網路或停用 14 日 age gate。
+- 仍須完整最新 CI、Pillow 正式相容解法與獨立 reviewer；PR 維持草稿，沒有啟用 auto-merge 或繞過保護。
 
 ## 繼續順序
 
