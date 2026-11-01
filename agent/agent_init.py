@@ -1,4 +1,3 @@
-# health: allow FILE_LINES -- the fork's IoT delta grows this upstream file past its cap; moving upstream code out would conflict on every upstream sync
 """Implementation of :meth:`AIAgent.__init__` as ``init_agent(agent, ...)``.
 
 ``init_agent`` is a thin, ordered orchestrator over ``_init_*`` / ``_build_*`` phase
@@ -27,13 +26,16 @@ from agent.context_compressor import ContextCompressor
 from agent.agent_init_fallback import _fallback_entries, _init_fallback_chain, recompute_init_fallback_api_mode
 from agent.agent_init_params import _CALLBACK_PARAMS, _GATEWAY_IDENTITY_PARAMS, _PASSTHROUGH_PARAMS
 from agent.agent_runtime_helpers import _ra
+from agent.agent_init_context_floor import _enforce_minimum_context
 from agent.iteration_budget import IterationBudget, normalize_budget_warning_ratio
-from agent.memory_manager import StreamingContextScrubber
+from agent.memory_context import StreamingContextScrubber
 from agent.memory_provider import is_core_memory_provider
 from agent.session_activity import ActivityProvenance
 from agent.model_metadata import (
-    fetch_model_metadata, is_local_endpoint, query_ollama_num_ctx
+    fetch_model_metadata, is_local_endpoint
 )
+from agent.agent_init_ollama import _clamp_compressor_to_ollama_num_ctx, _configure_ollama_num_ctx
+from agent.primary_runtime_snapshot import _snapshot_primary_runtime
 from agent.process_bootstrap import _install_safe_stdio
 from agent.subdirectory_hints import SubdirectoryHintTracker
 from agent.think_scrubber import StreamingThinkScrubber
@@ -729,11 +731,11 @@ def _setup_logging(agent):
 
 
 def _print_key_banner(key, label: str, warn_missing: bool = False) -> None:
-    """Masked credential line. ``key`` may be a callable Entra ID bearer provider (Azure
-    Foundry) — never invoke or inspect it. Keys ≤ 12 chars (incl. "dummy-key") are not shown."""
-    from agent.azure_identity_adapter import is_token_provider
-    if is_token_provider(key):
-        print("🔑 Using credentials: Microsoft Entra ID")
+    """Masked credential line. A callable ``key`` (Entra ID, Vertex OAuth, key_cmd, ...) is labelled
+    by its tagged source and never invoked. Keys ≤ 12 chars (incl. "dummy-key") are not shown."""
+    from agent.credential_source import credential_label
+    if source_label := credential_label(key):
+        print(f"🔑 Using credentials: {source_label}")
     elif isinstance(key, str) and len(key) > 12:
         print(f"🔑 Using {label}: {key[:8]}...{key[-4:]}")
     elif warn_missing:
@@ -1303,6 +1305,11 @@ def _init_memory(agent, _agent_cfg, skip_memory, platform, memory_manager=None):
     agent._memory_nudge_interval = 10
     agent._turns_since_memory = 0
     agent._iters_since_skill = 0
+    from agent.safe_worker_policy import safe_worker_enabled
+
+    if safe_worker_enabled():
+        agent._memory_manager = None
+        return
     # skip_memory skips the external *provider*; enabled_toolsets=["memory"] still gets the
     # built-in store so the memory tool never sees store=None.
     # Flush/background agents can still pass enabled_toolsets=["memory"] so the built-in file store exists
@@ -1363,8 +1370,8 @@ def _init_memory(agent, _agent_cfg, skip_memory, platform, memory_manager=None):
                         _unavailable_reason = _mp.unavailable_reason()
                     _warn_memory_provider_unavailable(
                         _mem_provider_name, _unavailable_reason, say=agent._emit_startup_warning)
-                if agent._memory_manager.providers:
-                    agent._memory_manager.initialize_all(**_memory_provider_init_kwargs(agent, platform))
+                if agent._memory_manager.providers and agent._memory_manager.initialize_for_agent(
+                        say=agent._emit_startup_warning, **_memory_provider_init_kwargs(agent, platform)):
                     _ra().logger.info("Memory provider '%s' activated", _mem_provider_name)
                 else:
                     _ra().logger.debug("Memory provider '%s' not found or not available", _mem_provider_name)
@@ -1373,7 +1380,7 @@ def _init_memory(agent, _agent_cfg, skip_memory, platform, memory_manager=None):
             _ra().logger.warning("Memory provider plugin init failed: %s", _mpe)
             agent._memory_manager = None
 
-    from agent.memory_manager import inject_memory_provider_tools
+    from agent.memory_manager_tools import inject_memory_provider_tools
     inject_memory_provider_tools(agent)
 
 
@@ -1905,6 +1912,10 @@ def _resolve_context_length(agent, _agent_cfg, base_url):
 def _select_context_engine(_agent_cfg):
     """Config-driven context engine: ``context.engine`` → plugins/context_engine/<name>/ →
     general plugin system → None (built-in ContextCompressor)."""
+    from agent.safe_worker_policy import safe_worker_enabled
+
+    if safe_worker_enabled():
+        return None
     _engine_name = "compressor"
     with suppress(Exception):
         _ctx_cfg = _agent_cfg.get("context", {}) if isinstance(_agent_cfg, dict) else {}
@@ -2035,7 +2046,7 @@ def _build_context_engine(agent, _agent_cfg, cs, _custom_providers, _effective_c
         if hasattr(_cc, _attr):
             setattr(_cc, _attr, _value)
     agent.compression_checkpoint_required = cs.checkpoint_required
-    from agent.conversation_compression import _warn_checkpoint_required_without_capable_provider
+    from agent.conversation_compression_checkpoint import _warn_checkpoint_required_without_capable_provider
     _warn_checkpoint_required_without_capable_provider(agent)
     agent.codex_app_server_auto_compaction = cs.codex_app_server_auto
     agent.codex_responses_native_compaction = cs.codex_responses_native
@@ -2047,58 +2058,6 @@ def _build_context_engine(agent, _agent_cfg, cs, _custom_providers, _effective_c
     )
     agent.max_compression_attempts = cs.max_attempts
     agent.compression_idle_compact_after_seconds = cs.idle_compact_after_seconds
-
-
-def _enforce_minimum_context(agent):
-    # Reject windows below the configured tool-workflow floor (default 64K); an explicit
-    # positive model.context_length on LM Studio is allowed below the floor.
-    _ctx = getattr(agent.context_compressor, "context_length", 0)
-    # A local Ollama server serves num_ctx, not the GGUF's advertised window: a Modelfile or
-    # model.ollama_num_ctx at 64K+ is a usable window even when the metadata says 40K (#100437).
-    # Only a local endpoint can honour num_ctx, so a stale override never admits a hosted model.
-    if agent._ollama_num_ctx and agent.base_url and is_local_endpoint(agent.base_url):
-        _ctx = max(_ctx or 0, agent._ollama_num_ctx)
-    _allow_lmstudio_explicit_below_floor = (
-        str(agent.provider or "").strip().lower() == "lmstudio"
-        and isinstance(agent._config_context_length, int)
-        and not isinstance(agent._config_context_length, bool)
-        and agent._config_context_length > 0
-    )
-    if _allow_lmstudio_explicit_below_floor:
-        return
-    from agent.model_metadata import get_minimum_tool_context_length
-
-    # The floor is configurable (agent.minimum_tool_context_length; the Pi2 profiles lower it),
-    # so it is never taken from a module constant. The wording stays split by endpoint the way
-    # upstream has it: a local server's window is its own runtime setting, so it gets the
-    # server-side remedy (#87075), while a hosted route gets model advice.
-    minimum_context_length = get_minimum_tool_context_length(agent)
-    if not _ctx or _ctx >= minimum_context_length:
-        return
-    floor_k = minimum_context_length // 1000
-    if agent.base_url and is_local_endpoint(agent.base_url):
-        lead = (
-            f"which is below the configured minimum {minimum_context_length:,} "
-            f"required by Hermes Agent."
-        )
-        remedy = (
-            f"Your local server is serving a {_ctx:,}-token window.  Start it with at least "
-            f"{floor_k}K context (llama.cpp: -c {minimum_context_length}; vLLM: --max-model-len; "
-            f"Ollama: OLLAMA_CONTEXT_LENGTH={minimum_context_length} or a Modelfile num_ctx), "
-            f"or set model.ollama_num_ctx in config.yaml to the window it really serves "
-            f"(at least {floor_k}K)."
-        )
-    else:
-        lead = f"which is below the minimum {minimum_context_length:,} required by Hermes Agent."
-        remedy = (
-            f"Choose a model with at least {floor_k}K context.  If your server "
-            f"reports a window smaller than the model's true window, set "
-            f"model.context_length in config.yaml to the real value "
-            f"(this must be at least {floor_k}K)."
-        )
-    raise ValueError(
-        f"Model {agent.model} has a context window of {_ctx:,} tokens, {lead}  {remedy}"
-    )
 
 
 def _warn_nonagentic_hermes_model(agent):
@@ -2141,7 +2100,7 @@ def _inject_context_engine_tools(agent):
         _existing_tool_names = {
             t.get("function", {}).get("name") for t in agent.tools if isinstance(t, dict)
         }
-        from agent.memory_manager import normalize_tool_schema
+        from agent.memory_manager_tools import normalize_tool_schema
         for _raw_schema in agent.context_compressor.get_tool_schemas():
             _schema = normalize_tool_schema(_raw_schema)
             if _schema is None:
@@ -2170,67 +2129,6 @@ def _inject_context_engine_tools(agent):
             )
         except Exception as _ce_err:
             _ra().logger.debug("Context engine on_session_start: %s", _ce_err)
-
-
-def _configure_ollama_num_ctx(agent, _model_cfg, _config_context_length):
-    # Ollama defaults num_ctx to 2048, so detect the max window and send num_ctx per request.
-    # model.ollama_num_ctx overrides; model.context_length caps the detected value (VRAM).
-    agent._ollama_num_ctx: int | None = None
-    _override = _model_cfg.get("ollama_num_ctx") if isinstance(_model_cfg, dict) else None
-    if _override is not None:
-        try:
-            agent._ollama_num_ctx = int(_override)
-        except (TypeError, ValueError):
-            _ra().logger.debug("Invalid ollama_num_ctx config value: %r", _override)
-    if agent._ollama_num_ctx is None and agent.base_url and is_local_endpoint(agent.base_url):
-        try:
-            # api_key may be a callable (Entra token provider); detection needs a string.
-            _key = agent.api_key if isinstance(agent.api_key, str) else ""
-            _detected = query_ollama_num_ctx(agent.model, agent.base_url, api_key=_key or "")
-            if _detected and _detected > 0:
-                agent._ollama_num_ctx = _detected
-        except Exception as exc:
-            _ra().logger.debug("Local server num_ctx detection failed: %s", exc)
-    # Cap auto-detected num_ctx to the explicit context_length (GGUF metadata can advertise
-    # 256K+ and Ollama would allocate that much VRAM); never override an explicit num_ctx.
-    if (
-        agent._ollama_num_ctx
-        and _config_context_length
-        and _override is None
-        and agent._ollama_num_ctx > _config_context_length
-    ):
-        _ra().logger.info(
-            "Ollama num_ctx capped: %d -> %d (model.context_length override)",
-            agent._ollama_num_ctx, _config_context_length,
-        )
-        agent._ollama_num_ctx = _config_context_length
-    if agent._ollama_num_ctx and not agent.quiet_mode:
-        # Name the real source: a config override is honoured on any local server, /api/show is Ollama-only.
-        _ra().logger.info(
-            "Local server num_ctx: will request %d tokens (%s)",
-            agent._ollama_num_ctx,
-            "model.ollama_num_ctx" if _override is not None else "model max from Ollama /api/show",
-        )
-
-
-def _clamp_compressor_to_ollama_num_ctx(agent):
-    # Recalibrate the compressor to the served window: every request runs at num_ctx, so a
-    # trigger derived from the probed model window could sit above it and never fire.
-    # A config that sets only model.ollama_num_ctx (without model.context_length) previously left the
-    # compressor targeting the probed window while the server truncated/rejected at num_ctx — the compaction
-    # trigger could sit several times ABOVE the real served window and never fire. Clamp the compressor's
-    # window to the effective num_ctx so threshold math operates on the context the server actually serves.
-    # (Overlaps #60103's silent-clamp dead zone; this is the init-order half.)
-    _cc_window = getattr(agent.context_compressor, "context_length", 0) or 0
-    if agent._ollama_num_ctx and agent._ollama_num_ctx > 0 and _cc_window and agent._ollama_num_ctx < _cc_window:
-        _ra().logger.info(
-            "Compressor window clamped to Ollama num_ctx: %d -> %d",
-            _cc_window, agent._ollama_num_ctx,
-        )
-        agent.context_compressor.update_model(
-            model=agent.model, context_length=agent._ollama_num_ctx, base_url=agent.base_url,
-            api_key=getattr(agent, "api_key", ""), provider=agent.provider, api_mode=agent.api_mode,
-        )
 
 
 def _emit_compression_summary(agent, cs):
@@ -2275,38 +2173,6 @@ def _emit_compression_summary(agent, cs):
         _record_codex_gpt55_autoraise_notice(_autoraise)
     # Feasibility check deferred to the first turn near threshold (eager costs ~400ms cold).
     agent._compression_feasibility_checked = False
-
-
-def _snapshot_primary_runtime(agent):
-    # Per-turn restoration snapshot: after a fallback, the next turn restores these so the
-    # preferred model gets a fresh attempt.
-    _cc = agent.context_compressor
-    agent._primary_runtime = {
-        "model": agent.model,
-        "provider": agent.provider,
-        "requested_provider": agent.requested_provider,
-        "base_url": agent.base_url,
-        "api_mode": agent.api_mode,
-        "api_key": getattr(agent, "api_key", ""),
-        "request_overrides": dict(getattr(agent, "request_overrides", {}) or {}),
-        "client_kwargs": dict(agent._client_kwargs),
-        "use_prompt_caching": agent._use_prompt_caching,
-        "use_native_cache_layout": agent._use_native_cache_layout,
-        "reasoning_echo_flag": getattr(agent, "_reasoning_echo_flag", False),
-        # Engine state _try_activate_fallback() overwrites (getattr: plugin engines may lack them).
-        "compressor_model": getattr(_cc, "model", agent.model),
-        "compressor_base_url": getattr(_cc, "base_url", agent.base_url),
-        "compressor_api_key": getattr(_cc, "api_key", ""),
-        "compressor_provider": getattr(_cc, "provider", agent.provider),
-        "compressor_context_length": _cc.context_length,
-        "compressor_threshold_tokens": _cc.threshold_tokens,
-    }
-    if agent.api_mode == "anthropic_messages":
-        agent._primary_runtime.update({
-            "anthropic_api_key": agent._anthropic_api_key,
-            "anthropic_base_url": agent._anthropic_base_url,
-            "is_anthropic_oauth": agent._is_anthropic_oauth,
-        })
 
 
 def _init_usage_state(agent):
@@ -2388,6 +2254,13 @@ def init_agent(
     side_agent: bool = False, memory_manager=None,
     tool_result_metadata_callback: Optional[Callable[..., dict]] = None,
 ):
+    from agent.safe_worker_policy import safe_worker_enabled
+
+    if safe_worker_enabled():
+        skip_context_files = skip_memory = skip_background_review = True
+        load_soul_identity = False
+        prefill_messages = []
+        fallback_model = {}
     _install_safe_stdio()
 
     _params = locals()

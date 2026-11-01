@@ -95,3 +95,4 @@ def test_switch_to_moa_pins_chat_completions(monkeypatch, incoming_api_mode):
     )
     # The MoAClient facade should be installed as the client.
     assert type(agent.client).__name__ == "MoAClient"
+    assert agent._primary_runtime["api_mode"] == "chat_completions"

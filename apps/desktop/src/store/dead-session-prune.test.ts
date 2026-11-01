@@ -295,19 +295,18 @@ describe('watchDeadSessionPrune', () => {
       $pinnedSessionIds.set(['churn-pin'])
       getSessionMock.mockRejectedValue(notFound())
 
-      // First payload schedules the pass at +2s; a change 1s later would
-      // naively re-schedule to +6s. The clamp keeps the earlier deadline —
-      // and must not stack a second timer for it.
+      // First payload schedules +2s; list churn must not postpone that deadline.
+      // Other stores may schedule their own timers: observe probes, not the global timer count.
       $sessions.set([row('a')])
       vi.advanceTimersByTime(1_000)
       $sessions.set([row('a'), row('b')])
-      expect(vi.getTimerCount()).toBe(1)
+      expect(getSessionMock).not.toHaveBeenCalled()
 
       vi.advanceTimersByTime(1_000)
       await vi.runOnlyPendingTimersAsync()
 
       expect($pinnedSessionIds.get()).toEqual([])
-      expect(vi.getTimerCount()).toBe(0)
+      expect(getSessionMock).toHaveBeenCalledWith('churn-pin', undefined)
     } finally {
       unsubscribe()
       vi.useRealTimers()

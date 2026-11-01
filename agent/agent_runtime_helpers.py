@@ -28,13 +28,14 @@ from agent.think_scrubber import THINK_TAG_NAMES
 from agent.trajectory import convert_scratchpad_to_think
 from agent.credential_pool import (
     STATUS_EXHAUSTED, _parse_absolute_timestamp, credential_pool_entry_serves_endpoint,
-    credential_pool_matches_provider, resolve_runtime_pool_key,
+    credential_pool_matches_provider,
 )
 from agent.error_classifier import FailoverReason
 from agent.retry_utils import parse_retry_after_seconds, reset_delay_from_message
 from agent.message_metadata import MERGED_TURN_PREFIX
 from agent.turn_context import drop_stale_api_content
 from agent.agent_runtime_helpers_placeholders import _INTERRUPTED_PLACEHOLDER
+from agent.primary_runtime_snapshot import _build_primary_runtime_snapshot
 from utils import base_url_host_matches, base_url_hostname, env_var_enabled, atomic_json_write
 logger = logging.getLogger(__name__)
 
@@ -1054,12 +1055,8 @@ def recover_with_credential_pool(
         # Pass classified semantics, not just the status: a billing 403 and an edge-throttle 403
         # need opposite cooldowns.
         if effective_reason is not None:
-            failure_reason = effective_reason.value
-            if effective_reason == FailoverReason.billing and billing_unverified:
-                # Ambiguous billing body: size the cooldown as transient, not a 1-hour bench.
-                from agent.credential_pool import FAILURE_REASON_BILLING_UNVERIFIED
-                failure_reason = FAILURE_REASON_BILLING_UNVERIFIED
-            kwargs["failure_reason"] = failure_reason
+            from agent.credential_pool_model_cooldowns import pool_failure_reason
+            kwargs["failure_reason"] = pool_failure_reason(effective_reason, error_context, billing_unverified)
         model = getattr(agent, "model", None)
         if isinstance(model, str) and model.strip():
             kwargs["model"] = model
@@ -1452,10 +1449,9 @@ def restore_primary_runtime(agent) -> bool:
         return credential_pool_matches_provider(candidate, primary_provider, base_url=primary_runtime_base_url)
 
     def _load_primary_pool():
-        """Load the primary provider's pool; None when absent or provider-mismatched."""
-        from agent.credential_pool import load_pool
-        key = resolve_runtime_pool_key(primary_provider, primary_runtime_base_url)
-        loaded = load_pool(key) if key else None
+        """The primary's pool (entry-scoped for a custom entry); None when absent or provider-mismatched."""
+        from agent.custom_entry_pool import load_runtime_pool
+        loaded = load_runtime_pool(primary_provider, primary_runtime_base_url, (rt or {}).get("requested_provider"), rt or {})
         return loaded if loaded is not None and _matches_primary(loaded) else None
     if _primary_quota_reopened_early(agent, primary_provider, primary_model, _matches_primary, _load_primary_pool):
         agent._rate_limited_until = 0
@@ -2428,47 +2424,6 @@ def _update_switch_compressor(agent, custom_providers, effective_context_length,
     revalidate_compression_feasibility(agent)
 
 
-def _build_primary_runtime_snapshot(agent, api_mode) -> dict[str, Any]:
-    """The ``_primary_runtime`` record that persists a switch across turns."""
-    cc = getattr(agent, "context_compressor", None) or None
-    rt = {
-        "model": agent.model,
-        "provider": agent.provider,
-        "requested_provider": agent.requested_provider,
-        "base_url": agent.base_url,
-        "api_mode": agent.api_mode,
-        "api_key": getattr(agent, "api_key", ""),
-        "client_kwargs": dict(agent._client_kwargs),
-        "use_prompt_caching": agent._use_prompt_caching,
-        "use_native_cache_layout": agent._use_native_cache_layout,
-        "reasoning_config": dict(agent.reasoning_config) if getattr(agent, "reasoning_config", None) else None,
-        "reasoning_echo_flag": getattr(agent, "_reasoning_echo_flag", False),
-        # Overrides must travel with the switched-to identity or a later recovery/restore resurrects
-        # PRE-switch overrides from the stale init snapshot.
-        # See #75091.
-        "request_overrides": dict(getattr(agent, "request_overrides", {}) or {}),
-        "runtime_capabilities": dict(getattr(agent, "runtime_capabilities", {}) or {}),
-        "compressor_model": getattr(cc, "model", agent.model),
-        "compressor_base_url": getattr(cc, "base_url", agent.base_url),
-        "compressor_api_key": getattr(cc, "api_key", ""),
-        "compressor_provider": getattr(cc, "provider", agent.provider),
-        "compressor_context_length": cc.context_length if cc else 0,
-        "compressor_api_mode": getattr(cc, "api_mode", agent.api_mode),
-        "compressor_threshold_tokens": cc.threshold_tokens if cc else 0,
-    }
-    if api_mode == "anthropic_messages":
-        rt.update({
-            # A bare or freshly switched agent may never have had the native Anthropic
-            # client installed, and tests build agents via SimpleNamespace/__new__ without
-            # those attributes. Record the slots defensively so the snapshot (and the
-            # matching restore) never raises on a partial agent.
-            "anthropic_api_key": getattr(agent, "_anthropic_api_key", None),
-            "anthropic_base_url": getattr(agent, "_anthropic_base_url", None),
-            "is_anthropic_oauth": getattr(agent, "_is_anthropic_oauth", False),
-        })
-    return rt
-
-
 def _finish_switch(agent, new_provider, old_norm, new_norm) -> None:
     """Post-switch bookkeeping: fallback reset/prune, request_overrides, billing route."""
     agent._fallback_activated = False
@@ -2566,6 +2521,8 @@ def switch_model(
         _swap_switch_runtime(
             agent, new_model, new_provider, api_key, base_url, api_mode, old_provider, old_norm, new_norm
         )
+        # Native facade builders (MoA) may canonicalize the requested wire mode.
+        api_mode = agent.api_mode
         custom_providers, effective_context_length = _resolve_switch_context_length(agent, snapshot)
         # Refresh the custom-provider snapshot from the config just loaded so the prompt_caching lookup
         # sees flags added to config.yaml after session start.
@@ -3821,19 +3778,8 @@ def extract_api_error_context(error: Exception) -> dict[str, Any]:
 
 def _requeue_pending_steer(agent, steer_text: str) -> None:
     """Put drained steer text back so the caller's fallback delivers it as a next-turn user message."""
-    # Under the lock the slot is read directly: an initialized agent always has both attributes, so a
-    # missing ``_pending_steer`` there is a real bug and must fail loud. The lock-less branch only
-    # exists for test stubs built via ``object.__new__`` that skipped ``__init__``.
-    _lock = getattr(agent, "_pending_steer_lock", None)
-    if _lock is not None:
-        with _lock:
-            if agent._pending_steer:
-                agent._pending_steer = agent._pending_steer + "\n" + steer_text
-            else:
-                agent._pending_steer = steer_text
-    else:
-        existing = getattr(agent, "_pending_steer", None)
-        agent._pending_steer = (existing + "\n" + steer_text) if existing else steer_text
+    from agent.interrupt_control import requeue_drained_steer
+    requeue_drained_steer(agent, steer_text)
 
 
 def apply_pending_steer_to_tool_results(agent, messages: list, num_tool_msgs: int) -> None:

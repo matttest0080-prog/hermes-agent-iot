@@ -33,7 +33,7 @@ jobs:
         # the hosted arm64 Windows image runs this cold-install lane instead.
         runner: [windows-11-arm, windows-11-arm]
     steps:
-      - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
+      - uses: useblacksmith/checkout@25227e61ff9dafe400e22fa487b673eac4e4409a  # v1
         with:
           persist-credentials: false
       - uses: ./.github/actions/setup-pm

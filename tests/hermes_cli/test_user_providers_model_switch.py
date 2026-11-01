@@ -98,6 +98,8 @@ def test_list_authenticated_providers_enumerates_dict_format_models(monkeypatch)
         user_providers=user_providers,
         custom_providers=[],
         max_models=50,
+        # This checks config enumeration, not any real local Ollama server's catalog.
+        probe_custom_providers=False,
     )
 
     user_prov = next(
@@ -572,6 +574,11 @@ def test_section3_probes_no_key_endpoint_with_singular_default_model(monkeypatch
         return ["live-model-1", "live-model-2", "live-model-3"]
 
     monkeypatch.setattr("hermes_cli.models.fetch_api_models", _fake_fetch)
+    # Port 11434 uses the native catalog now; keep this a hermetic discovery test.
+    monkeypatch.setattr(
+        "hermes_cli.models_local.fetch_ollama_local_models",
+        lambda api_url, **kwargs: _fake_fetch("", api_url, **kwargs),
+    )
 
     user_providers = {
         "local-ollama": {
@@ -587,6 +594,8 @@ def test_section3_probes_no_key_endpoint_with_singular_default_model(monkeypatch
         user_providers=user_providers,
         custom_providers=[],
         max_models=50,
+        # Force this test's probe, not an earlier test's cached endpoint response.
+        refresh=True,
     )
 
     assert probed.get("called") is True, (

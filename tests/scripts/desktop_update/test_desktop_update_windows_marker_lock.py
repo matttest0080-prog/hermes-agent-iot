@@ -17,7 +17,7 @@ from tests.scripts.desktop_update.windows_handoff_support import (
     POWERSHELL,
     HOLD_CLI,
     _creation_time,
-    _alive,
+    _ProcessWatch,
     _dead_pid,
     _script,
     _finish,
@@ -138,12 +138,15 @@ def test_script_killed_before_publishing_the_delegate_runs_no_update(tmp_path: P
                                 '-Parent', str(script.pid), '-Seconds', '240'],
                                capture_output=True, text=True, timeout=300, check=False)
         assert child.returncode == 0, 'the update child never appeared'
-        child_pid = int(child.stdout)
-        subprocess.run(['taskkill', '/F', '/PID', str(script.pid)], capture_output=True, check=True)
-        script.wait(timeout=120)
-        time.sleep(3)
+        watch = _ProcessWatch(int(child.stdout))
+        try:
+            subprocess.run(['taskkill', '/F', '/PID', str(script.pid)], capture_output=True, check=True)
+            script.wait(timeout=120)
+            # Kill-on-close is asynchronous: await the original process handle, not a reusable PID.
+            assert watch.exited_within(240), 'the never-resumed update child outlived its script'
+        finally:
+            watch.close()
         assert not ran.exists(), 'the update child ran before it was published as the delegate'
-        assert not _alive(child_pid), 'the never-resumed update child outlived its script'
         lines = marker.read_bytes().decode().split('\n')
         assert lines[0] == _custodian(home, script.pid), lines
         assert not any(line.startswith('delegate:') for line in lines), lines

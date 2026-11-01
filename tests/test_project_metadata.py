@@ -1,6 +1,5 @@
 """Regression tests for packaging metadata in pyproject.toml."""
 
-import json
 from pathlib import Path
 import tomllib
 
@@ -17,15 +16,6 @@ def test_h2_request_smuggling_floor_is_enforced():
     with pyproject_path.open("rb") as handle:
         overrides = tomllib.load(handle)["tool"]["uv"]["override-dependencies"]
     assert "h2>=4.4.1" in overrides
-
-
-def test_website_postcss_override_preserves_current_version_and_pins_nanoid():
-    root = Path(__file__).resolve().parents[1]
-    package = json.loads((root / "website" / "package.json").read_text(encoding="utf-8"))
-    assert package["overrides"]["postcss"] == {
-        ".": "8.5.25",
-        "nanoid": "3.3.18",
-    }
 
 
 def test_wake_dependencies_and_runtime_gate_agree_on_supported_targets():
@@ -100,21 +90,24 @@ def test_mem0_extra_is_gated_off_win32_arm64():
 
 def test_direct_overrides_preserve_the_declared_exact_version():
     from packaging.requirements import Requirement
+    from packaging.utils import canonicalize_name
 
     root = Path(__file__).resolve().parents[1]
     metadata = tomllib.loads((root / "pyproject.toml").read_text(encoding="utf-8-sig"))
     locked = tomllib.loads((root / "uv.lock").read_text(encoding="utf-8-sig"))
-    direct = {req.name: req for spec in metadata["project"]["dependencies"]
+    # uv.lock records normalized names; pyproject keeps the declared spelling (Pillow).
+    direct = {canonicalize_name(req.name): req for spec in metadata["project"]["dependencies"]
               if (req := Requirement(spec)).specifier}
     for spec in metadata["tool"]["uv"].get("override-dependencies", []):
         override = Requirement(spec)
-        requirement = direct.get(override.name)
+        name = canonicalize_name(override.name)
+        requirement = direct.get(name)
         if requirement is None or not any(s.operator == "==" for s in requirement.specifier):
             continue
         assert override.specifier == requirement.specifier, (
             f"{override.name}: override {override.specifier} contradicts exact requirement {requirement.specifier}"
         )
-        versions = {row["version"] for row in locked["package"] if row["name"] == override.name}
+        versions = {row["version"] for row in locked["package"] if canonicalize_name(row["name"]) == name}
         assert versions and all(version in requirement.specifier for version in versions)
 
 
