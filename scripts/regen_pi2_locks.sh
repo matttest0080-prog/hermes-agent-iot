@@ -17,5 +17,22 @@ OUT_DIR="${1:-$REPO_DIR/requirements/pi2}"
 UV="${UV:-uv}"
 export UV
 
-"$UV" run --no-project --python 3.12 python \
-  "$REPO_DIR/scripts/regen_pi2_locks.py" "$REPO_DIR" "$OUT_DIR"
+# The generator parses PEP 508 markers. Keep its dependency in a disposable,
+# PM-owned tool environment, never in the application's runtime.
+"$UV" run --no-project --python 3.12 python - "$REPO_DIR" "$OUT_DIR" <<'PY'
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+repo, output = map(Path, sys.argv[1:])
+sys.path.insert(0, str(repo))
+import pm
+
+with tempfile.TemporaryDirectory(prefix="hermes-pi2-lockgen-tool-") as temp:
+    python = pm.ensure_environment(
+        "pi2-lockgen", ["packaging==26.2"], root=Path(temp), explicit=True,
+    )
+    subprocess.run([str(python), str(repo / "scripts/regen_pi2_locks.py"),
+                    str(repo), str(output)], check=True)
+PY

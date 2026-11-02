@@ -86,7 +86,8 @@ def _planted(tmp_path: Path) -> Path:
 
 
 def _gate(tmp_path: Path, origin: Path, entries: list[Path],
-          hermes_stub: str = "#!/bin/sh\nexit 0\n") -> subprocess.CompletedProcess:
+          hermes_stub: str = "#!/bin/sh\nexit 0\n", *,
+          shard: tuple[int, int] = (0, 1)) -> subprocess.CompletedProcess:
     bin_dir = tmp_path / "bin"
     bin_dir.mkdir(exist_ok=True)
     stub = bin_dir / "hermes"
@@ -95,6 +96,8 @@ def _gate(tmp_path: Path, origin: Path, entries: list[Path],
     env = {
         **os.environ,
         "CHANGED_FILES": "\n".join(str(e) for e in entries),
+        "CATALOG_SHARD_INDEX": str(shard[0]),
+        "CATALOG_SHARD_COUNT": str(shard[1]),
         "TMPDIR": str(tmp_path / "mktmp"),
         # The test interpreter first: the step's `python3 -I` parser needs
         # ruamel.yaml from site-packages, as setup-pm provides it in CI.
@@ -261,6 +264,30 @@ def test_structural_and_pinned_gates_agree(tmp_path, origin, mut):
     gate = _gate(tmp_path, origin, [entry])
     assert (structural.returncode == 0) == (gate.returncode == 0), (
         f"{structural.stdout}{structural.stderr}\n{gate.stdout}{gate.stderr}")
+
+
+def test_shards_validate_every_entry_exactly_once(tmp_path, origin):
+    from collections import Counter
+
+    sha = _git(origin, "rev-parse", "HEAD")
+    entries = [_entry(tmp_path, f"entry-{i}.yaml", sha) for i in range(9)]
+    passes = []
+    for index in range(3):
+        result = _gate(tmp_path, origin, entries, shard=(index, 3))
+        assert result.returncode == 0, result.stdout + result.stderr
+        expected = {str(entry) for entry in entries}
+        passes.extend(line.removeprefix("✅ PASS: ") for line in result.stdout.splitlines()
+                      if line.removeprefix("✅ PASS: ") in expected)
+    assert Counter(passes) == Counter(map(str, entries))
+
+
+@pytest.mark.parametrize("shard", [(0, 0), (3, 3), (-1, 3)])
+def test_invalid_shard_cannot_silently_skip_validation(tmp_path, origin, shard):
+    entry = _entry(tmp_path, "entry.yaml", _git(origin, "rev-parse", "HEAD"))
+    result = _gate(tmp_path, origin, [entry], shard=shard)
+    assert result.returncode != 0
+    assert "invalid catalog shard" in result.stdout
+    assert "PASS: " not in result.stdout
 
 
 # ── changed-entries step ──────────────────────────────────────────────────────

@@ -1,10 +1,10 @@
 # v0.22.5 同步審查與驗證紀錄
 
-建立：2026-10-30；補記：2026-11-01。工作分支：`sync/upstream-v0.22.5`。
+建立：2026-10-30；補記：2026-11-02。工作分支：`sync/upstream-v0.22.5`。
 
 > 本文件記錄合併候選各階段的驗證，不代表已發布至 PyPI 或已部署。遠端合併狀態以 [PR #47](https://github.com/matttest0080-prog/hermes-agent-iot/pull/47) 為準；舊段落屬歷史紀錄，最新決議列於本輪補記。禁止繞過必要 CI 與獨立 reviewer。
 >
-> **最新交付決議：** Pillow 相依阻擋已透過獨立、保留 MIT 的真實相容性 artifact 解決，不再保留 Pillow 12.3.0。此 Hermes 候選暫不發布至 PyPI；來源／雜湊／四個 Python matrix receipts 見 [browser-harness-compat.md](browser-harness-compat.md)。
+> **最新交付決議：** Pillow 相依阻擋已透過獨立、保留 MIT 的真實相容性 artifact 解決，不再保留 Pillow 12.3.0。此 Hermes 候選暫不發布至 PyPI；來源／雜湊／四個 Python matrix receipts 見 [browser-harness-compat.md](browser-harness-compat.md)。後續 OSV 修補、JavaScript 相容產物、npm 12 限制與 catalog data-only 分階段合併見 [security-closure-v0.22.5.md](security-closure-v0.22.5.md)；兩部分皆完成才算整次同步完成。
 
 ## 固定來源
 
@@ -52,7 +52,7 @@
 
 ### Pi 2 實機
 
-設備：`armv7l`、Python 3.13.5。使用獨立 `~/hermes-v0225-validation/venv`，不是取代既有服務環境。
+以下為前期候選 receipts，不代表後續依賴更新已完成實機驗收。設備：`armv7l`、Python 3.13.5。使用獨立 `~/hermes-v0225-validation/venv`，不是取代既有服務環境。
 
 - 更新後的 minimal／iot／rag／full／dev 五組鎖檔，全數通過 `pip install --dry-run --ignore-installed --require-hashes`；dev 另補跑取得明確 exit 0。
 - minimal 先行實際安裝，後升級至更新鎖檔的 IoT dependencies 與本機建置 wheel；`pip check` 通過。
@@ -121,11 +121,18 @@ Desktop UI 初輪 11,509 passed、3 failed：已確認 storage instance spy 在 
 - 發現 18 個 CI jobs 長時間 queued 的實際原因是 upstream Blacksmith runner labels，不是單純工作未結束。將本次會阻擋 PR 的 19 個 workflows 改為 ownership-conditional 公開 Ubuntu 24.04／Windows 2025／ARM64 runner，NousResearch 仍使用原 labels；沒有註冊本機 self-hosted runner、付費開通 vendor 或刪減 tests／steps。38 個 CI 回歸檔為 586 passed、100 個既有 selection／他平台 skipped。仍須新 head 的真實遠端 CI 驗證。
 - 修正 Nix fixture child npm 繼承 parent workspace selector 的問題；保留 offline ENOTCACHED 負控，清除 fixture 子程序的 workspace selection，Node 26 完整 tests-js 218 passed、1 skipped。
 
-## 繼續順序
+## 2026-11-02 收斂與繼續順序
 
-1. 先以可回溯的本機 merge commit 固定候選，讓從 HEAD 建 fixture 的安裝／復原測試確實測到本次合併；收齊 Python／JS 結果並重跑受影響範圍。
-2. 解決 Pillow/browser-harness 的正式安裝衝突；不得忽略 Pillow 12.3 的已知安全修補缺口。
-3. 對最終索引快照重跑 lint、health、鎖檔及 Pi 2 必要驗證，完成差異審查。
-4. 本機候選驗證後推送工作分支，以 PR 執行遠端完整 CI；在必要 check 全通過、相容性風險完成審查且另一位 reviewer 核准前，不合併受保護分支。
+- `6c140c6162` 遠端完整 Python 分片已成功；該輪仍因 npm 12 pack JSON 格式、兩個上游 author email mapping、catalog 混合 PR 准入及後續 OSV 通告而失敗，不能稱整體 CI 通過。
+- npm fixture 同時支援 npm 11 array 與 npm 12 keyed-object，新增真實 namespaced artifact offline 控制，共 4 項通過；原 offline ENOTCACHED 負控、artifact identity／hash／version 與 workspace 還原檢查保留。
+- 不修改 catalog 的 data-only 安全規則：YAML entries 暫還原 fork baseline，正式版差異另存為獨立 data-only patch。驗證改八分片；新測試執行真實 shell／git，證明完整分割且不重複，無效 shard 必須拒絕。
+- 依公開 GitHub commit author／原 PR owner 與 GitHub committer 證據補 email mapping；沒有修改凍結的 legacy map。
+- 新 OSV 依賴環境由 PM 建立、使用 `--no-install-project`；Pillow 13、browser-harness post1、Mistral 2.10.1、OpenTelemetry 1.45.1、mem0ai 2.0.18 與 setuptools 84.1.0 已實裝。18 個定向檔案 **241 passed、0 failed**。這不是最終 head 全量 CI。
+- Pi 2 實測揭露直接 URL identity 與 full extra 拉回 uvloop 的問題：修正 generator 的 URI/hash 一致性及 wheel／PM ARMv7 marker；保留既有 range pins 與 interpreter markers，避免再生時讓 FastAPI 等無關套件浮動。仍須最終 wheel 的完整實機重驗。
+
+1. 完成安全鎖與真實 JS／Python 消費端驗證，最終索引快照通過 lint、health、鎖檔再生一致性；不以舊 head 或不同工具鏈結果替代。
+2. 固定並推送最終候選；以其 wheel 完成 Pi 2 五 profiles、一般 pip、pip check 與 smoke，保留原服務不動。
+3. 收齊最新 required checks 及最新提交的獨立 reviewer approval，依保護規則合併核心 PR。
+4. 以獨立 data-only PR 完成 v0.22.5 catalog pin 驗證、更新至最新 base、重新滿足所需審查與合併；核對最終遠端 SHA 及兩個 PR merged 狀態。
 
 本機證據：系統暫存目錄下的 `hermes-v0225-evidence/`。未追蹤的 `owned/` 保留原樣，未打包、未提交。

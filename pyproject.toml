@@ -238,7 +238,7 @@ Documentation = "https://github.com/matttest0080-prog/hermes-agent-iot/blob/pi2-
 # (bionic libc, non-FHS layout).  Desktop and server installs pull this via
 # [all]; the [termux] / [termux-all] profiles intentionally omit it.
 uvloop = [
-  "uvloop>=0.15.1,<0.24; sys_platform != 'win32' and sys_platform != 'cygwin' and sys_platform != 'android' and platform_python_implementation != 'PyPy'",
+  "uvloop>=0.15.1,<0.24; sys_platform != 'win32' and sys_platform != 'cygwin' and sys_platform != 'android' and platform_machine != 'armv7l' and platform_python_implementation != 'PyPy'",
 ]
 # Native Anthropic provider — only needed when provider=anthropic (not via
 # OpenRouter or other aggregators).
@@ -293,7 +293,7 @@ messaging = [
   "PyNaCl==1.6.2",
   "davey==0.1.4",
   "aiohttp==3.14.5",
-  "brotlicffi==1.2.0.2",
+  "brotlicffi==1.2.1.0",
   "slack-bolt==1.30.0",
   "slack-sdk==3.44.1",
   "qrcode==7.4.2",
@@ -399,7 +399,7 @@ supermemory = ["supermemory==3.50.0"]
 # mem0ai -> qdrant-client -> grpcio: grpcio has no win_arm64 wheel (any
 # Python version), so gate the extra off there instead of building it from
 # sdist in the payload bundle.
-mem0 = ["mem0ai==2.0.10; platform_machine != 'ARM64' or sys_platform != 'win32'"]
+mem0 = ["mem0ai==2.0.18; platform_machine != 'ARM64' or sys_platform != 'win32'"]
 # Image resize recovery for the vision tools. Pillow is now a CORE dependency
 # (see the main `dependencies` list above) since the byte/pixel shrink paths are on
 # the default vision-embed path and the mid-session lazy install deadlocked the
@@ -459,14 +459,16 @@ acp = ["agent-client-protocol==0.9.0"]
 # pm (stt.mistral / tts.mistral) at first use — deliberately
 # NOT re-added to [all] so a future quarantined release can't break fresh
 # installs (see [all] policy comment below).
-mistral = ["mistralai==2.4.8"]
+# 2.4.8 caps semantic-conventions below the security-fixed OpenTelemetry family.
+# Stay on the compatible 2.x SDK rather than overriding its dependency metadata.
+mistral = ["mistralai==2.10.1"]
 # OTLP gateway monitoring export (optional). Provides the OpenTelemetry SDK +
 # OTLP/HTTP exporter for monitoring.gateway_health_export. Lazy-installed via
 # PM on first use; never a core dependency and deliberately
 # NOT in [all].
 otlp = [
-  "opentelemetry-sdk==1.39.1",
-  "opentelemetry-exporter-otlp-proto-http==1.39.1",
+  "opentelemetry-sdk==1.45.1",
+  "opentelemetry-exporter-otlp-proto-http==1.45.1",
 ]
 bedrock = ["boto3==1.42.89"]
 vertex = ["google-auth==2.55.1"]
@@ -508,9 +510,9 @@ google = [
   # The Google SDKs permit older vulnerable transitives, so unlocked installs
   # must carry the same fixed floors as uv.lock and the runtime installers:
   # httplib2 0.32.0 (GHSA-j5g9-f88f-gfj3 decompression bomb DoS),
-  # pyasn1 0.6.4, google-auth 2.55.1.
+  # pyasn1 0.6.5 (GHSA-2qm8-x737-gmw5 and related decoder DoS), google-auth 2.55.1.
   "httplib2==0.32.0",
-  "pyasn1==0.6.4",
+  "pyasn1==0.6.5",
 ]
 youtube = [
   # Required by skills/media/youtube-content and
@@ -581,8 +583,8 @@ dev = [
   "starlette==1.3.1",
   "ty==0.0.21",
   "ruff==0.15.10",
-  "setuptools==83.0.0",
-] # starlette: CVE-2026-48710; setuptools: 83 (torch >=2.13 requires setuptools 83)
+  "setuptools==84.1.0",
+] # starlette: CVE-2026-48710; setuptools: GHSA-xmj3-9gf7-h52w (also satisfies torch >=83)
 # Native launcher and provider-catalog E2E dependencies belong in the test
 # environment, not the core runtime. Keep the Anthropic SDK at the same
 # reviewed version as the optional runtime extra above.
@@ -596,7 +598,7 @@ test = [
 # PEP 517 isolated builds. Without wheel in
 # requires, the isolation sandbox only gets setuptools and the build
 # fails with ModuleNotFoundError: wheel.cli (#96488).
-requires = ["setuptools==83.0.0", "wheel"]
+requires = ["setuptools==84.1.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project.scripts]
@@ -630,6 +632,8 @@ opt-in-extras = ["kittentts", "modal"]
 # single-authority for WHICH extra is supported WHERE.
 
 [tool.hermes.extras-platforms]
+# Pi2 uses asyncio; unsupported explicit requests must not silently install nothing.
+uvloop = "sys_platform != 'win32' and sys_platform != 'cygwin' and sys_platform != 'android' and platform_machine != 'armv7l' and platform_python_implementation != 'PyPy'"
 # mautrix[encryption] → python-olm: linux-only wheels, no win/darwin build.
 matrix = "sys_platform == 'linux'"
 # grpcio (via google-cloud-pubsub) has no win_arm64 wheel.
@@ -665,6 +669,16 @@ conflicts = [
   # intentionally pins cbor2 5.9.0. They are separate lazy capabilities and
   # must not be resolved into one environment as simultaneous extras.
   [{ extra = "modal" }, { extra = "vercel" }],
+]
+# OSV 2026-11-01: real constraints, not overrides of vendor compatibility bounds.
+# Exact reviewed targets prevent age exceptions from admitting future releases.
+# filelock: GHSA-v4x8-3wr5-3wq8 and related lock-path issues;
+# msgpack: GHSA-j586-36cw-2gc2; tornado: GHSA-pcg2-g6cj-q92c and related HTTP issues.
+constraint-dependencies = [
+  "filelock==4.2.6",
+  "msgpack==1.2.4",
+  "opentelemetry-api>=1.45.1,<2",
+  "tornado==6.6",
 ]
 override-dependencies = [
   # discord.py's latest published version, 2.7.1, pins pynacl at <1.6. however, pynacl 1.5.0 has known vulnerabilities.
@@ -768,6 +782,11 @@ asyncpg = false
 azure-identity = false
 boto3 = false
 brotlicffi = false
+# Reviewed fixes newer than the 14-day window; do not exempt unrelated packages.
+filelock = false
+msgpack = false
+opentelemetry-api = false
+tornado = false
 # Reviewed compatibility post-release for critical GHSA-8g5g-8vmr-9782.
 # Its fixed artifact SHA256 and unchanged upstream src are recorded in docs/browser-harness-compat.md.
 browser-harness = false

@@ -50,7 +50,7 @@ describe('integrity-pinned Nix npm graph', () => {
     expect(readFileSync(join(root, 'package.json'))).toEqual(before)
   })
 
-  it('installs a security-overridden workspace completely offline and restores its original manifest', () => {
+  it.each(['edge-b', '@fixture/edge-b-compat'])('installs overridden %s offline and restores the workspace manifest', (realName) => {
     const root = mkdtempSync(join(tmpdir(), 'hermes-nix-offline-'))
     const app = join(root, 'app')
     mkdirSync(join(app, 'workspace'), { recursive: true })
@@ -70,19 +70,22 @@ describe('integrity-pinned Nix npm graph', () => {
     const npm = (args, cwd = app) => spawnSync(process.execPath, [npmCli, ...args], {
       cwd, env, encoding: 'utf8', timeout: 20_000
     })
-    const pack = (name, version, dependencies = {}) => {
+    const pack = (name, version, dependencies = {}, packageName = name) => {
       const source = join(root, name)
       mkdirSync(source)
-      save(join(source, 'package.json'), { name, version, dependencies, main: 'index.js' })
+      save(join(source, 'package.json'), { name: packageName, version, dependencies, main: 'index.js' })
       writeFileSync(join(source, 'index.js'), name === 'edge-a' ? "module.exports = require('edge-b')" : 'module.exports = 2')
       const result = npm(['pack', '--ignore-scripts', '--json', '--pack-destination', root], source)
       expect(result.status, result.stdout + result.stderr).toBe(0)
-      const packed = JSON.parse(result.stdout)
+      const metadata = JSON.parse(result.stdout)
+      // npm 11 emits an array; npm 12 keys pack results by package name.
+      const packed = Array.isArray(metadata) ? metadata : Object.values(metadata)
       expect(packed).toHaveLength(1)
+      expect(packed[0].filename).toMatch(/\.tgz$/)
       return `file:${join(root, packed[0].filename)}`
     }
     const a = pack('edge-a', '1.0.0', { 'edge-b': '1.0.0' })
-    const b = pack('edge-b', '2.0.0')
+    const b = pack('edge-b', '2.0.0', {}, realName)
     const manifest = { name: 'nix-fixture', version: '1.0.0', private: true, workspaces: ['workspace'],
       dependencies: { 'edge-a': a }, overrides: { 'edge-b': b } }
     const workspace = join(app, 'workspace', 'package.json')
@@ -115,6 +118,7 @@ describe('integrity-pinned Nix npm graph', () => {
     expect(JSON.parse(readFileSync(join(app, 'node_modules/edge-a/package.json'), 'utf8')).dependencies['edge-b']).toBe('1.0.0')
     const frozen = JSON.parse(readFileSync(join(app, 'package-lock.json'), 'utf8'))
     for (const [path, original] of Object.entries(originalLock.packages)) {
+      expect(frozen.packages[path]?.name).toBe(original.name)
       expect(frozen.packages[path]?.integrity).toBe(original.integrity)
       expect(frozen.packages[path]?.version).toBe(original.version)
     }

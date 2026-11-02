@@ -43,6 +43,7 @@
     "eslint-plugin-unused-imports": "4.4.1",
     "globals": "17.7.0",
     "lefthook": "2.1.14",
+    "minimatch": "https://github.com/matttest0080-prog/minimatch-hermes-compat/releases/download/v10.2.7-hermes.1/hermes-iot-minimatch-compat-10.2.7-hermes.1.tgz",
     "typescript": "6.0.3",
     "typescript-eslint": "8.64.0"
   },
@@ -72,7 +73,12 @@
     "browserslist@^4": "4.28.7",
     "colord@^2": "2.9.4",
     "fast-uri@^3": "3.1.9",
-    "joi@^18": "18.2.9",
+    "joi@^18": "18.3.1",
+    "glob@>=9": "14.0.2",
+    "path-scurry@^3": "3.0.0",
+    "@isaacs/nonrecursive-glob-match": "1.0.1",
+    "minimatch@<11": "$minimatch",
+    "minimatch@>=11": "11.0.1",
     "postcss": {
       ".": "8.5.29",
       "nanoid": "3.3.20"

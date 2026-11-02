@@ -14,7 +14,7 @@ anyio==4.14.2 ; sys_platform == 'linux' \
     #   openai
     #   starlette
     #   watchfiles
-browser-harness @ https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl ; sys_platform == 'linux' \
+browser-harness @ https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl#sha256=63a2fb36e398d8a764fb5961a70f0deb63dc60472ff0345b739105d17e2e059e ; sys_platform == 'linux' \
     --hash=sha256:63a2fb36e398d8a764fb5961a70f0deb63dc60472ff0345b739105d17e2e059e
     # via hermes-pi2-minimal-lock
 cdp-use==1.4.5 ; sys_platform == 'linux' \

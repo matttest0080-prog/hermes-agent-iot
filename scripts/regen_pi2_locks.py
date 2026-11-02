@@ -13,7 +13,9 @@ import tempfile
 import tomllib
 import urllib.error
 import urllib.request
+from collections.abc import Sequence
 from pathlib import Path
+from urllib.parse import urldefrag
 
 PROFILES = {
     "minimal": ("minimal",),
@@ -110,8 +112,42 @@ def linux_armv7_requirements(requirements: list[str]) -> list[str]:
     return selected
 
 
-def refreshed_dependency_pins(repo: Path, lock: Path, requirements: list[str]) -> dict[str, str]:
-    """Refresh only changed direct pins and their closure from the reviewed source lock."""
+def explicit_version_targets(requirements: list[str]) -> set[str]:
+    """Exact pins and direct artifacts override old pins; ranges do not float."""
+    from packaging.requirements import Requirement
+
+    result = set()
+    for text in requirements:
+        parsed = Requirement(text)
+        if parsed.url or any(spec.operator in ("==", "===") and "*" not in spec.version
+                             for spec in parsed.specifier):
+            result.add(canonicalize(parsed.name))
+    return result
+
+
+def _refresh_roots(old_pins: dict[str, str], requirements: list[str], constraints: Sequence[str]) -> list[str]:
+    from packaging.requirements import Requirement
+
+    pending = []
+    for text in requirements:
+        parsed = Requirement(text)
+        name = canonicalize(parsed.name)
+        if parsed.url or (parsed.specifier and (
+            name not in old_pins or old_pins[name] not in parsed.specifier
+        )):
+            pending.append(name)
+    for text in constraints:
+        parsed = Requirement(text)
+        name = canonicalize(parsed.name)
+        if name in old_pins and old_pins[name] not in parsed.specifier:
+            pending.append(name)
+    return pending
+
+
+def refreshed_dependency_pins(
+    repo: Path, lock: Path, requirements: list[str], constraints: Sequence[str] = (),
+) -> dict[str, str]:
+    """Refresh changed pins or violated security floors and their reviewed closure."""
     old_pins = {
         canonicalize(match.group(1)): match.group(2)
         for line in lock.read_text(encoding="utf-8-sig").splitlines()
@@ -121,16 +157,12 @@ def refreshed_dependency_pins(repo: Path, lock: Path, requirements: list[str]) -
     by_name: dict[str, list[dict]] = {}
     for package in packages:
         by_name.setdefault(canonicalize(package["name"]), []).append(package)
-    pending = [
-        canonicalize(match.group(1))
-        for requirement in requirements
-        if (match := REQ_LINE.match(requirement))
-        and old_pins.get(canonicalize(match.group(1))) != match.group(2)
-    ]
     # A reviewed direct artifact also owns its dependency closure (not PyPI metadata).
-    from packaging.requirements import Requirement
-    pending.extend(canonicalize(parsed.name) for text in requirements
-                   if (parsed := Requirement(text)).url)
+    pending = _refresh_roots(old_pins, requirements, constraints)
+    # Stable profile ranges can select older interpreter-compatible versions
+    # than the 3.14 source lock; a shared artifact must not silently float them.
+    stable_ranges = ({requirement_name(text) for text in requirements}
+                     - explicit_version_targets(requirements) - set(pending))
     visited: set[str] = set()
     preferred = {}
     while pending:
@@ -141,7 +173,7 @@ def refreshed_dependency_pins(repo: Path, lock: Path, requirements: list[str]) -
         candidates = by_name.get(name, [])
         versions = {package["version"] for package in candidates}
         # Multiple versions are interpreter/marker splits: let the profile resolver choose.
-        if len(versions) == 1:
+        if len(versions) == 1 and name not in stable_ranges:
             preferred[name] = next(iter(versions))
         for package in candidates:
             pending.extend(canonicalize(dep["name"]) for dep in package.get("dependencies", []))
@@ -156,7 +188,9 @@ def old_constraints(lock: Path, direct: set[str], preferred: dict[str, str]) -> 
             continue
         name = canonicalize(match.group(1))
         if name not in direct and name not in EXCLUDED:
-            constraints.append(f"{match.group(1)}=={preferred.get(name, match.group(2))}")
+            marker = line[match.end(2):].strip().removesuffix("\\").strip()
+            pin = f"{match.group(1)}=={preferred.get(name, match.group(2))}"
+            constraints.append(f"{pin} {marker}" if marker else pin)
     return constraints
 
 
@@ -188,6 +222,37 @@ def piwheels_arm_hashes(name: str, version: str, cache: dict[str, list[tuple[str
         cache[key] = entries
     prefix = f"{key.replace('-', '_')}-{version}-".lower()
     return {digest for filename, digest in cache[key] if filename.startswith(prefix)}
+
+
+def preserve_direct_artifact_identity(lock: Path, requirements: list[str]) -> None:
+    """Keep PEP 508 URLs identical to wheel metadata in pip's hash-checking mode.
+
+    uv export strips URL hash fragments. pip treats that URL as a different
+    requirement from Requires-Dist's hashed URL, losing the explicit lock hashes.
+    """
+    from packaging.requirements import Requirement
+
+    declared = {}
+    for text in requirements:
+        requirement = Requirement(text)
+        if requirement.url and re.fullmatch(r"sha256=[0-9a-f]{64}", urldefrag(requirement.url).fragment):
+            declared[canonicalize(requirement.name)] = requirement.url
+    lines = lock.read_text(encoding="utf-8-sig").splitlines(keepends=True)
+    for index, line in enumerate(lines):
+        match = re.match(r"^([A-Za-z0-9._-]+)(?:\[[^]]+\])? @ (\S+)", line)
+        if not match or canonicalize(match[1]) not in declared:
+            continue
+        url = declared[canonicalize(match[1])]
+        if urldefrag(match[2]).url != urldefrag(url).url:
+            raise ValueError(f"direct artifact URL changed for {match[1]}")
+        end = index + 1
+        while end < len(lines) and lines[end].startswith((" ", "#", "\n")):
+            end += 1
+        digest = urldefrag(url).fragment.removeprefix("sha256=")
+        if digest not in {m[1] for text in lines[index:end] for m in HASH_LINE.finditer(text)}:
+            raise ValueError(f"direct artifact hash missing for {match[1]}")
+        lines[index] = line[:match.start(2)] + url + line[match.end(2):]
+    lock.write_text("".join(lines), encoding="utf-8")
 
 
 def add_piwheels_hashes(lock: Path, cache: dict[str, list[tuple[str, str]]]) -> None:
@@ -226,10 +291,11 @@ def main() -> int:
         staging = Path(temp)
         for profile in PROFILES:
             requirements = linux_armv7_requirements(expand_profile(metadata, profile))
-            direct = {requirement_name(req) for req in requirements}
+            direct = explicit_version_targets(requirements)
             old_lock = repo / "requirements" / "pi2" / f"{profile}.lock"
-            preferred = refreshed_dependency_pins(repo, old_lock, requirements)
-            constraints = old_constraints(old_lock, direct, preferred)
+            floors = metadata.get("tool", {}).get("uv", {}).get("constraint-dependencies", [])
+            preferred = refreshed_dependency_pins(repo, old_lock, requirements, floors)
+            constraints = old_constraints(old_lock, direct, preferred) + floors
             project = staging / profile
             project.mkdir()
             synthetic = (
@@ -259,6 +325,7 @@ def main() -> int:
                 check=True,
                 timeout=600,
             )
+            preserve_direct_artifact_identity(candidate, requirements)
             add_piwheels_hashes(candidate, piwheels_cache)
 
         forbidden = re.compile(r"^(uvloop|pillow-heif)(==|\[| )", re.IGNORECASE)

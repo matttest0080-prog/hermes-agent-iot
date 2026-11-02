@@ -44,6 +44,13 @@ jobs:
           python3 scripts/validate_plugin_catalog.py plugin-catalog/
 
   pinned-source-validate:
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [0, 1, 2, 3, 4, 5, 6, 7]
+    env:
+      CATALOG_SHARD_INDEX: ${{ matrix.shard }}
+      CATALOG_SHARD_COUNT: "8"
     runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: 30
     steps:
@@ -126,12 +133,23 @@ jobs:
         run: |
           set -euo pipefail
           FAILED=0
+          SHARD_INDEX=${CATALOG_SHARD_INDEX:-0}
+          SHARD_COUNT=${CATALOG_SHARD_COUNT:-1}
+          if ! [[ "$SHARD_INDEX" =~ ^[0-9]+$ && "$SHARD_COUNT" =~ ^[1-9][0-9]*$ ]] ||
+             [ "$SHARD_COUNT" -gt 64 ] || [ "$SHARD_INDEX" -ge "$SHARD_COUNT" ]; then
+            echo "::error::invalid catalog shard"
+            exit 1
+          fi
+          ENTRY_NUMBER=0
           WORKROOT=$(realpath "$(mktemp -d)")
           # Entries arrive on fd 3, not stdin: `hermes plugins validate` executes
           # plugin-declared install code that could otherwise read stdin and
           # silently drain the remaining entry list.
           while IFS= read -r entry <&3; do
             [ -z "$entry" ] && continue
+            SLOT=$((ENTRY_NUMBER % SHARD_COUNT))
+            ENTRY_NUMBER=$((ENTRY_NUMBER + 1))
+            [ "$SLOT" -eq "$SHARD_INDEX" ] || continue
             echo "::group::validate $entry"
 
             # A symlinked or missing entry file is not a catalog entry.

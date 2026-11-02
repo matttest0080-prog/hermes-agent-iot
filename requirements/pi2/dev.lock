@@ -85,7 +85,7 @@ backports-tarfile==1.2.0 ; python_full_version < '3.12' and platform_machine != 
     --hash=sha256:77e284d754527b01fb1e6fa8a1afe577858ebe4e9dad8919e34c862cb399bc34 \
     --hash=sha256:d75e02c268746e1b8144c278978b6e98e85de6ad16f8e4b0844a154557eca991
     # via jaraco-context
-browser-harness @ https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl ; sys_platform == 'linux' \
+browser-harness @ https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl#sha256=63a2fb36e398d8a764fb5961a70f0deb63dc60472ff0345b739105d17e2e059e ; sys_platform == 'linux' \
     --hash=sha256:63a2fb36e398d8a764fb5961a70f0deb63dc60472ff0345b739105d17e2e059e
     # via hermes-pi2-dev-lock
 build==1.3.0 ; sys_platform == 'linux' \
@@ -408,12 +408,10 @@ idna==3.19 ; sys_platform == 'linux' \
     #   httpx2
     #   requests
     #   yarl
-importlib-metadata==8.7.1 ; sys_platform == 'linux' \
+importlib-metadata==8.7.1 ; python_full_version < '3.12' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
     --hash=sha256:49fef1ae6440c182052f407c8d34a68f72efc36db9ca90dc0113398f2fdde8bb \
     --hash=sha256:5a1f80bf1daa489495071efbb095d75a634cf28a8bc299581244063b53176151
-    # via
-    #   keyring
-    #   opentelemetry-api
+    # via keyring
 iniconfig==2.3.0 ; sys_platform == 'linux' \
     --hash=sha256:c76315c77db068650d49c5b56314774a7804df16fee4402c1f19d6d15d8c4730 \
     --hash=sha256:f631c04d2c48c52b84d0d0549c99ff3859c98df65b3101406327ecc7d53fbf12
@@ -618,9 +616,9 @@ openai==2.24.0 ; sys_platform == 'linux' \
     --hash=sha256:1e5769f540dbd01cb33bc4716a23e67b9d695161a734aff9c5f925e2bf99a673 \
     --hash=sha256:fed30480d7d6c884303287bde864980a4b137b60553ffbcf9ab4a233b7a73d94
     # via hermes-pi2-dev-lock
-opentelemetry-api==1.39.1 ; sys_platform == 'linux' \
-    --hash=sha256:2edd8463432a7f8443edce90972169b195e7d6a05500cd29e6d13898187c9950 \
-    --hash=sha256:fbde8c80e1b937a2c61f20347e91c0c18a1940cecf012d62e65a7caf08967c9c
+opentelemetry-api==1.45.1 ; sys_platform == 'linux' \
+    --hash=sha256:aa38ed19bcc084ba42782a73255b3582283eced7ad6dddbd6695189e69adfb75 \
+    --hash=sha256:b31553efa588ae44bc306f863c785c5333a9ecc091248c6ee68b4b6c87fdedfb
     # via mcp
 packaging==26.0 ; sys_platform == 'linux' \
     --hash=sha256:00243ae351a257117b6a241061796684b084ed1c516a08c48a3f7e147a9d80b4 \
@@ -754,9 +752,9 @@ ptyprocess==0.7.0 ; sys_platform == 'linux' \
     --hash=sha256:4b41f3967fce3af57cc7e94b888626c18bf37a083e3651ca8feeb66d492fef35 \
     --hash=sha256:5c5d0a3b48ceee0b48485e0c26037c0acd7d29765ca3fbb5cb3831d347423220
     # via hermes-pi2-dev-lock
-pyasn1==0.6.4 ; sys_platform == 'linux' \
-    --hash=sha256:9c447d8431c947fe4c8febc4ed9e760bc29011a5b01e5c74b67025bd9fb8ce81 \
-    --hash=sha256:deda9277cfd454080ec40b207fb6df82206a3a2688735233cdcd8d3d565f088b
+pyasn1==0.6.5 ; sys_platform == 'linux' \
+    --hash=sha256:4017b0fce125096b8573b39c989fdb1a4b19cf761e683398184550fea0e66587 \
+    --hash=sha256:6b11616a6bcf3a40e635f082bb232fa57b5e0dd7f517bd7ddd69ec3794508a47
     # via
     #   hermes-pi2-dev-lock
     #   pyasn1-modules
@@ -1037,9 +1035,9 @@ secretstorage==3.5.0 ; platform_machine != 'ppc64le' and platform_machine != 's3
     --hash=sha256:0ce65888c0725fcb2c5bc0fdb8e5438eece02c523557ea40ce0703c266248137 \
     --hash=sha256:f04b8e4689cbce351744d5537bf6b1329c6fc68f91fa666f60a380edddcd11be
     # via keyring
-setuptools==83.0.0 ; sys_platform == 'linux' \
-    --hash=sha256:025bccbbf0fa05b6192bc64ae1e7b16e001fd6d6d4d5de03c97b1c1ade523bef \
-    --hash=sha256:29b23c360f22f414dc7336bb39178cc7bcbf6021ed2733cde173f09dba19abb3
+setuptools==84.1.0 ; sys_platform == 'linux' \
+    --hash=sha256:23657205b63d4d31395ab917815247f694aafad28cd21316bf5fd45a51048ea0 \
+    --hash=sha256:5231689c6ac8156cd155cfb98c3fd6fb252c3e7e9bd3d78b64d3c55f132624c9
     # via hermes-pi2-dev-lock
 six==1.17.0 ; sys_platform == 'linux' \
     --hash=sha256:4721f391ed90541fddacab5acf947aa0d3dc7d27b2e1e8eda2be8970586c3274 \
@@ -1249,7 +1247,7 @@ youtube-transcript-api==1.2.4 ; sys_platform == 'linux' \
     --hash=sha256:03878759356da5caf5edac77431780b91448fb3d8c21d4496015bdc8a7bc43ff \
     --hash=sha256:b72d0e96a335df599d67cee51d49e143cff4f45b84bcafc202ff51291603ddcd
     # via hermes-pi2-dev-lock
-zipp==4.1.0 ; sys_platform == 'linux' \
+zipp==4.1.0 ; python_full_version < '3.12' and platform_machine != 'ppc64le' and platform_machine != 's390x' and sys_platform == 'linux' \
     --hash=sha256:25ad4e16390cd314347dd8f1de67a2ac538ae658ed4ab9db16029c07c188e97f \
     --hash=sha256:4cb57381f544315db7688e976e922a2b18cdb513d21cc194eb42232ba2a3e602
     # via importlib-metadata
