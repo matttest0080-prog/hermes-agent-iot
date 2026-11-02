@@ -1,6 +1,7 @@
 """Shared helpers for the real-process Windows hand-off protocol tests (not collected)."""
 from __future__ import annotations
 
+from functools import cache
 import os
 from pathlib import Path
 import re
@@ -74,10 +75,18 @@ class _ProcessWatch:
         self._k.CloseHandle(self._handle)
 
 
-def _dead_pid() -> int:
+@cache
+def _exited_process() -> subprocess.Popen:
+    # Keep the Windows kernel handle for this per-file test process's lifetime.
+    # Dropping Popen after wait closes it and permits the 'dead' pid to be reused
+    # before the separate PowerShell reader reaches its liveness check.
     proc = subprocess.Popen([sys.executable, '-c', 'pass'])
-    proc.wait()
-    return proc.pid
+    assert proc.wait(timeout=60) == 0
+    return proc
+
+
+def _dead_pid() -> int:
+    return _exited_process().pid
 
 
 def _env(home: Path, **extra: str) -> dict[str, str]:
