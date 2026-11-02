@@ -81,13 +81,14 @@ attrs==26.1.0 ; sys_platform == 'linux' \
     #   aiohttp
     #   jsonschema
     #   referencing
-browser-harness @ https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl#sha256=63a2fb36e398d8a764fb5961a70f0deb63dc60472ff0345b739105d17e2e059e ; sys_platform == 'linux' \
-    --hash=sha256:63a2fb36e398d8a764fb5961a70f0deb63dc60472ff0345b739105d17e2e059e
+browser-harness-hermes-compat==0.1.13.post1 ; sys_platform == 'linux' \
+    --hash=sha256:23a52497912d3d5108f51a98d183128e84dd372fa7432a8cb548335d9ab2f161 \
+    --hash=sha256:c7f64d13a1d37ab5605469074ea9d7fa9d0360b6e3597d6eb5a80292278d6120
     # via hermes-pi2-rag-lock
 cdp-use==1.4.5 ; sys_platform == 'linux' \
     --hash=sha256:0da3a32df46336a03ff5a22bc6bc442cd7d2f2d50a118fd4856f29d37f6d26a0 \
     --hash=sha256:8f8e2435e3a20e4009d2974144192cf3c132f6c2971338e156198814d9b91ecb
-    # via browser-harness
+    # via browser-harness-hermes-compat
 certifi==2026.10.19 ; sys_platform == 'linux' \
     --hash=sha256:035c1e85572b141bf1c3a3eff0e33a8eb74917522f2559075ff8d2fea780a1ae \
     --hash=sha256:42d35340cc5b9ba78e818ddbff0c5b1c2b779de448a340fd1b989f5fa8670e1b
@@ -216,7 +217,7 @@ fastapi==0.141.1 ; sys_platform == 'linux' \
 fetch-use==0.4.0 ; sys_platform == 'linux' \
     --hash=sha256:9511987d4907ec6dac501e21d66946d10098f66b5d21bc2aba4189cd81ba189a \
     --hash=sha256:b7885f2907e7920373fa75dcdb00afd6e603a25a9ee2151aa2881f5465e1a2c0
-    # via browser-harness
+    # via browser-harness-hermes-compat
 fire==0.7.1 ; sys_platform == 'linux' \
     --hash=sha256:3b208f05c736de98fb343310d090dcc4d8c78b2a89ea4f32b837c586270a9cbf \
     --hash=sha256:e43fd8a5033a9001e7e2973bab96070694b9f12f2e0ecf96d4683971b5ab1882
@@ -530,7 +531,7 @@ pillow==13.0.0 ; sys_platform == 'linux' \
     --hash=sha256:e98b4f91f99b24b1da72e10621ba181f7281922384a7403094debb4199de6c00 \
     --hash=sha256:f391dc92a015c478745192fe4f2e120c2af2aba18d9fe0616341cbf537599806
     # via
-    #   browser-harness
+    #   browser-harness-hermes-compat
     #   hermes-pi2-rag-lock
 prompt-toolkit==3.0.52 ; sys_platform == 'linux' \
     --hash=sha256:28cde192929c8e7321de85de1ddbe736f1375148b02f2e17edd840042b1be855 \
@@ -944,7 +945,7 @@ websockets==15.0.1 ; sys_platform == 'linux' \
     --hash=sha256:e8b56bdcdb4505c8078cb6c7157d9811a85790f2f2b3632c7d1462ab5783d215 \
     --hash=sha256:f7a866fbc1e97b5c617ee4116daaa09b722101d4a3c170c787450ba409f9736f
     # via
-    #   browser-harness
+    #   browser-harness-hermes-compat
     #   cdp-use
     #   hermes-pi2-rag-lock
 yarl==1.25.1 ; sys_platform == 'linux' \

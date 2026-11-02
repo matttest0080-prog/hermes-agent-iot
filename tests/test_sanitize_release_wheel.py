@@ -92,6 +92,17 @@ def test_pypi_path_refuses_core_compatibility_url_without_changing_artifact(tmp_
     assert wheel.read_bytes() == before
 
 
+def test_pypi_path_preserves_independent_registry_dependency(tmp_path):
+    wheel = tmp_path / "demo-1.0-py3-none-any.whl"
+    requirement = "browser-harness-hermes-compat==0.1.13.post1"
+    _build_wheel(wheel, requirement)
+    assert sanitize_wheel(wheel) is True
+    with zipfile.ZipFile(wheel) as archive:
+        metadata = archive.read("demo-1.0.dist-info/METADATA").decode()
+    assert f"Requires-Dist: {requirement}\n" in metadata
+    assert " @ " not in metadata
+
+
 def test_sanitizer_is_idempotent(tmp_path):
     wheel = tmp_path / "demo-1.0-py3-none-any.whl"
     _build_wheel(wheel)

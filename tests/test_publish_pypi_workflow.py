@@ -6,7 +6,6 @@ from hermes_yaml import safe_load
 
 ROOT = Path(__file__).resolve().parents[1]
 WORKFLOW = ROOT / ".github" / "workflows" / "publish-pypi.yml"
-RELEASE_PYTHON = '"$RELEASE_PYTHON"'
 
 
 def workflow_jobs():
@@ -14,58 +13,37 @@ def workflow_jobs():
     return data["jobs"]
 
 
-def test_build_job_uses_a_real_release_virtualenv_for_all_python_commands():
-    build = workflow_jobs()["build"]
-    assert build["env"]["RELEASE_PYTHON"] == ".release-venv/bin/python"
+def test_build_job_uses_pm_owned_test_and_build_environments_in_order():
+    import json
+    import shlex
+    from packaging.requirements import Requirement
 
-    steps = build["steps"]
-    create_index = next(
-        index for index, step in enumerate(steps)
-        if step.get("name") == "Create isolated release virtual environment"
-    )
-    create_run = steps[create_index]["run"]
-    assert "python -m venv .release-venv" in create_run
+    steps = workflow_jobs()["build"]["steps"]
+    setup_at = next(i for i, step in enumerate(steps) if step.get("uses") == "./.github/actions/setup-pm")
+    setup = steps[setup_at]["with"]
+    assert setup["test-environment"] == "true"
+    assert {"full", "rag"} <= set(json.loads(setup["extras"]))
+    tests_at = next(i for i, step in enumerate(steps) if step.get("name") == "Run release-focused tests")
+    tools_at = next(i for i, step in enumerate(steps) if step.get("name") == "Install release build tools through PM")
+    build_at = next(i for i, step in enumerate(steps) if step.get("name") == "Build and check artifacts")
+    assert setup_at < tests_at < tools_at < build_at
+    release_tests = steps[tests_at]["run"]
+    assert shlex.split(release_tests)[0] == "scripts/run_tests.sh"
+    assert "tests/test_publish_pypi_workflow.py" in release_tests
+    assert "tests/test_sanitize_release_wheel.py" in release_tests
 
-    guarded_steps = {
-        "Install release test and build dependencies",
-        "Run release-focused tests",
-        "Validate tag, distribution name, and version",
-        "Build and check artifacts",
-    }
-    found = set()
-    for step in steps[create_index + 1:]:
-        name = step.get("name")
-        if name not in guarded_steps:
-            continue
-        found.add(name)
-        run = step["run"]
-        assert RELEASE_PYTHON in run, f"{name} bypasses the release virtualenv"
-        assert "\npython " not in f"\n{run}", f"{name} invokes ambient python"
-
-    assert found == guarded_steps
-
-    install_run = next(
-        step["run"] for step in steps
-        if step.get("name") == "Install release test and build dependencies"
-    )
-    assert "uv==0.11.13" in install_run
-    assert "uv sync --frozen --group dev --extra full --extra rag" in install_run
-    assert "pip install --disable-pip-version-check\n-e" not in install_run
-
-    release_test_run = next(
-        step["run"] for step in steps
-        if step.get("name") == "Run release-focused tests"
-    )
-    assert "tests/test_publish_pypi_workflow.py" in release_test_run
-    assert "tests/test_sanitize_release_wheel.py" in release_test_run
-
-    build_run = next(
-        step["run"] for step in steps
-        if step.get("name") == "Build and check artifacts"
-    )
-    sanitize_at = build_run.index("scripts/sanitize_release_wheel.py")
-    twine_at = build_run.index("twine check")
-    assert sanitize_at < twine_at, "sanitize the wheel before twine validates it"
+    tools = shlex.split(steps[tools_at]["run"])
+    assert tools[:3] == ["python", "-m", "scripts.ci.python_packages"]
+    requirements = [Requirement(spec) for spec in tools[3:]]
+    assert {"build", "twine"} <= {req.name for req in requirements}
+    assert all(req.specifier and all(s.operator == "==" and "*" not in s.version for s in req.specifier)
+               for req in requirements)
+    for name in ["Validate tag, distribution name, and version", "Build and check artifacts"]:
+        run = next(step["run"] for step in steps if step.get("name") == name)
+        assert '"$HERMES_PYTHON"' in run
+        assert "\npython " not in f"\n{run}"
+    build_run = steps[build_at]["run"]
+    assert build_run.index("scripts/sanitize_release_wheel.py") < build_run.index("twine check")
 
 
 def test_clean_wheel_smoke_asserts_only_current_public_extras():

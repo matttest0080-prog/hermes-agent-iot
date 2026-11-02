@@ -4,7 +4,7 @@
 
 ## Python
 
-Pillow／browser-harness 的來源、授權、固定 wheel 雜湊及 GitHub-only 交付限制見 [browser-harness-compat.md](browser-harness-compat.md)。不以忽略依賴、改寫既有第三方 wheel METADATA 或 `pip check` 成功冒充漏洞修復。
+Pillow／browser-harness 的來源、授權、固定 wheel 雜湊、舊 GitHub-only 候選及後續獨立 PyPI namespace 見 [browser-harness-compat.md](browser-harness-compat.md)。`browser-harness-hermes-compat==0.1.13.post1` 已由 tag CI 經 Trusted Publishing 發布；匿名重取 wheel／sdist 與 CI 逐 byte 相同，Hermes 自身仍須通過正式 release gates。新的身份查詢／updater 只使用自己的 namespace，不因改名或缺少新 purl advisory 就宣稱安全。不以忽略依賴、改寫既有第三方 wheel METADATA 或 `pip check` 成功冒充漏洞修復。
 
 後續 OSV 掃描揭露的修補包含：brotlicffi 1.2.1.0、filelock 4.2.6、mem0ai 2.0.18、msgpack 1.2.4、OpenTelemetry 1.45.1 家族、pyasn1 0.6.5、setuptools 84.1.0、Tornado 6.6。
 

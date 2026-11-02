@@ -136,8 +136,9 @@ dependencies = [
   # so it rides in the main venv and every install, Desktop bundle included,
   # ships it without a separate tool environment.
   # Independent, MIT-preserving compatibility build; source and CI receipt:
-  # docs/browser-harness-compat.md. Hash-pinned GitHub artifact, not a PyPI release.
-  "browser-harness @ https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl#sha256=63a2fb36e398d8a764fb5961a70f0deb63dc60472ff0345b739105d17e2e059e",
+  # docs/browser-harness-compat.md. Independent registry namespace, not the
+  # official browser-harness distribution; imports/CLI retain upstream names.
+  "browser-harness-hermes-compat==0.1.13.post1",
   # .gitignore-aware file matching for desktop build stamp.
   "pathspec==1.1.1",
   "fastapi>=0.104.0,<1",
@@ -788,8 +789,9 @@ msgpack = false
 opentelemetry-api = false
 tornado = false
 # Reviewed compatibility post-release for critical GHSA-8g5g-8vmr-9782.
-# Its fixed artifact SHA256 and unchanged upstream src are recorded in docs/browser-harness-compat.md.
-browser-harness = false
+# Registry artifact hashes, source and identity-only runtime changes are
+# recorded in docs/browser-harness-compat.md; do not exempt unrelated packages.
+browser-harness-hermes-compat = false
 build = false
 cbor2 = false
 certifi = false

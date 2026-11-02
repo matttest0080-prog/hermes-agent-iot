@@ -4,7 +4,7 @@
 
 > 本文件記錄合併候選各階段的驗證，不代表已發布至 PyPI 或已部署。遠端合併狀態以 [PR #47](https://github.com/matttest0080-prog/hermes-agent-iot/pull/47) 為準；舊段落屬歷史紀錄，最新決議列於本輪補記。禁止繞過必要 CI 與獨立 reviewer。
 >
-> **最新交付決議：** Pillow 相依阻擋已透過獨立、保留 MIT 的真實相容性 artifact 解決，不再保留 Pillow 12.3.0。此 Hermes 候選暫不發布至 PyPI；來源／雜湊／四個 Python matrix receipts 見 [browser-harness-compat.md](browser-harness-compat.md)。後續 OSV 修補、JavaScript 相容產物、npm 12 限制與 catalog data-only 分階段合併見 [security-closure-v0.22.5.md](security-closure-v0.22.5.md)；兩部分皆完成才算整次同步完成。
+> **最新交付決議：** 使用者要求更新 release／PyPI 後，獨立 `browser-harness-hermes-compat==0.1.13.post1` 已正式上架，保留 MIT、Pillow 13 與自己的 updater namespace，匿名 wheel／sdist 與 tag CI 逐 byte 相同。Hermes 改用 registry exact pin，保留 14 日政策與 sanitizer fail-closed；Hermes 自身仍待 release-ready PR、完整 CI、最新獨立核准與正式 publisher，不把輔助套件上架當成 Hermes 已發布。來源／雜湊／四組 266-test receipts、升級隔離與舊 GitHub-only 歷史見 [browser-harness-compat.md](browser-harness-compat.md)。#47／#48 已正常合併，catalog 六個不可公開驗證的新來源拒絕准入並留有紀錄；安全收斂見 [security-closure-v0.22.5.md](security-closure-v0.22.5.md)。
 
 ## 固定來源
 
