@@ -8,7 +8,7 @@ import { $pluginDecisions, $pluginRecords, dropPlugin, patchPlugin, publishPlugi
 import { queryClient } from '@/lib/query-client'
 import { $agentPlugins, $agentPluginsStatus } from '@/store/agent-plugins'
 import { $confirmRequest, settleConfirm } from '@/store/confirm'
-import { $notifications } from '@/store/notifications'
+import { $notifications, clearNotifications } from '@/store/notifications'
 import { $pluginInstallRequest, closePluginInstallRequest } from '@/store/plugin-install-request'
 import { $connection, $gatewayState } from '@/store/session'
 
@@ -114,6 +114,9 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup()
+  // Cancel this view's toast expiry callbacks before Vitest disposes window.
+  clearNotifications()
+  expect($notifications.get()).toEqual([])
   settleConfirm(false)
   $connection.set(null)
   queryClient.clear()
@@ -563,7 +566,7 @@ describe('PluginsTab', () => {
 
     beforeEach(() => {
       $pluginDecisions.set({})
-      $notifications.set([])
+      clearNotifications()
       window.localStorage.clear()
     })
 
