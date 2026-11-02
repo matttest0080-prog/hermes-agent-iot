@@ -6,6 +6,16 @@
 >
 > **最新交付決議：** 使用者要求更新 release／PyPI 後，獨立 `browser-harness-hermes-compat==0.1.13.post1` 已正式上架，保留 MIT、Pillow 13 與自己的 updater namespace，匿名 wheel／sdist 與 tag CI 逐 byte 相同。Hermes 改用 registry exact pin，保留 14 日政策與 sanitizer fail-closed；Hermes 自身仍待 release-ready PR、完整 CI、最新獨立核准與正式 publisher，不把輔助套件上架當成 Hermes 已發布。來源／雜湊／四組 266-test receipts、升級隔離與舊 GitHub-only 歷史見 [browser-harness-compat.md](browser-harness-compat.md)。#47／#48 已正常合併，catalog 六個不可公開驗證的新來源拒絕准入並留有紀錄；安全收斂見 [security-closure-v0.22.5.md](security-closure-v0.22.5.md)。
 
+## 發布 smoke 隔離修正：post3
+
+`iot-v0.22.5.post2` 保留於受保護合併 `15773159182041efa4e2c1d1e424a0ef09e77836`；正式 publisher `41449191289` 已通過 PM／測試／build／sanitizer／twine，卻在 clean-wheel smoke 失敗，**publish skipped、未上傳 PyPI**。PM setup 為 source tests 匯出的 `PYTHONPATH` 指向 checkout；build 產生的真實 `.egg-info` 讓 pip 誤判 Hermes 已安裝，跳過 wheel，隨後 `hermes-iot` executable 不存在。先前本機乾淨環境通過未涵蓋此污染，不能替代真正 tag CI。
+
+新目標 `0.22.5.post3` 不覆寫任何既有 tag。smoke 使用來源樹外新目錄、獨立 venv 與清除 source Python variables 的環境；仍正常安裝完整依賴、pip check、執行兩個 CLI、驗 public extras／resources，並核 installed module 位於新 venv、pip 真正記錄的 wheel SHA256，拒絕 source checkout 假陽性。不用 force-reinstall／no-deps／偽造 METADATA。真實 checkout＋空 venv 的正負控展示污染及隔離效果。
+
+同一 publisher build job 新增 PR rehearsal：完整 PM exports／測試／build／sanitizer／twine／clean install 在推 tag 前實跑。PR 只有 contents-read、無 environment／OIDC；publish 僅 canonical repo 的 `iot-v*` tag push，仍需 `pypi` environment 獨立核准；tag ancestry gate 對 tag push 維持必跑，PR build 不冒充 ancestry 已驗。既有保護、14 日政策及 sanitizer 均不放寬。
+
+#52 主 CI `41442506163` 與四平台 PM Bundle `41442505781` 全成功，包含新的 macOS ARM64 真正執行成功；先前三次容量取消仍是歷史未執行，不能改稱成功，也不代表本次交付已完成 Mac 裝置驗收。使用者再次確認本次限 PyPI／Pi2，歷史 Desktop 升級 E2E 真實失敗明列範圍外。
+
 ## 發布工作流程修正：post2
 
 `iot-v0.22.5.post1` 已建立於 `013856ea7dc256b6c356d35c386720afeedb97bb`，但 publisher run `41438794042` 在上傳前被 PM fail-closed：Linux job 錯誤要求只有 Windows artifact 的 Git pin（`git has no pinned artifact for linux-x64`）。**Hermes post1 沒有上傳 PyPI；不移動或覆寫已公開 tag。** 修正只讓 PM 安裝可用的 ripgrep，Git 使用已成功執行 ancestry gate 的 runner 工具，並增加真正執行 Linux bootstrap prepare 的正負驗證；新正式目標為 `0.22.5.post2`。
