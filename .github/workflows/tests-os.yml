@@ -200,9 +200,11 @@ jobs:
             -m "platforms and not integration" \
             -v --tb=short
         env:
-          # These files spawn nested PowerShell trees. CPU-count parallelism
-          # starves cold child startup before the fixture's idle deadline.
-          HERMES_TEST_WORKERS: ${{ matrix.marker == 'windows' && (runner.arch == 'ARM64' && '16' || '16') || '' }}
+          # Nested PowerShell/CIM trees on public 4-vCPU hosts: the inherited
+          # 16-worker larger-runner setting starved cold startup (60–300 s
+          # deadlines expired across unrelated files). Keep every test and its
+          # deadline; bound concurrent files instead on both architectures.
+          HERMES_TEST_WORKERS: ${{ matrix.marker == 'windows' && '2' || '' }}
           HERMES_TEST_SLICE: ${{ matrix.slice || '' }}
           # fork: standard-runner budget — this lane was sized for a 32-core larger
           # runner. On the hosted image a file with many CIM/PowerShell round trips
