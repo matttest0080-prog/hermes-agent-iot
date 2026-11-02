@@ -11,6 +11,8 @@ import hashlib
 import io
 import zipfile
 
+import pytest
+
 from scripts.sanitize_release_wheel import sanitize_wheel
 
 PSUTIL_GIT = (
@@ -32,7 +34,7 @@ def _record_hash(data: bytes) -> str:
     return "sha256=" + base64.urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
 
 
-def _build_wheel(path) -> dict[str, bytes]:
+def _build_wheel(path, extra_requirement: str = "") -> dict[str, bytes]:
     files = {
         "demo/__init__.py": b"",
         "demo-1.0.dist-info/WHEEL": b"Wheel-Version: 1.0\n",
@@ -46,6 +48,8 @@ def _build_wheel(path) -> dict[str, bytes]:
             "Requires-Dist: soundfile==0.14.0; extra == \"kittentts\"\n"
         ).encode(),
     }
+    if extra_requirement:
+        files["demo-1.0.dist-info/METADATA"] += f"Requires-Dist: {extra_requirement}\n".encode()
     rows = [[name, _record_hash(data), str(len(data))] for name, data in files.items()]
     rows.append(["demo-1.0.dist-info/RECORD", "", ""])
     out = io.StringIO()
@@ -77,6 +81,15 @@ def test_sanitizer_removes_every_direct_url_and_updates_record(tmp_path):
     row = next(row for row in csv.reader(io.StringIO(record)) if row[0].endswith("METADATA"))
     assert row[1] == _record_hash(updated)
     assert row[2] == str(len(updated))
+
+
+def test_pypi_path_refuses_core_compatibility_url_without_changing_artifact(tmp_path):
+    wheel = tmp_path / "demo-1.0-py3-none-any.whl"
+    _build_wheel(wheel, "browser-harness @ https://example.invalid/compat.whl#sha256=" + "a" * 64)
+    before = wheel.read_bytes()
+    with pytest.raises(SystemExit, match="unexpected direct dependency"):
+        sanitize_wheel(wheel)
+    assert wheel.read_bytes() == before
 
 
 def test_sanitizer_is_idempotent(tmp_path):

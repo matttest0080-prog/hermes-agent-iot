@@ -8,7 +8,7 @@
     "@whiskeysockets/baileys@7.0.0-rc13",
     "core-js@3.49.0",
     "electron-winstaller@5.4.0",
-    "electron@41.10.6",
+    "electron@44.9.3",
     "esbuild@0.28.1",
     "fsevents@2.3.2",
     "fsevents@2.3.3",
@@ -17,5 +17,22 @@
     "node-pty@1.1.0",
     "protobufjs@7.6.6",
     "unicode-animations@1.0.3"
-  ]
+  ],
+  "artifact_pins": {
+    "package.json#devDependencies#minimatch": {
+      "url": "https://github.com/matttest0080-prog/minimatch-hermes-compat/releases/download/v10.2.7-hermes.1/hermes-iot-minimatch-compat-10.2.7-hermes.1.tgz",
+      "integrity": "sha512-Zry0vmla8j7aNOHg7iGfs96QCy2rnd5SOSeKP18jehZXPllDJmU3fCgAzZDMzOKTQmCSZnv047YHepfXNjhd0g==",
+      "reason": "GHSA-g3hv-75wg-m249 backport; source 695149e1c2340007c97e1ba4680481a4b9de9887; CI 41370622593"
+    },
+    "website/package.json#devDependencies#deepmerge": {
+      "url": "https://github.com/matttest0080-prog/deepmerge-hermes-compat/releases/download/v4.3.2-hermes.1/deepmerge-4.3.2-hermes.1.tgz",
+      "integrity": "sha512-aPS6SnmgHh+qCDzBzN0vYR5fHQ6UGMSg/X5YDjB1fSTDnotjjEcoJ2yu24EriochJQUJn0ggkIokNEukXKjjuA==",
+      "reason": "GHSA-gcqx-w48m-w2h4 fix; source a3bf1e278b9a1f01c9ebba32387dc7658bd8879c; CI 41369862063"
+    },
+    "website/package.json#devDependencies#minimatch": {
+      "url": "https://github.com/matttest0080-prog/minimatch-hermes-compat/releases/download/v10.2.7-hermes.1/hermes-iot-minimatch-compat-10.2.7-hermes.1.tgz",
+      "integrity": "sha512-Zry0vmla8j7aNOHg7iGfs96QCy2rnd5SOSeKP18jehZXPllDJmU3fCgAzZDMzOKTQmCSZnv047YHepfXNjhd0g==",
+      "reason": "Same audited artifact as root; legacy makeRe/callable-CJS compatibility retained"
+    }
+  }
 }

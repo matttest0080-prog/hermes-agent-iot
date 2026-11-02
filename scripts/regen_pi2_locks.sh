@@ -1,52 +1,38 @@
 #!/usr/bin/env bash
-# Regenerate the hashed per-profile Pi2 install locks from uv.lock.
+# Regenerate hashed ARMv7/ARMv6 locks for the Pi2 installer profiles.
 #
-# These locks are what setup-pi2-minimal.sh feeds to
-# `pip install --require-hashes -r "$LOCK_FILE"` on the Pi, so their contents must
-# be installable on armv7/armv6 — not merely resolvable on a desktop.
-#
-# uvloop is excluded from every Pi2 lock even though the fork's all/full profiles
-# opt into it (upstream's [uvloop] extra, kept on purpose for desktop/server
-# hosts): there is no armv7 wheel and libuv does not build on Termux, so a Pi2
-# lock that listed it could never install. The policy is asserted in both
-# directions by scripts/check_pi2_install_guards.py.
+# The root uv.lock only covers Python 3.14+ in current upstream releases, while
+# this fork supports Python 3.11-3.13 on Pi2. The Python helper resolves each
+# profile in an isolated project, preserving existing profile pins where the
+# current project metadata does not require a change. It also adds PiWheels
+# ARMv6/ARMv7 wheel hashes so pip --require-hashes can select those wheels.
 #
 # Usage:
 #   scripts/regen_pi2_locks.sh                 # rewrite requirements/pi2/*.lock
-#   scripts/regen_pi2_locks.sh /tmp/pi2-check  # verify into a scratch dir first
+#   scripts/regen_pi2_locks.sh /tmp/pi2-check  # generate to a scratch directory
 set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 OUT_DIR="${1:-$REPO_DIR/requirements/pi2}"
 UV="${UV:-uv}"
-PROFILES=(minimal iot rag full dev)
-# Packages no Pi2 lock may contain, mirroring the guard's Pi2-hostile list for the
-# members that can still reach these profiles through an extra.
-EXCLUDED_PACKAGES=(uvloop)
+export UV
 
-mkdir -p "$OUT_DIR"
+# The generator parses PEP 508 markers. Keep its dependency in a disposable,
+# PM-owned tool environment, never in the application's runtime.
+"$UV" run --no-project --python 3.12 python - "$REPO_DIR" "$OUT_DIR" <<'PY'
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
 
-for profile in "${PROFILES[@]}"; do
-  output="$OUT_DIR/$profile.lock"
-  echo "==> exporting Pi2 lock for profile '$profile' -> $output"
-  args=(
-    export
-    --format requirements-txt
-    --no-header
-    --no-emit-project
-    --extra "$profile"
-    --output-file "$output"
-  )
-  for package in "${EXCLUDED_PACKAGES[@]}"; do
-    args+=(--no-emit-package "$package")
-  done
-  "$UV" "${args[@]}"
-done
+repo, output = map(Path, sys.argv[1:])
+sys.path.insert(0, str(repo))
+import pm
 
-echo "==> verifying no excluded package leaked into a Pi2 lock"
-if grep -nE '^[A-Za-z0-9][A-Za-z0-9._-]*(==|\[)' "$OUT_DIR"/*.lock \
-  | grep -E '(^|[: ])(uvloop|pillow-heif)(==|\[| )' ; then
-  echo "FAILED: a Pi2 lock lists a package that cannot install on armv7/armv6" >&2
-  exit 1
-fi
-echo "==> Pi2 locks regenerated and verified in $OUT_DIR"
+with tempfile.TemporaryDirectory(prefix="hermes-pi2-lockgen-tool-") as temp:
+    python = pm.ensure_environment(
+        "pi2-lockgen", ["packaging==26.2"], root=Path(temp), explicit=True,
+    )
+    subprocess.run([str(python), str(repo / "scripts/regen_pi2_locks.py"),
+                    str(repo), str(output)], check=True)
+PY

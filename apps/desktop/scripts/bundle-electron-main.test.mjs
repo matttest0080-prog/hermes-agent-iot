@@ -81,14 +81,14 @@ function launch(env, config, extraEnv = {}) {
   return JSON.parse(out.trim().split('\n').at(-1))
 }
 
-test('the bundled entry relaunches native Wayland sessions with the wayland ozone platform', () => {
-  expect(launch({ XDG_SESSION_TYPE: 'wayland', WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0' })).toEqual({
+test('the bundled entry honors an explicit native Wayland launch hint', () => {
+  expect(launch({ XDG_SESSION_TYPE: 'wayland', WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0', ELECTRON_OZONE_PLATFORM_HINT: 'wayland' })).toEqual({
     relaunched: ['.', '--ozone-platform=wayland']
   })
 })
 
-test('the bundled entry keeps the WSLg Wayland relaunch', () => {
-  expect(launch({ WSL_DISTRO_NAME: 'Ubuntu', WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0' })).toEqual({
+test('the bundled entry honors an explicit WSLg Wayland launch hint', () => {
+  expect(launch({ WSL_DISTRO_NAME: 'Ubuntu', WAYLAND_DISPLAY: 'wayland-0', DISPLAY: ':0', ELECTRON_OZONE_PLATFORM_HINT: 'wayland' })).toEqual({
     relaunched: ['.', '--ozone-platform=wayland']
   })
 })

@@ -11,6 +11,7 @@ from tests.ci.fork_workflow_paths import require_upstream_ci_yaml
 from scripts.releases import lanes as lane_set
 
 from tests.ci.desktop_release_roles import gate
+from tests.ci.workflow_steps import is_checkout
 
 ROOT = Path(__file__).resolve().parents[2]
 
@@ -157,6 +158,8 @@ def test_lane_inputs_reach_the_workflows_they_configure():
     for name in ("candidates-win32-arm64", "candidates-win32-x64", "candidates-win32-bundle"):
         assert jobs[name]["with"]["skip-signed"] == "${{ !fromJSON(needs.admit.outputs.lanes).windows }}", name
         assert jobs[name]["with"]["skip-store"] == store_off, name
+        # The MSIX smokes run in the bundle call, so the bundle never waits for them.
+        assert jobs[name]["with"]["windows-smokes-with-bundle"] == "true", name
     assert jobs["publish-bundles"]["with"]["skip-store"] == store_off
     desktop = workflow("desktop-bundled-release.yml")["jobs"]
     assert "inputs.skip-store" in desktop["stable-store"]["if"]
@@ -297,7 +300,7 @@ def test_claim_custody_and_final_payload_identity_reach_every_privileged_phase()
 
 def test_docker_dev_stamp_checkout_has_release_history():
     build = workflow("docker.yml")["jobs"]["build"]
-    checkout = next(step for step in build["steps"] if "actions/checkout@" in step.get("uses", ""))
+    checkout = next(step for step in build["steps"] if is_checkout(step))
 
     assert checkout["with"]["fetch-depth"] == "0"
 

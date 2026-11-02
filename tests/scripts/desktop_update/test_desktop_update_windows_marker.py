@@ -17,7 +17,7 @@ import pytest
 
 from tests.installation_launcher_fixture import publish_fixture_launcher
 from tests.scripts.desktop_update.legacy_desktop_reader import legacy_read
-from tests.scripts.desktop_update.windows_handoff_support import _HeldLock
+from tests.scripts.desktop_update.windows_handoff_support import _HeldLock, _dead_pid
 
 ROOT = Path(__file__).resolve().parent.parent.parent.parent
 SCRIPT = ROOT / 'scripts/desktop-update/windows.ps1'
@@ -81,12 +81,6 @@ def _protected_pid() -> int:
         if limited and not full:
             return int(pid)
     pytest.fail('no process here grants only limited query rights: ' + ', '.join(rows[:40]))
-
-
-def _dead_pid() -> int:
-    proc = subprocess.Popen([sys.executable, '-c', 'pass'])
-    proc.wait()
-    return proc.pid
 
 
 def _run(home: Path, *args: str, install: Path | None = None, timeout: int = 120):

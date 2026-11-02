@@ -200,7 +200,7 @@ class TestOwnerProfileKeying:
 
 class TestSiblingIngressKeying:
     def test_weixin_text_batch_uses_adapter_owner_profile(self):
-        from gateway.platforms.weixin import WeixinAdapter
+        from plugins.platforms.weixin.adapter import WeixinAdapter
 
         adapter = object.__new__(WeixinAdapter)
         adapter.config = PlatformConfig(extra={})
@@ -224,7 +224,7 @@ class TestSiblingIngressKeying:
 
     @pytest.mark.asyncio
     async def test_yuanbao_dispatch_uses_adapter_owner_profile(self):
-        from gateway.platforms.yuanbao import DispatchMiddleware, InboundContext, YuanbaoAdapter
+        from plugins.platforms.yuanbao.adapter import DispatchMiddleware, InboundContext, YuanbaoAdapter
 
         adapter = object.__new__(YuanbaoAdapter)
         adapter.config = PlatformConfig(extra={})

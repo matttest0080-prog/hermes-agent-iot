@@ -1,6 +1,7 @@
 """Shared utility functions for hermes-agent."""
 
 import errno
+import io
 import json
 import logging
 import os
@@ -47,6 +48,17 @@ def file_signature(st: os.stat_result) -> tuple[int, int, int, int]:
     an in-place rewrite, so the key degrades to mtime + size there rather than misfiring.
     """
     return (st.st_mtime_ns, st.st_size, st.st_ino, st.st_ctime_ns)
+
+
+# Filesystem timestamps tick coarsely (~4 ms; whole seconds on some filesystems), so a write in the
+# same tick as a stat leaves the signature unchanged. A signature this fresh is "racily clean" (as in
+# git's index) and must not be trusted as "nothing changed since".
+RACY_MTIME_WINDOW_NS = 2_000_000_000
+
+
+def mtime_is_racy(mtime_ns: int) -> bool:
+    """True while ``mtime_ns`` is too recent to rule out a same-tick write after the stat."""
+    return time.time_ns() - mtime_ns < RACY_MTIME_WINDOW_NS
 
 
 def _preserve_file_mode(path: Path) -> int | None:
@@ -450,12 +462,17 @@ def _roundtrip_load(path: Path):
 
 
 def _roundtrip_dump(path: Path, yaml_rt, config, *, extra_content: str | None = None) -> None:
-    def _write(f) -> None:
-        yaml_rt.dump(config, f)
-        if extra_content:
-            f.write(extra_content)
-
-    _atomic_write(path, _write, prefix=f".{path.stem}_", mode=_preserve_file_mode(path))
+    buffer = io.StringIO()
+    yaml_rt.dump(config, buffer)
+    rendered = buffer.getvalue() + (extra_content or "")
+    # A serializer bug must never atomically replace a readable config with invalid YAML.
+    try:
+        parsed = yaml.safe_load(rendered)
+    except yaml.YAMLError as exc:
+        raise ValueError("Refusing to write invalid serialized YAML") from exc
+    if not isinstance(parsed, dict):
+        raise ValueError("Refusing to write a non-mapping YAML config")
+    _atomic_write(path, lambda f: f.write(rendered), prefix=f".{path.stem}_", mode=_preserve_file_mode(path))
 
 
 def atomic_roundtrip_yaml_update(path: str | Path, key_path: str, value: Any) -> None:
@@ -526,6 +543,25 @@ def _rt_value(value: Any) -> Any:
     return value
 
 
+def _preserve_empty_sequence_comments(parent, key, current, replacement) -> None:
+    """ruamel cannot emit an emptied block sequence with leading item comments safely.
+
+    Retain the guidance above the mapping key instead of between that key and ``[]``.
+    The latter shape corrupts the following sibling's indentation in ruamel 0.18.x.
+    """
+    if replacement or not current.ca.comment or not current.ca.comment[1]:
+        return
+    comments = current.ca.comment[1]
+    current.ca.comment = None
+    attached = parent.ca.items.get(key)
+    if attached and len(attached) > 3 and attached[3] is comments:
+        attached[3] = None
+    content = "".join(comment.value for comment in comments)
+    content = "\n".join(line.lstrip().removeprefix("#").removeprefix(" ") for line in content.splitlines())
+    parent.yaml_set_comment_before_after_key(key, before=content, indent=parent.lc.col or 0)
+    current.fa.set_flow_style()
+
+
 def atomic_roundtrip_yaml_save(path: str | Path, new_state: dict, *,
                                extra_content_on_create: str | None = None) -> None:
     """Persist a full config-state dict while preserving comments and ordering.
@@ -569,6 +605,7 @@ def atomic_roundtrip_yaml_save(path: str | Path, new_state: dict, *,
         if isinstance(value, dict) and isinstance(current, CommentedMap):
             _merge(current, value)
         elif isinstance(value, list) and isinstance(current, CommentedSeq):
+            _preserve_empty_sequence_comments(dst, key, current, value)
             _merge_seq(current, value)
         elif not _unchanged(current, value):
             dst[key] = _rt_value(value)

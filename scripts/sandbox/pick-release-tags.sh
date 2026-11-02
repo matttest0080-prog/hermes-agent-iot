@@ -1,40 +1,12 @@
 #!/usr/bin/env bash
-# Pick the release tags the install/update E2E should update FROM.
-#
-# Emits a JSON array of tag names on stdout, suitable for a GitHub Actions
-# matrix (`fromJSON`). Choosing at runtime rather than hardcoding keeps the
-# matrix honest as releases land: a pinned list silently stops covering the
-# newest release the day after it ships, and pins the "oldest" forever even
-# after it stops being a version anyone still runs.
-#
-# Selection: the newest tag, the oldest tag, and evenly spaced tags in between.
-# Newest catches "did the last release break updating?", oldest is the longest
-# upgrade jump anyone can still make, and the spread samples the migrations in
-# between (config-schema bumps, venv layout changes, dependency floors).
-#
-# Usage:
-#   scripts/sandbox/pick-release-tags.sh [--count N] [--repo DIR]
-#
-#   --count   how many tags to emit (default 5, minimum 1). Fewer tags than
-#             requested emits all of them.
-#   --repo    repository to read tags from (default: this checkout).
-#
-# Reads tags from the local checkout, so it needs one fetched with tags
-# (actions/checkout with fetch-depth: 0, or `fetch-tags: true`). A shallow
-# checkout has no tags and this exits non-zero rather than silently emitting an
-# empty matrix.
-#
-# Accept upstream calendar releases plus this fork's IoT package and Pi2 image
-# release schemes. Only tags reachable from the checked-out branch are valid
-# update sources; legacy Pi2 history is intentionally unrelated to pi2-lite.
-
+# Pick oldest/newest and evenly spaced supported release tags for update testing.
+# Reads origin when configured, works on tagless clones, and ignores unrelated
+# fork history. Offline fixture repositories without origin use reachable tags.
+# Usage: pick-release-tags.sh [--count N] [--repo PATH]
 set -euo pipefail
 
 COUNT=5
-# Default to the repository containing this script, resolved through its real
-# path so a symlinked or copied script still reads the checkout it lives in
-# rather than whatever repo the caller happens to be standing in.
-REPO=""
+REPO=
 while [ "$#" -gt 0 ]; do
   case "$1" in
     --count)
@@ -43,7 +15,7 @@ while [ "$#" -gt 0 ]; do
     --repo)
       [ "$#" -ge 2 ] || { echo 'error: --repo needs a value' >&2; exit 1; }
       REPO="$2"; shift 2 ;;
-    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
+    -h|--help) printf '%s\n' 'Usage: pick-release-tags.sh [--count N] [--repo PATH]'; exit 0 ;;
     *) echo "error: unknown argument: $1" >&2; exit 1 ;;
   esac
 done
@@ -52,59 +24,67 @@ case "$COUNT" in
 esac
 [ "$COUNT" -ge 1 ] || { echo 'error: --count must be at least 1' >&2; exit 1; }
 
-# Resolve the script's own location through symlinks, then ask git which
-# worktree that path belongs to. Deriving the repo from the script rather than
-# from $PWD means a copied script cannot silently report a different checkout's
-# tags, and --show-toplevel keeps it correct when invoked from a subdirectory.
 if [ -z "$REPO" ]; then
-  script_path="${BASH_SOURCE[0]}"
-  if command -v readlink >/dev/null 2>&1; then
-    script_path="$(readlink -f "$script_path" 2>/dev/null || printf '%s' "$script_path")"
+  SOURCE="${BASH_SOURCE[0]}"
+  while [ -L "$SOURCE" ]; do
+    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+    SOURCE="$(readlink "$SOURCE")"
+    [[ "$SOURCE" = /* ]] || SOURCE="$DIR/$SOURCE"
+  done
+  script_dir="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+  REPO="$(git -C "$script_dir" rev-parse --show-toplevel)"
+fi
+
+# Formal upstream SemVer/CalVer and this fork's IoT/Pi2 releases only.
+RELEASE_PATTERN='^(v[0-9]+\.[0-9]+\.[0-9]+(\.[0-9]+)?|v[0-9]+(\.[0-9]+)+-pi2|iot-v[0-9]+\.[0-9]+\.[0-9]+(\.post[0-9]+)?)$'
+remote=false
+prefix="refs/hermes-release-picker/$$"
+if git -C "$REPO" remote get-url origin >/dev/null 2>&1; then
+  remote=true
+  advertised="$(git -C "$REPO" ls-remote --refs --tags origin 'v*' 'iot-v*')"
+  mapfile -t candidates < <(printf '%s\n' "$advertised" | cut -f2 | cut -c11- | grep -E "$RELEASE_PATTERN" || true)
+  if [ "${#candidates[@]}" -eq 0 ]; then
+    echo 'error: no supported release tags found on origin' >&2
+    exit 1
   fi
-  script_dir="$(cd "$(dirname "$script_path")" && pwd)"
-  REPO="$(git -C "$script_dir" rev-parse --show-toplevel 2>/dev/null || printf '%s' "$script_dir")"
+  # Private refs provide tagger dates and ancestry without overwriting local
+  # tags. Only picked tags are published locally; backup/canary refs never enter.
+  cleanup() {
+    git -C "$REPO" for-each-ref --format='delete %(refname)' "$prefix/" | git -C "$REPO" update-ref --stdin
+  }
+  trap cleanup EXIT
+  refs=()
+  for tag in "${candidates[@]}"; do refs+=("+refs/tags/$tag:$prefix/$tag"); done
+  git -C "$REPO" fetch --quiet --no-tags origin "${refs[@]}"
+  mapfile -t ordered < <(git -C "$REPO" for-each-ref --sort=version:refname --sort=creatordate --format='%(refname:strip=3)' "$prefix/")
+else
+  prefix=refs/tags
+  mapfile -t ordered < <(git -C "$REPO" tag --merged HEAD --sort=version:refname --sort=creatordate --list 'v*' 'iot-v*' | grep -E "$RELEASE_PATTERN" || true)
 fi
 
-# Release families use incompatible version scales (v11.2-pi2, iot-v0.20.4,
-# v2026.8.18), so version sorting cannot identify the release created most
-# recently. Git's creatordate uses an annotated tag's tagger date and falls
-# back to the commit date for lightweight tags, preserving one chronological
-# oldest-to-newest sequence across all supported families.
-mapfile -t tags < <(
-  git -C "$REPO" tag --merged HEAD --sort=creatordate --list 'v*' 'iot-v*' \
-    | grep -E '^(v[0-9]{4}\.[0-9]+\.[0-9]+(\.[0-9]+)?|v[0-9]+(\.[0-9]+)+-pi2|iot-v[0-9]+\.[0-9]+\.[0-9]+(\.post[0-9]+)?)$' \
-)
-
+tags=()
+for tag in "${ordered[@]}"; do
+  if git -C "$REPO" merge-base --is-ancestor "$prefix/$tag^{commit}" HEAD; then tags+=("$tag"); fi
+done
 total="${#tags[@]}"
-if [ "$total" -eq 0 ]; then
-  echo "error: no reachable release tags found in $REPO" >&2
-  echo '       A shallow clone has no tags: fetch with tags (actions/checkout' >&2
-  echo '       with fetch-depth: 0, or fetch-tags: true).' >&2
-  exit 1
-fi
+[ "$total" -gt 0 ] || { echo 'error: no reachable supported release tags found' >&2; exit 1; }
 
+picked=()
 if [ "$total" -le "$COUNT" ]; then
   picked=("${tags[@]}")
 elif [ "$COUNT" -eq 1 ]; then
-  # One slot means the newest release; there is no span to spread across.
   picked=("${tags[$((total - 1))]}")
 else
-  # Evenly spaced indices across [0, total-1], endpoints included, so the
-  # oldest and newest are always present and the rest are spread between them.
-  picked=()
-  for slot in $(seq 0 $((COUNT - 1))); do
-    # Round to nearest rather than truncate, so the spacing does not bunch
-    # toward the oldest end.
-    index=$(( (slot * (total - 1) * 2 + (COUNT - 1)) / ((COUNT - 1) * 2) ))
-    candidate="${tags[$index]}"
-    # Guard against a duplicate if rounding lands twice on the same tag.
-    case " ${picked[*]-} " in
-      *" $candidate "*) continue ;;
-    esac
-    picked+=("$candidate")
+  for ((i=0; i<COUNT; i++)); do
+    index=$((i * (total - 1) / (COUNT - 1)))
+    picked+=("${tags[$index]}")
   done
 fi
-
+if "$remote"; then
+  refs=()
+  for tag in "${picked[@]}"; do refs+=("+refs/tags/$tag:refs/tags/$tag"); done
+  git -C "$REPO" fetch --quiet --no-tags origin "${refs[@]}"
+fi
 printf '['
 for i in "${!picked[@]}"; do
   [ "$i" -eq 0 ] || printf ','
