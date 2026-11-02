@@ -6,6 +6,12 @@
 >
 > **最新交付決議：** 使用者要求更新 release／PyPI 後，獨立 `browser-harness-hermes-compat==0.1.13.post1` 已正式上架，保留 MIT、Pillow 13 與自己的 updater namespace，匿名 wheel／sdist 與 tag CI 逐 byte 相同。Hermes 改用 registry exact pin，保留 14 日政策與 sanitizer fail-closed；Hermes 自身仍待 release-ready PR、完整 CI、最新獨立核准與正式 publisher，不把輔助套件上架當成 Hermes 已發布。來源／雜湊／四組 266-test receipts、升級隔離與舊 GitHub-only 歷史見 [browser-harness-compat.md](browser-harness-compat.md)。#47／#48 已正常合併，catalog 六個不可公開驗證的新來源拒絕准入並留有紀錄；安全收斂見 [security-closure-v0.22.5.md](security-closure-v0.22.5.md)。
 
+## 發布工作流程修正：post2
+
+`iot-v0.22.5.post1` 已建立於 `013856ea7dc256b6c356d35c386720afeedb97bb`，但 publisher run `41438794042` 在上傳前被 PM fail-closed：Linux job 錯誤要求只有 Windows artifact 的 Git pin（`git has no pinned artifact for linux-x64`）。**Hermes post1 沒有上傳 PyPI；不移動或覆寫已公開 tag。** 修正只讓 PM 安裝可用的 ripgrep，Git 使用已成功執行 ancestry gate 的 runner 工具，並增加真正執行 Linux bootstrap prepare 的正負驗證；新正式目標為 `0.22.5.post2`。
+
+同 tag 另觸發原安裝升級矩陣，發現候選被選成自己的 OLD baseline；修正 tag push 明示排除候選與同 commit aliases，保留 origin-authoritative／可達性／正式版本篩選。新 Git fixtures 在舊碼失敗，修正後通過；不是把沒有更新可做的情境假判成功。歷史 `v0.19.1` Desktop baseline leg（job `125255453523`）另在安裝 OLD 時出現 `frimousse` import 無法解析；雖已確認該 tag 的 manifest 沒列此套件，仍不足以斷言是純粹缺宣告或安裝流程混入其他版本，根因未驗收。保留失敗紀錄，不改寫舊 tag／補裝未宣告依賴／把它算成通過；這不是本次 Pi2／PyPI 的實際裝置驗收。
+
 ## 固定來源
 
 - fork 原始 HEAD：`ded7f91de28b56ebe861874c3026346e3e6fe719`。
