@@ -7,7 +7,9 @@ without a flag day:
 1. ``--pinned``   every *external* dependency in every ``package.json`` must be
    an exact version. Internal references (``workspace:``/``file:``/``link:``)
    are fine; anything else (``^``, ``~``, ``>``, ``*``, ``latest``, ``npm:``,
-   ``git+`` ...) must be listed in the baseline's ``pinned_exceptions``.
+   ``git+`` ...) must be listed in the baseline's ``pinned_exceptions``. HTTPS tarballs
+   instead need an explicit ``artifact_pins`` URL + SHA512 entry matching the
+   adjacent lockfile; a name-only exception cannot approve mutable remote content.
    Rationale (borrowed from earendil-works/pi's ``check:pinned-deps``): ranged
    specifiers let a lockfile refresh pull unreviewed code; exact pins make every
    dependency change a reviewable diff.
@@ -31,6 +33,7 @@ Exit codes: 0 clean, 1 violation(s) found, 2 usage/IO error.
 from __future__ import annotations
 
 import argparse
+import base64
 import json
 import os
 import re
@@ -58,6 +61,7 @@ def load_baseline(repo: str) -> dict:
         data = json.load(fh)
     data.setdefault("pinned_exceptions", [])
     data.setdefault("lifecycle", [])
+    data.setdefault("artifact_pins", {})
     return data
 
 
@@ -67,11 +71,34 @@ def save_baseline(repo: str, data: dict) -> str:
     ordered = {
         "pinned_exceptions": sorted(set(data["pinned_exceptions"])),
         "lifecycle": sorted(set(data["lifecycle"])),
+        "artifact_pins": dict(sorted(data.get("artifact_pins", {}).items())),
     }
     with open(path, "w", encoding="utf-8") as fh:
         json.dump(ordered, fh, indent=2)
         fh.write("\n")
     return path
+
+
+def reviewed_artifact_pin(repo: str, rel: str, section: str, name: str, spec: str, baseline: dict) -> bool:
+    """An approved URL is exact only while its root declaration and content hash agree."""
+    key = f"{rel}#{section}#{name}"
+    pin = baseline.get("artifact_pins", {}).get(key)
+    if not isinstance(pin, dict) or pin.get("url") != spec or not spec.startswith("https://"):
+        return False
+    integrity = pin.get("integrity", "")
+    if not isinstance(integrity, str) or not integrity.startswith("sha512-"):
+        return False
+    try:
+        if len(base64.b64decode(integrity[7:], validate=True)) != 64:
+            return False
+        path = os.path.join(repo, os.path.dirname(rel), "package-lock.json")
+        with open(path, encoding="utf-8-sig") as fh:
+            lock = json.load(fh)
+        entry = lock["packages"][f"node_modules/{name}"]
+        return (lock["packages"][""][section][name] == spec
+                and entry["resolved"] == spec and entry["integrity"] == integrity)
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
 
 
 def walk_package_jsons(repo: str):
@@ -108,8 +135,10 @@ def check_pinned(repo: str, baseline: dict):
                 if EXACT_RE.match(spec):
                     continue
                 key = f"{rel}#{section}#{name}"
-                seen.append(key)  # baseline snapshot: every ranged specifier
-                if key not in allowed:
+                if reviewed_artifact_pin(repo, rel, section, name, spec, baseline):
+                    continue
+                seen.append(key)  # snapshot ranges, never automatically approve remote content
+                if spec.startswith(("https://", "http://")) or key not in allowed:
                     violations.append(f"{key}={spec}")
     return violations, seen
 
@@ -194,6 +223,7 @@ def main(argv=None) -> int:
         print(f"baseline written: {os.path.relpath(path, repo)}")
         print(f"  pinned_exceptions: {len(baseline['pinned_exceptions'])}")
         print(f"  lifecycle:         {len(baseline['lifecycle'])}")
+        print(f"  reviewed artifacts: {len(baseline.get('artifact_pins', {}))}")
         return 0
 
     failed = False
