@@ -1,0 +1,103 @@
+{
+  "upstream_release": {
+    "tag": "v0.22.5",
+    "commit": "bf0203a794a07aac3ff764972ab9087baa4e4f4e"
+  },
+  "candidate_entry_source": "6c140c6162a4216cf7f317fb679d029ce64f480a",
+  "checked_date_utc": "2026-11-02",
+  "disposition": "拒絕六項新條目准入；不是驗證成功，不加入 removed.yaml 封鎖既有安裝，也不放寬任何來源驗證。",
+  "policy": "plugin-catalog/README.md 規定每個採納 pin 均須可讀取、驗證與審查。公開來源恢復且固定 SHA 重新通過原有 gates 後，才可用獨立 PR 申請准入。",
+  "scope": "匿名 GitHub API 的 HTTP 404 加上無互動憑證的 CI clone 失敗，只證明當時無法公開驗證；不推論私有、刪除或惡意。不以權杖嘗試讀取不可公開來源。",
+  "entries": [
+    {
+      "path": "plugin-catalog/skill-integrity.yaml",
+      "action": "admission-refused",
+      "present_in_pi2_lite_base": false,
+      "original_candidate_yaml": "name: skill-integrity\nversion: \"0.2.1\"\nrepo: https://github.com/ZidoCode/skill-integrity\nsha: 352a190b89a91246487107f016c39bb777d8466c\ndescription: \"Rug-pull detection for installed agent skills — fingerprints every file in every skill directory (SHA-256), keeps a profile-local snapshot, and reports exactly which skill files changed, appeared, or vanished since; a skill that mutates after install without the user touching it is the rug-pull signal. A skill directory made unreadable is reported as a finding, never treated as clean. Read-only observer, stdlib-only, zero network calls; blind spots (oversize files, symlinks, permission-denied) are counted and printed, never silent. The wrapper registers an hourly pre_llm_call hook that injects findings into the agent context, plus a /skill-integrity slash command (snapshot | check | show) that creates the baseline snapshot and shows the file-level diff. The CLI supports --state-dir to target the plugin's manifest directly. Skill dirs and state derive from get_hermes_home(), covering non-default profiles. Disclosure — reads (hash-only, read-only) every file under the active profile's skills directory and ~/.claude/skills, stores a mode-0600 snapshot in HERMES_HOME/plugin-data/skill-integrity, and at most hourly injects the names of changed skills into the agent's context.\"\nmaintainer: ZidoCode\ntier: community\ncategory: tools\nrequires_hermes: \">=0.21.6\"\ndocs_url: https://github.com/ZidoCode/skill-integrity#readme\nplatforms: []\ncapabilities:\n  provides_tools: []\n  provides_hooks:\n    - pre_llm_call\n  provides_commands:\n    - skill-integrity\n  provides_middleware: []\n  requires_env: []\n",
+      "public_source_check": {
+        "repo": "ZidoCode/skill-integrity",
+        "status": 404,
+        "url": "https://api.github.com/repos/ZidoCode/skill-integrity"
+      },
+      "failed_pinned_source": {
+        "run": 41379845737,
+        "job": 125068020510
+      }
+    },
+    {
+      "path": "plugin-catalog/hermes-dpapi-secrets.yaml",
+      "action": "admission-refused",
+      "present_in_pi2_lite_base": false,
+      "original_candidate_yaml": "name: hermes-dpapi-secrets\nrepo: https://github.com/Yicheng-Mark/hermes-dpapi-secrets\nsha: c1651a401370013493903883d7ec4a1c90731b41\ndescription: \"Resolve Hermes environment variables at startup from a single secret file encrypted with the Windows Data Protection API, instead of keeping provider keys in plaintext in .env or auth.json. Config is secrets.dpapi.map, an ENV_VAR -> store-name mapping (bare names or dpapi:// names) plus an optional file path (default <HERMES_HOME>/secrets.dpapi). The file is one DPAPI blob keyed by the current Windows user profile, so it is unreadable by another Windows account and worthless off the machine; it is written by the bundled CLI (python -m hermes_dpapi_secrets set NAME, value read from a prompt or stdin, never from argv) and only read at runtime. Mapped names that are missing or empty are skipped with a warning; a file that is not ours, a blob this user cannot decrypt, or a payload that is not a flat string map is reported as an error with nothing injected. Disclosure - this source decrypts a file for every Hermes process that enables it: resolved values become environment variables of the Hermes process and its children, exactly like .env entries, so anything that can read that environment can see them. User-scope encryption only (the machine-wide flag is never used and is not exposed), and the at-rest protection is a bar for backups, cloud sync and dotfiles, not a boundary against code already running as the same user. Stdlib-only (ctypes): no Python dependencies, no subprocesses, no network calls, no self-update. Windows only. Applying fetched values stays the orchestrator's job; the plugin never writes os.environ itself. Disclosure — decrypts a DPAPI-encrypted secret file (default <HERMES_HOME>/secrets.dpapi) at startup for every Hermes process that enables it, and the resolved values become environment variables of Hermes and its child processes like `.env` entries; the encryption is per Windows user and protects backups, cloud sync and copied files, not against other code running as the same user. Local only: no network calls, no subprocesses.\"\nmaintainer: Yicheng-Mark\ntier: community\ncategory: tools\nrequires_hermes: \">=0.21.4\"\ndocs_url: https://github.com/Yicheng-Mark/hermes-dpapi-secrets#readme\nversion: \"0.1.0\"\nplatforms:\n- windows\ncapabilities:\n  provides_tools: []\n  provides_hooks: []\n  provides_middleware: []\n  requires_env: []\n",
+      "public_source_check": {
+        "repo": "Yicheng-Mark/hermes-dpapi-secrets",
+        "status": 404,
+        "url": "https://api.github.com/repos/Yicheng-Mark/hermes-dpapi-secrets"
+      },
+      "failed_pinned_source": {
+        "run": 41379845737,
+        "job": 125068020530
+      }
+    },
+    {
+      "path": "plugin-catalog/hermes-wincred.yaml",
+      "action": "admission-refused",
+      "present_in_pi2_lite_base": false,
+      "original_candidate_yaml": "name: hermes-wincred\nrepo: https://github.com/Yicheng-Mark/hermes-wincred\nsha: 0855e07b23105e7f93c99b1474e56cbdd4a6c691\ndescription: \"Resolve Hermes environment variables from the current user's Windows Credential Manager at startup, instead of keeping provider keys in plaintext in .env or auth.json. Config is secrets.wincred.map, an ENV_VAR -> generic-credential-target mapping (bare names or wincred:// names); each value is read with CredReadW in the current user's vault and handed to the secret-source orchestrator, which applies it with the usual precedence, provenance and conflict rules. Values may be UTF-8 or UTF-16LE (cmdkey and the Credential UI write UTF-16); anything that does not decode to text, or that contains interior NULs, is skipped with a warning instead of being injected as a mangled key. Disclosure - this source reads your Windows Credential Manager: only the generic credentials named in the map, with no enumeration of the vault. Resolved values become environment variables of the Hermes process and its children, exactly like .env entries, so anything that can read that environment can see them. The package is read-only and stdlib-only (ctypes): it never creates, updates or deletes credentials, writes no files, starts no subprocesses, makes no network calls and does not self-update. Windows only. Credential Manager is user-scoped, so this raises the at-rest bar for backups, cloud sync and dotfiles; it is not a boundary against code already running as the same user. Applying fetched values stays the orchestrator's job; the plugin never writes os.environ itself. Disclosure — when enabled, reads only the Windows Credential Manager generic credentials named in secrets.wincred.map (no vault enumeration) and injects them as environment variables of the Hermes process and its children, exactly like .env entries; read-only, stdlib ctypes, no subprocesses, no network, no file writes; user-scoped at-rest protection, not a boundary against code already running as the same user.\"\nmaintainer: Yicheng-Mark\ntier: community\ncategory: tools\nrequires_hermes: \">=0.21.4\"\ndocs_url: https://github.com/Yicheng-Mark/hermes-wincred#readme\nversion: \"0.1.0\"\nplatforms:\n- windows\ncapabilities:\n  provides_tools: []\n  provides_hooks: []\n  provides_middleware: []\n  requires_env: []\n",
+      "public_source_check": {
+        "repo": "Yicheng-Mark/hermes-wincred",
+        "status": 404,
+        "url": "https://api.github.com/repos/Yicheng-Mark/hermes-wincred"
+      },
+      "failed_pinned_source": {
+        "run": 41379845737,
+        "job": 125068020530
+      }
+    },
+    {
+      "path": "plugin-catalog/hermes-wslc-sandbox.yaml",
+      "action": "admission-refused",
+      "present_in_pi2_lite_base": false,
+      "original_candidate_yaml": "name: hermes-wslc-sandbox\nrepo: https://github.com/Yicheng-Mark/hermes-wslc-sandbox\nsha: 3250f4dcafd30fe1f00e0cff5b45246b98b520d9\nversion: \"0.1.0\"\ndescription: \"Run Hermes' terminal, file and execute_code tools in a Linux container on Microsoft's WSL Containers (wslc) runtime, so Windows users who run WSL Containers get a sandbox without Docker Desktop. Disclosure — the plugin spawns the wslc CLI (one short-lived process per command, plus one long-lived container per environment) and every call runs inside that container; containers have outbound network access unless docker_network is false; persistent sandboxes are left stopped on disk until removed; host environment variables enter the container only when named in docker_forward_env, and only paths listed in docker_volumes are bind-mounted. wslc rejects --cap-drop, --security-opt, --pids-limit, --init and --storage-opt, so this sandbox is not capability-dropped the way the Docker backend's is, container_disk is reported but not enforced, and dangerous-command approval deliberately stays enabled for this backend. The plugin reads no credentials, stores none, and makes no network calls of its own.\"\nmaintainer: Yicheng-Mark\ntier: community\ncategory: tools\nrequires_hermes: \">=0.21.3\"\ndocs_url: https://github.com/Yicheng-Mark/hermes-wslc-sandbox#readme\nplatforms: [windows]\nknown_issues:\n  - \"container_disk is reported but not enforced: wslc has no --storage-opt.\"\n  - \"No capability dropping: wslc rejects --cap-drop and --security-opt, so dangerous-command approval stays enabled.\"\ncapabilities:\n  provides_tools: []\n  provides_hooks: []\n  provides_middleware: []\n  requires_env: []\n",
+      "public_source_check": {
+        "repo": "Yicheng-Mark/hermes-wslc-sandbox",
+        "status": 404,
+        "url": "https://api.github.com/repos/Yicheng-Mark/hermes-wslc-sandbox"
+      },
+      "failed_pinned_source": {
+        "run": 41379845737,
+        "job": 125068020501
+      }
+    },
+    {
+      "path": "plugin-catalog/hermes-wsl-terminal.yaml",
+      "action": "admission-refused",
+      "present_in_pi2_lite_base": false,
+      "original_candidate_yaml": "name: hermes-wsl-terminal\nrepo: https://github.com/Yicheng-Mark/hermes-wsl-terminal\nsha: 9e0f0d02d28a5db04cd1f0b916f9c633279fbdfc\ndescription: >-\n  Run Hermes' terminal tools inside an existing WSL distro on Windows: one bash -c per\n  command as the distro's default user, over the same files Windows sees at /mnt/<drive>, with\n  no Docker Desktop, no image and no container to start or tear down. A host cwd is\n  translated (C:\\Users\\me\\proj becomes /mnt/c/Users/me/proj, \\\\wsl.localhost paths become the\n  distro's own paths) and the mount root is asked once with wslpath, so a distro that moved\n  its automount point still gets correct paths. cwd persists across commands, stdin and exit\n  codes ride through wsl.exe, and hermes doctor / setup and the dashboard picker get real rows\n  (wsl.exe path, WSL version, distros present, selected distro). HERMES_WSL_DISTRO and\n  HERMES_WSL_USER select the distro and the user. Disclosure — this is a full-access backend,\n  not a sandbox: when it is the selected backend, everything the terminal tool runs executes\n  as your user inside your distro, with that distro's files, permissions and network access,\n  so dangerous-command approval stays on and Hermes never stops the distro. The plugin itself\n  reads no credentials, stores nothing and makes no network calls; it spawns wsl.exe per\n  command and wslpath once per distro. It rewrites one core-produced string, the trailing cwd\n  marker, because under WSL a command substitution is handed the directory wsl.exe started in\n  rather than the shell's current one (measurements in the repo's VALIDATION.md); nothing in\n  Hermes is patched or rebound at runtime.\nmaintainer: Yicheng-Mark\ntier: community\ncategory: tools\nrequires_hermes: \">=0.21.6\"\ndocs_url: https://github.com/Yicheng-Mark/hermes-wsl-terminal#readme\nversion: \"0.1.0\"\nplatforms:\n- windows\ncapabilities:\n  provides_tools: []\n  provides_hooks: []\n  provides_middleware: []\n  requires_env: []\n",
+      "public_source_check": {
+        "repo": "Yicheng-Mark/hermes-wsl-terminal",
+        "status": 404,
+        "url": "https://api.github.com/repos/Yicheng-Mark/hermes-wsl-terminal"
+      },
+      "failed_pinned_source": {
+        "run": 41379845737,
+        "job": 125068020573
+      }
+    },
+    {
+      "path": "plugin-catalog/hermes-windows-ops.yaml",
+      "action": "admission-refused",
+      "present_in_pi2_lite_base": false,
+      "original_candidate_yaml": "name: hermes-windows-ops\nrepo: https://github.com/Yicheng-Mark/hermes-windows-ops\nsha: 02512e4b545d09ee837d269c7261aaeb363cac8d\ndescription: >-\n  Windows and WSL triage skills for Hermes: processes that survive a quit\n  (orphaned stdio MCP trees, lingering python/uv/node children), WSL-to-Windows\n  interop where an argument reaches cmd.exe as shell syntax, config and encoding\n  traps (UTF-8 BOM, legacy console code pages), and long-path or reserved-name\n  errors. One skill plus a copy-paste command reference; the process, argv and\n  job-object failure modes are pinned to reports #131561, #132069 and #61059 and\n  re-verified against current main. Disclosure — instructions only: no tools,\n  hooks, middleware, network calls or credentials, and the destructive\n  diagnostics are marked and gated on asking the user first.\nmaintainer: Yicheng-Mark\ntier: community\ncategory: tools\nrequires_hermes: \">=0.21.6\"\ndocs_url: https://github.com/Yicheng-Mark/hermes-windows-ops#readme\nversion: \"0.1.0\"\nplatforms:\n- windows\n- linux\ncapabilities:\n  provides_tools: []\n  provides_hooks: []\n  provides_middleware: []\n  requires_env: []\n",
+      "public_source_check": {
+        "repo": "Yicheng-Mark/hermes-windows-ops",
+        "status": 404,
+        "url": "https://api.github.com/repos/Yicheng-Mark/hermes-windows-ops"
+      },
+      "failed_pinned_source": {
+        "run": 41379845737,
+        "job": 125068020589
+      }
+    }
+  ]
+}
