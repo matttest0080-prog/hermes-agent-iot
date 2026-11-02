@@ -15,7 +15,7 @@
 
 Hermes Agent IoT is an IoT/robotics-focused fork of [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent). The maintained `pi2-lite` branch focuses on constrained Raspberry Pi and edge deployments while preserving the upstream Hermes Agent runtime and ecosystem.
 
-> **版本與升級注意事項：** 本版識別為 `0.22.5.post1`，使用保留 MIT 署名的獨立 `browser-harness-hermes-compat` 與 Pillow 13 修補。請先確認 [對應 PyPI 版本](https://pypi.org/project/hermes-agent-iot/0.22.5.post1/) 已列出後，再執行下方固定版本安裝；若尚未上架，請使用來源 checkout，不把來源合併或輔助套件上架當成 Hermes 已發布。舊 `0.22.2.post1` 不含這輪安全修補。升級建議使用**全新 venv**，不要混裝官方／獨立 browser distributions；見 [相容性與遷移說明](docs/browser-harness-compat.md) 及 [同步驗證紀錄](docs/upstream-review-v0.22.5.md)。
+> **版本與升級注意事項：** 本版識別為 `0.22.5.post2`，使用保留 MIT 署名的獨立 `browser-harness-hermes-compat` 與 Pillow 13 修補。請先確認 [對應 PyPI 版本](https://pypi.org/project/hermes-agent-iot/0.22.5.post2/) 已列出後，再執行下方固定版本安裝；若尚未上架，請使用來源 checkout，不把來源合併或輔助套件上架當成 Hermes 已發布。舊 `0.22.2.post1` 不含這輪安全修補。升級建議使用**全新 venv**，不要混裝官方／獨立 browser distributions；見 [相容性與遷移說明](docs/browser-harness-compat.md) 及 [同步驗證紀錄](docs/upstream-review-v0.22.5.md)。
 
 ## 相關影片
 
@@ -38,7 +38,7 @@ python3 --version
 python3 -m venv ~/.venvs/hermes-iot-0.22.5
 source ~/.venvs/hermes-iot-0.22.5/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.22.5.post1'
+python -m pip install 'hermes-agent-iot[minimal]==0.22.5.post2'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -78,7 +78,7 @@ hermes
 Keep the PyPI extra and setup profile aligned. For example:
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.22.5.post1'
+python -m pip install 'hermes-agent-iot[iot]==0.22.5.post2'
 hermes-iot setup --profile iot
 ```
 
@@ -126,14 +126,14 @@ This fork may intentionally lag upstream `main` while dependency changes, IoT pa
 
 ## 發行與驗證紀錄
 
-- 本版 package／tag 識別：`hermes-agent-iot 0.22.5.post1`／`iot-v0.22.5.post1`。
-- [PyPI 對應版本與正式檔案雜湊](https://pypi.org/project/hermes-agent-iot/0.22.5.post1/#files)／[GitHub release 與 tag](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.22.5.post1)。是否已發行以實際頁面與 CI 為準，不以此來源文件取代發布證據。
+- 本版 package／tag 識別：`hermes-agent-iot 0.22.5.post2`／`iot-v0.22.5.post2`。
+- [PyPI 對應版本與正式檔案雜湊](https://pypi.org/project/hermes-agent-iot/0.22.5.post2/#files)／[GitHub release 與 tag](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.22.5.post2)。是否已發行以實際頁面與 CI 為準，不以此來源文件取代發布證據。
 - Pi 2B 實機基準：Rev 1.1、ARMv7、921 MiB RAM、Python 3.13.5。本輪 registry 相容依賴的隔離候選完成五 profiles hash 解析、正常 minimal 安裝與 `pip check`、10 項 installed-wheel smoke、12 項 SQLite deadline／逐 byte 回滾控制。五個 profiles 不等於全都已實裝；localhost fixture 不是實際模型、MQTT／HA 或長期負載驗收。
 - 從舊版升級請使用前述新 venv，保留舊環境與服務供回復。`pip install --upgrade` 不一定移除舊 orphan `browser-harness`，混裝會造成 Pillow 要求衝突或同名模組互相覆寫。
 
 ### 歷史已發布驗證：0.22.2.post1
 
-以下保留舊版 receipt，**不是 0.22.5.post1 的 artifact 或安全驗證**：
+以下保留舊版 receipt，**不是 0.22.5.post2 的 artifact 或安全驗證**：
 
 - PyPI: [`hermes-agent-iot 0.22.2.post1`](https://pypi.org/project/hermes-agent-iot/0.22.2.post1/)
 - Tag: `iot-v0.22.2.post1`

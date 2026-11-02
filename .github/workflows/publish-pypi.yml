@@ -29,7 +29,9 @@ jobs:
         id: pm
         uses: ./.github/actions/setup-pm
         with:
-          packages: git,ripgrep
+          # Linux Git is supplied by the runner (ancestry gate already used it).
+          # PM pins Git for Windows only; requesting it here fails before tests.
+          packages: ripgrep
           extras: '["full", "rag"]'
           test-environment: 'true'
       - name: Run release-focused tests

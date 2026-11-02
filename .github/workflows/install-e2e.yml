@@ -179,7 +179,7 @@ jobs:
           # update leg — the candidate must never update from itself.
           TAG_COUNT: ${{ inputs.tag-count || 2 }}
           INSTALL_REF: ${{ inputs.install-ref }}
-          EXCLUDE_REF: ${{ inputs.exclude-ref }}
+          EXCLUDE_REF: ${{ inputs.exclude-ref || (github.ref_type == 'tag' && github.ref_name || '') }}
           RELEASE_MODE: ${{ inputs.release }}
         run: |
           set -euo pipefail
@@ -192,7 +192,9 @@ jobs:
           elif [ "$RELEASE_MODE" = true ]; then
             tags="$(python3 -m scripts.releases.pick_tags --count "$TAG_COUNT" --exclude-ref "$EXCLUDE_REF")"
           else
-            tags="$(scripts/sandbox/pick-release-tags.sh --count "$TAG_COUNT")"
+            args=(--count "$TAG_COUNT")
+            if [ -n "$EXCLUDE_REF" ]; then args+=(--exclude-ref "$EXCLUDE_REF"); fi
+            tags="$(scripts/sandbox/pick-release-tags.sh "${args[@]}")"
           fi
           echo "Testing updates from: $tags"
           # Annotate each tag with what its own tree supports, so run

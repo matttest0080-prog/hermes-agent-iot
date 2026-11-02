@@ -2,10 +2,11 @@
 # Pick oldest/newest and evenly spaced supported release tags for update testing.
 # Reads origin when configured, works on tagless clones, and ignores unrelated
 # fork history. Offline fixture repositories without origin use reachable tags.
-# Usage: pick-release-tags.sh [--count N] [--repo PATH]
+# Usage: pick-release-tags.sh [--count N] [--repo PATH] [--exclude-ref TAG]
 set -euo pipefail
 
 COUNT=5
+EXCLUDE_REF=
 REPO=
 while [ "$#" -gt 0 ]; do
   case "$1" in
@@ -15,7 +16,10 @@ while [ "$#" -gt 0 ]; do
     --repo)
       [ "$#" -ge 2 ] || { echo 'error: --repo needs a value' >&2; exit 1; }
       REPO="$2"; shift 2 ;;
-    -h|--help) printf '%s\n' 'Usage: pick-release-tags.sh [--count N] [--repo PATH]'; exit 0 ;;
+    --exclude-ref)
+      [ "$#" -ge 2 ] || { echo 'error: --exclude-ref needs a tag' >&2; exit 1; }
+      EXCLUDE_REF="$2"; shift 2 ;;
+    -h|--help) printf '%s\n' 'Usage: pick-release-tags.sh [--count N] [--repo PATH] [--exclude-ref TAG]'; exit 0 ;;
     *) echo "error: unknown argument: $1" >&2; exit 1 ;;
   esac
 done
@@ -62,9 +66,17 @@ else
   mapfile -t ordered < <(git -C "$REPO" tag --merged HEAD --sort=version:refname --sort=creatordate --list 'v*' 'iot-v*' | grep -E "$RELEASE_PATTERN" || true)
 fi
 
+excluded_commit=
+if [ -n "$EXCLUDE_REF" ]; then
+  [[ "$EXCLUDE_REF" =~ $RELEASE_PATTERN ]] || { echo 'error: exclude-ref must name a supported release tag' >&2; exit 1; }
+  excluded_commit="$(git -C "$REPO" rev-parse --verify "$prefix/$EXCLUDE_REF^{commit}")"
+fi
 tags=()
 for tag in "${ordered[@]}"; do
-  if git -C "$REPO" merge-base --is-ancestor "$prefix/$tag^{commit}" HEAD; then tags+=("$tag"); fi
+  # Aliases of the candidate are also no-change baselines, not real updates.
+  commit="$(git -C "$REPO" rev-parse "$prefix/$tag^{commit}")"
+  [ "$commit" != "$excluded_commit" ] || continue
+  if git -C "$REPO" merge-base --is-ancestor "$commit" HEAD; then tags+=("$tag"); fi
 done
 total="${#tags[@]}"
 [ "$total" -gt 0 ] || { echo 'error: no reachable supported release tags found' >&2; exit 1; }
