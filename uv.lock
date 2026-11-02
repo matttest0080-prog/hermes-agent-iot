@@ -29,7 +29,7 @@ asyncpg = false
 azure-identity = false
 boto3 = false
 brotlicffi = false
-browser-harness = false
+browser-harness-hermes-compat = false
 build = false
 cbor2 = false
 certifi = false
@@ -807,28 +807,19 @@ wheels = [
 ]
 
 [[package]]
-name = "browser-harness"
+name = "browser-harness-hermes-compat"
 version = "0.1.13.post1"
-source = { url = "https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl" }
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "cdp-use" },
     { name = "fetch-use" },
     { name = "pillow" },
     { name = "websockets" },
 ]
+sdist = { url = "https://files.pythonhosted.org/packages/a4/f2/62277bd13f7d176dc16e2b9d05ac723de7a4f9e2ebb0516055d5fa6f9d2b/browser_harness_hermes_compat-0.1.13.post1.tar.gz", hash = "sha256:c7f64d13a1d37ab5605469074ea9d7fa9d0360b6e3597d6eb5a80292278d6120", size = 119985, upload-time = "2026-11-02T08:43:55.382Z" }
 wheels = [
-    { url = "https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl", hash = "sha256:63a2fb36e398d8a764fb5961a70f0deb63dc60472ff0345b739105d17e2e059e" },
+    { url = "https://files.pythonhosted.org/packages/41/34/48a91e579bfee21b3ad2802b99289d51c2e8e3c1d4da3141098ab1dfbcd4/browser_harness_hermes_compat-0.1.13.post1-py3-none-any.whl", hash = "sha256:23a52497912d3d5108f51a98d183128e84dd372fa7432a8cb548335d9ab2f161", size = 125024, upload-time = "2026-11-02T08:43:53.839Z" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "cdp-use", specifier = "==1.4.5" },
-    { name = "fetch-use", specifier = "==0.4.0" },
-    { name = "mcp", marker = "extra == 'mcp'", specifier = "==2.3.0" },
-    { name = "pillow", specifier = "==13.0.0" },
-    { name = "websockets", specifier = "==15.0.1" },
-]
-provides-extras = ["mcp"]
 
 [[package]]
 name = "build"
@@ -2462,7 +2453,7 @@ version = "0.22.5.post1"
 source = { editable = "." }
 default-groups = []
 dependencies = [
-    { name = "browser-harness" },
+    { name = "browser-harness-hermes-compat" },
     { name = "certifi" },
     { name = "concurrent-log-handler", marker = "sys_platform == 'win32'" },
     { name = "croniter" },
@@ -2832,7 +2823,7 @@ requires-dist = [
     { name = "azure-identity", marker = "extra == 'azure-identity'", specifier = "==1.25.3" },
     { name = "boto3", marker = "extra == 'bedrock'", specifier = "==1.42.89" },
     { name = "brotlicffi", marker = "extra == 'messaging'", specifier = "==1.2.1.0" },
-    { name = "browser-harness", url = "https://github.com/matttest0080-prog/browser-harness-hermes-compat/releases/download/v0.1.13.post1/browser_harness-0.1.13.post1-py3-none-any.whl" },
+    { name = "browser-harness-hermes-compat", specifier = "==0.1.13.post1" },
     { name = "cbor2", marker = "platform_machine == 'armv7l' and extra == 'modal'", specifier = "==5.9.0" },
     { name = "certifi", specifier = "==2026.10.19" },
     { name = "concurrent-log-handler", marker = "sys_platform == 'win32'", specifier = "==0.9.29" },

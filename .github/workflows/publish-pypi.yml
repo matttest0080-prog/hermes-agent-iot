@@ -12,8 +12,6 @@ jobs:
   build:
     if: github.repository == 'matttest0080-prog/hermes-agent-iot'
     runs-on: ubuntu-latest
-    env:
-      RELEASE_PYTHON: .release-venv/bin/python
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
@@ -27,20 +25,16 @@ jobs:
             +refs/heads/pi2-lite:refs/remotes/origin/pi2-lite
           bash scripts/check_release_ancestry.sh \
             "$TAGGED_SHA" refs/remotes/origin/pi2-lite
-      - uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+      - name: Set up locked release test environment through PM
+        id: pm
+        uses: ./.github/actions/setup-pm
         with:
-          python-version: "3.12"
-      - name: Create isolated release virtual environment
-        run: python -m venv .release-venv
-      - name: Install release test and build dependencies
-        env:
-          UV_PROJECT_ENVIRONMENT: .release-venv
-        run: |
-          "$RELEASE_PYTHON" -m pip install --disable-pip-version-check uv==0.11.13
-          "$RELEASE_PYTHON" -m uv sync --frozen --group dev --extra full --extra rag
+          packages: git,ripgrep
+          extras: '["full", "rag"]'
+          test-environment: 'true'
       - name: Run release-focused tests
         run: >-
-          "$RELEASE_PYTHON" -m pytest
+          scripts/run_tests.sh
           tests/test_iot_packaging_profiles.py
           tests/test_packaging_build_guard.py
           tests/test_packaging_metadata.py
@@ -50,25 +44,26 @@ jobs:
           tests/test_pi2_install_guards.py
           tests/test_termux_all_extra_compat.py
           tests/agent/test_bedrock_integration.py
-          -o addopts= -q
       - name: Validate tag, distribution name, and version
         env:
           TAG: ${{ github.ref_name }}
         run: |
-          "$RELEASE_PYTHON" - <<'PY'
+          "$HERMES_PYTHON" - <<'PY'
           import os, tomllib
           from pathlib import Path
           project = tomllib.loads(Path("pyproject.toml").read_text())["project"]
           assert project["name"] == "hermes-agent-iot", project["name"]
           assert os.environ["TAG"] == f"iot-v{project['version']}", (os.environ["TAG"], project["version"])
           PY
+      - name: Install release build tools through PM
+        run: python -m scripts.ci.python_packages build==1.6.0 twine==6.2.0
       - name: Build and check artifacts
         env:
           HERMES_IOT_RELEASE_BUILD: "1"
         run: |
-          "$RELEASE_PYTHON" -m build --wheel
-          "$RELEASE_PYTHON" scripts/sanitize_release_wheel.py dist/*.whl
-          "$RELEASE_PYTHON" -m twine check --strict dist/*
+          "$HERMES_PYTHON" -m build --wheel
+          "$HERMES_PYTHON" scripts/sanitize_release_wheel.py dist/*.whl
+          "$HERMES_PYTHON" -m twine check --strict dist/*
       - name: Clean wheel smoke test
         env:
           TAG: ${{ github.ref_name }}
