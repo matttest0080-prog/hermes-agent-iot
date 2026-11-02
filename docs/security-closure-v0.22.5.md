@@ -31,7 +31,7 @@ Pillow／browser-harness 的來源、授權、固定 wheel 雜湊及 GitHub-only
 - Minimatch CI `41370622593`：保留三個 Node 版本、四種 OS／shell 組合，共十二組成功；含原始 tap、新 API 與 CJS／ESM 型別驗證。本機 Linux 為 6,241 tap assertions、17 項 API 控制，均通過。
 - 發布的是 CI artifact；在相同 checkout basename、Node 26／npm 12 下重建 byte-identical。舊 deepmerge Rollup 會將 checkout basename 編入私有變數名稱，**不是任意路徑皆 byte-identical**。
 
-根與 website 的 GitHub tarballs 必須明示於 root dependencies，overrides 僅參照已審核來源；`package-lock.json` 記錄實際 SHA512 integrity。npm 12 設定維持 `allow-remote=root`，不允許任意 transitive remote。根／website 的普通 `npm ci` 已在此設定下安裝成功，未帶放寬參數。
+根與 website 的 GitHub tarballs 必須明示於 root dependencies，overrides 僅參照已審核來源；`package-lock.json` 記錄實際 SHA512 integrity。供應鏈 guard 的 `artifact_pins` 逐項記錄確切 URL 與從 CI tarball 算出的 SHA512，必須同時符合 manifest、根 lock declaration 及實際 artifact entry；不是把三個名稱加入不受限的例外。改 URL、hash、resolved source、缺 review／root declaration、無效 digest、HTTP 均拒絕，`--update` 也不能自動核准未知 URL；11 項 CLI 控制在舊 guard 全紅、新 guard 全綠，原 lifecycle ratchet 保留。npm 12 設定維持 `allow-remote=root`，不允許任意 transitive remote。根／website 的普通 `npm ci` 已在此設定下安裝成功，未帶放寬參數。
 
 鎖檔移轉時，npm 12 曾保留已無效的舊 minimatch preferences；只移除失效的生成紀錄，再交由 npm 從真實 artifact 再生，沒有手填版本或 integrity。解析階段的一次性 remote opt-in 不寫入交付設定，也沒有關閉 14 日政策。
 
@@ -49,6 +49,6 @@ Pillow／browser-harness 的來源、授權、固定 wheel 雜湊及 GitHub-only
 
 ## 驗收範圍
 
-獨立套件 CI 不等於 Hermes 全量 CI；工作樹或舊 head 的局部結果不能代替最終提交。最後仍需完整 required checks、最新提交的獨立 approval、Pi 2 installed-wheel 與五 profiles 的一般 pip／hash 驗證。
+根與 website 本輪 npm audit 均為 0 已知告警；這是當時資料庫與指定鎖檔的結果，不是獨立 fork 的完整安全認證。獨立套件 CI 不等於 Hermes 全量 CI；工作樹或舊 head 的局部結果不能代替最終提交。最後仍需完整 required checks、最新提交的獨立 approval、Pi 2 installed-wheel 與五 profiles 的一般 pip／hash 驗證。
 
 localhost fixture、dry-run、resolver 成功與 `pip check` 不是真實模型、MQTT、Home Assistant、電話服務或長期負載驗收；也未宣稱 catalog 內所有第三方外掛的各自依賴均已完成漏洞審核。
