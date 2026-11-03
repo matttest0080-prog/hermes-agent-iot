@@ -49,6 +49,28 @@ hermes
 
 > Do not use system pip, `sudo pip`, or `--break-system-packages`.
 
+### Pi 2B 已回報：Gateway 連線失敗（原因待確認）
+
+在 `0.22.5.post3` 的 Pi 2B 環境曾回報：
+
+```text
+Error: Gateway connection failed; no local fallback
+```
+
+**目前尚未重現原錯誤、根因未確認，不能視為已修復。** 使用者已確認啟用 `~/.venvs/hermes-iot-0.22.5`。後續唯讀診斷中，既有 gateway 回報 `ready`，本機 API TCP 可連，且一次 WebSocket 握手成功；這只代表當次連線，不等於原 CLI 啟動流程、指定 profile、冷啟動或長期連線已驗收。診斷沒有送模型請求、建立對話、重啟服務或修改設定。
+
+此訊息表示 CLI 未完成 gateway 連線流程，且沒有轉為 local fallback；**不能僅憑訊息判定 gateway 未啟動或 venv 損壞**。先保留錯誤現場，不要為繞過錯誤強制 fallback、刪除 PID／lock 檔、重裝套件或反覆重啟服務。
+
+回報時請提供：
+
+```bash
+printf 'VIRTUAL_ENV=%s\n' "${VIRTUAL_ENV:-<not activated>}"
+command -v hermes
+python -c 'import sys; from importlib.metadata import version; print(sys.executable); print(version("hermes-agent-iot"))'
+```
+
+另附**實際觸發錯誤的完整啟動指令與錯誤輸出**；若有 `-p` 等 profile 參數，請保留同一 profile 排查，不要任意切換 `HERMES_HOME` 或混用新舊 venv。若設定過 `HERMES_TUI_GATEWAY_URL`，只回報是否設定及已遮蔽憑證的目標；請勿貼出 `.env`、API key、token 或含憑證的 URL。單次握手成功不能取代原指令的重現與根因分析。
+
 ### Source checkout
 
 Use the maintained `pi2-lite` branch when you need the complete repository assets:
