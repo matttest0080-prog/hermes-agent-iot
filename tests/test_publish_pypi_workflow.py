@@ -53,18 +53,29 @@ def test_clean_wheel_smoke_asserts_only_current_public_extras():
     asserting `dev` there failed every tag build while the pyproject correctly
     kept it out.
     """
+    import shlex
+    import pytest
+    from scripts.ci.smoke_release_wheel import PUBLIC_PROFILES, validate_public_extras
+
     steps = workflow_jobs()["build"]["steps"]
     smoke = next(step for step in steps if step.get("name") == "Clean wheel smoke test")
-    run = smoke["run"]
-    assert '{"minimal", "iot", "rag", "full"} <= extras' in run
-    assert '"dev"' not in run
+    command = shlex.split(smoke["run"])
+    assert command[:2] == ["$HERMES_PYTHON", "scripts/ci/smoke_release_wheel.py"]
+    assert command[command.index("--tag") + 1] == "$TAG"
+    assert "dev" not in PUBLIC_PROFILES
+    validate_public_extras(set(PUBLIC_PROFILES) | {"fixture-extra"})
+    for omitted in PUBLIC_PROFILES:
+        with pytest.raises(ValueError, match="missing supported public profiles"):
+            validate_public_extras(set(PUBLIC_PROFILES) - {omitted})
 
 
 def test_publish_jobs_are_gated_to_the_canonical_iot_repository():
     jobs = workflow_jobs()
     expected = "github.repository == 'matttest0080-prog/hermes-agent-iot'"
     assert str(jobs["build"]["if"]) == expected
-    assert str(jobs["publish"]["if"]) == expected
+    assert str(jobs["publish"]["if"]) == (
+        expected + " && github.event_name == 'push' && startsWith(github.ref, 'refs/tags/iot-v')"
+    )
 
 
 def test_publish_job_only_downloads_and_publishes_the_tested_artifact():
@@ -128,3 +139,15 @@ def test_workflow_fetches_authoritative_pi2_lite_and_runs_ancestry_gate_before_b
     assert "scripts/check_release_ancestry.sh" in gate["run"]
     build_index = next(i for i, step in enumerate(steps) if step.get("name") == "Build and check artifacts")
     assert gate_index < build_index
+    assert gate["if"] == "github.event_name == 'push'"
+
+
+def test_pr_rehearsal_has_no_oidc_or_publishing_permission():
+    data = safe_load(WORKFLOW.read_text(encoding="utf-8"))
+    assert data["on"]["push"]["tags"] == ["iot-v*"]
+    assert data["on"]["pull_request"]["branches"] == ["pi2-lite"]
+    assert "scripts/ci/**" in data["on"]["pull_request"]["paths"]
+    assert data["permissions"] == {"contents": "read"}
+    assert "permissions" not in data["jobs"]["build"]
+    assert "environment" not in data["jobs"]["build"]
+    assert "github.event_name == 'push'" in data["jobs"]["publish"]["if"]
