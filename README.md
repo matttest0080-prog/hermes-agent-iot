@@ -15,7 +15,7 @@
 
 Hermes Agent IoT is an IoT/robotics-focused fork of [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent). The maintained `pi2-lite` branch focuses on constrained Raspberry Pi and edge deployments while preserving the upstream Hermes Agent runtime and ecosystem.
 
-> **版本與升級注意事項：** 本版識別為 `0.22.5.post3`，使用保留 MIT 署名的獨立 `browser-harness-hermes-compat` 與 Pillow 13 修補。請先確認 [對應 PyPI 版本](https://pypi.org/project/hermes-agent-iot/0.22.5.post3/) 已列出後，再執行下方固定版本安裝；若尚未上架，請使用來源 checkout，不把來源合併或輔助套件上架當成 Hermes 已發布。舊 `0.22.2.post1` 不含這輪安全修補。升級建議使用**全新 venv**，不要混裝官方／獨立 browser distributions；見 [相容性與遷移說明](docs/browser-harness-compat.md) 及 [同步驗證紀錄](docs/upstream-review-v0.22.5.md)。
+> **版本與升級注意事項：** [`0.22.5.post3` 已正式發布 PyPI](https://pypi.org/project/hermes-agent-iot/0.22.5.post3/)，使用保留 MIT 署名的獨立 `browser-harness-hermes-compat` 與 Pillow 13 修補；[正式產物與驗收紀錄](docs/release-v0.22.5.post3.md)已核對真正 tag CI／匿名 PyPI bytes。舊 `0.22.2.post1` 不含這輪安全修補。升級建議使用**全新 venv**，不要混裝官方／獨立 browser distributions；見 [相容性與遷移說明](docs/browser-harness-compat.md) 及 [同步驗證紀錄](docs/upstream-review-v0.22.5.md)。
 
 ## 相關影片
 
@@ -127,8 +127,8 @@ This fork may intentionally lag upstream `main` while dependency changes, IoT pa
 ## 發行與驗證紀錄
 
 - 本版 package／tag 識別：`hermes-agent-iot 0.22.5.post3`／`iot-v0.22.5.post3`。
-- [PyPI 對應版本與正式檔案雜湊](https://pypi.org/project/hermes-agent-iot/0.22.5.post3/#files)／[GitHub release 與 tag](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.22.5.post3)。是否已發行以實際頁面與 CI 為準，不以此來源文件取代發布證據。
-- Pi 2B 實機基準：Rev 1.1、ARMv7、921 MiB RAM、Python 3.13.5。本輪 registry 相容依賴的隔離候選完成五 profiles hash 解析、正常 minimal 安裝與 `pip check`、10 項 installed-wheel smoke、12 項 SQLite deadline／逐 byte 回滾控制。五個 profiles 不等於全都已實裝；localhost fixture 不是實際模型、MQTT／HA 或長期負載驗收。
+- [PyPI 對應版本與正式檔案雜湊](https://pypi.org/project/hermes-agent-iot/0.22.5.post3/#files)／[GitHub release 與 tag](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.22.5.post3)。正式 wheel SHA256：`46ae064a902296cb744a16ead141cf4707456b38b8a93d98f510da07b738422a`；[發布與驗收範圍](docs/release-v0.22.5.post3.md)。
+- Pi 2B 正式 registry 實測：Rev 1.1、ARMv7、921 MiB RAM、Python 3.13.5；**本版正式 wheel** 在新隔離目錄完成五 profiles hash dry-run、正常 minimal 安裝與 `pip check`、10 項 smoke、12 項 SQLite deadline／逐 byte回滾控制，整體 exit 0，installed bytes 匹配正式 PyPI wheel。**實際只安裝 minimal**；localhost fixture 不是實際模型、MQTT／HA／GPIO／CDP 或長期負載驗收，未修改既有服務。
 - 從舊版升級請使用前述新 venv，保留舊環境與服務供回復。`pip install --upgrade` 不一定移除舊 orphan `browser-harness`，混裝會造成 Pillow 要求衝突或同名模組互相覆寫。
 
 ### 歷史已發布驗證：0.22.2.post1

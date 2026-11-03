@@ -13,7 +13,7 @@
 - Sdist：`browser_harness_hermes_compat-0.1.13.post1.tar.gz`，SHA256 `c7f64d13a1d37ab5605469074ea9d7fa9d0360b6e3597d6eb5a80292278d6120`。
 - 已匿名從 PyPI 下載 wheel／sdist，分別核對 PyPI JSON digest，並與真正 tag CI 的 3.11 artifacts 逐 byte 相同。不是用較早 PR artifact 的 hash 代替。
 
-Hermes 來源依賴改為上述 registry exact pin，uv.lock／Pi2 locks 固定真正 PyPI hashes。**這個輔助套件已上架，不代表 Hermes 0.22.5.post3 自身已上架**；Hermes 仍須完成 release-ready PR、完整 CI、最新獨立核准、正式 tag 與自己的 publisher。
+Hermes 來源依賴改為上述 registry exact pin，uv.lock／Pi2 locks 固定真正 PyPI hashes。**Hermes 0.22.5.post3 亦已正式上架**：[PyPI](https://pypi.org/project/hermes-agent-iot/0.22.5.post3/)／[tag publisher 41555962510](https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/41555962510)。匿名下載與真正 tag CI wheel 逐 byte 相同，SHA256 `46ae064a902296cb744a16ead141cf4707456b38b8a93d98f510da07b738422a`；見[正式發布紀錄與驗收範圍](release-v0.22.5.post3.md)。
 
 ## 安全修補與身份界線
 
@@ -32,7 +32,7 @@ Hermes 保留全域 **14 日**政策；只有這個已審查 critical 修補相�
 - 每組另建隔離 migration env：先正常安裝官方版，再明確卸除官方 distribution，正常安裝獨立版本並驗 `pip check`、Pillow 13、CLI metadata；沒有 no-deps 或錯誤 suppression。
 - namespace 的兩個新負控在舊碼全紅，修正後全綠；更新不會查詢或升級官方 distribution。
 - Publisher 僅接受相符的 annotated `pypi-v*` tag，檢查 tag／event／checkout 一致、maintained-branch ancestry、clean worktree；四組 CI 成功後才由 `pypi` environment 的獨立 job 取得短期 OIDC 權限、發布原 CI 產物。無長期 token，PR／build 不持有 publish 權限。
-- **不是**真實 Chrome／Browser Use Cloud、模型品質、所有 OS 或長期負載驗收。Hermes registry wheel 與 Pi2 整合另須驗證，不沿用舊 direct-URL artifact 的實裝 receipt。
+- **不是**真實 Chrome／Browser Use Cloud、模型品質、所有 OS 或長期負載驗收。Hermes 正式 registry wheel 與 Pi2 整合使用[獨立發布紀錄](release-v0.22.5.post3.md)，不沿用舊 direct-URL artifact 的實裝 receipt。
 
 Hermes 的 PyPI sanitizer 保持 fail-closed：只處理既有明示的 Android psutil／optional source-only backends，不新增任何 browser URL 豁免。新增正向控制確認 registry dependency 保留；原負控仍拒絕未知 core URL 且 wheel bytes 不變。
 
@@ -40,7 +40,7 @@ Hermes 的 PyPI sanitizer 保持 fail-closed：只處理既有明示的 Android 
 
 官方 `browser-harness` 與獨立套件提供相同 import／CLI 檔案。pip 升級可能留下舊的 orphan distribution 與 Pillow 12 要求，因此**不要直接在舊環境混裝兩者**。也不要先裝新套件、再卸舊套件：卸除同名檔案會破壞新安裝。
 
-Hermes 0.22.5.post3 正式上架後，建議建立新的 `~/.venvs/hermes-iot-0.22.5`，正常安裝 `hermes-agent-iot[minimal]==0.22.5.post3` 並執行 `pip check`／版本與 profile smoke，再由使用者切換服務；保留原 venv／設定／服務供回復。尚未上架前，勿將這段視為可用 PyPI 安裝指令。
+Hermes 0.22.5.post3 已正式上架，建議建立新的 `~/.venvs/hermes-iot-0.22.5`，正常安裝 `hermes-agent-iot[minimal]==0.22.5.post3` 並執行 `pip check`／版本與 profile smoke，再由使用者切換服務；保留原 venv／設定／服務供回復。
 
 若在 disposable env 明確測試遷移，必須先移除舊 `browser-harness`，再正常安裝新依賴並檢查實際 import 與 metadata；不忽略 `pip check`。PM-managed source／bundle 使用 PM 重新建立依賴環境，不用 raw pip／uv 修改既有 Hermes 環境。
 
