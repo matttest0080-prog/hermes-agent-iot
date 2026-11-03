@@ -49,6 +49,126 @@ hermes
 
 > Do not use system pip, `sudo pip`, or `--break-system-packages`.
 
+### Pi 2B 已回報：Gateway 連線失敗（原因待確認）
+
+在 `0.22.5.post3` 的 Pi 2B 環境曾回報：
+
+```text
+Error: Gateway connection failed; no local fallback
+```
+
+**目前尚未重現原錯誤、根因未確認，不能視為已修復。** 使用者已確認啟用 `~/.venvs/hermes-iot-0.22.5`。後續唯讀診斷中，既有 gateway 回報 `ready`，本機 API TCP 可連，且一次 WebSocket 握手成功；這只代表當次連線，不等於原 CLI 啟動流程、指定 profile、冷啟動或長期連線已驗收。診斷沒有送模型請求、建立對話、重啟服務或修改設定。
+
+此訊息表示 CLI 未完成 gateway 連線流程，且沒有轉為 local fallback；**不能僅憑訊息判定 gateway 未啟動或 venv 損壞**。先保留錯誤現場，不要為繞過錯誤強制 fallback、刪除 PID／lock 檔、重裝套件或反覆重啟服務。
+
+回報時請提供：
+
+```bash
+printf 'VIRTUAL_ENV=%s\n' "${VIRTUAL_ENV:-<not activated>}"
+command -v hermes
+python -c 'import sys; from importlib.metadata import version; print(sys.executable); print(version("hermes-agent-iot"))'
+```
+
+另附**實際觸發錯誤的完整啟動指令與錯誤輸出**；若有 `-p` 等 profile 參數，請保留同一 profile 排查，不要任意切換 `HERMES_HOME` 或混用新舊 venv。若設定過 `HERMES_TUI_GATEWAY_URL`，只回報是否設定及已遮蔽憑證的目標；請勿貼出 `.env`、API key、token 或含憑證的 URL。單次握手成功不能取代原指令的重現與根因分析。
+
+#### 復原方式：依狀態擇一，不是已證實的根因修復
+
+先保留原錯誤輸出，確認使用同一 venv／profile。若命令指向舊環境，可重新啟用新版並清除 shell 的命令快取；不需要先重裝：
+
+```bash
+source ~/.venvs/hermes-iot-0.22.5/bin/activate
+hash -r
+command -v hermes
+
+hermes_cmd=(hermes)  # 僅適用於原本沒有 -p 的 default profile
+# 若原指令有 -p，改用：hermes_cmd=(hermes -p your-original-profile)
+# 保留原有 HERMES_HOME，不要重設到另一個 home。
+"${hermes_cmd[@]}" gateway status --deep
+```
+
+1. **Gateway 確定未執行，且已安裝對應服務：** 啟動該服務，再查狀態。若 owner／profile 被拒絕，先核對 CLI 提示的實際 owner，不加 `--force` 或 `--all`。
+
+   ```bash
+   "${hermes_cmd[@]}" gateway start
+   "${hermes_cmd[@]}" gateway status --deep
+   ```
+
+2. **Gateway 確定未執行，且沒有安裝服務：** 在另一個終端重做上述 venv／profile 選擇後，前景啟動 gateway；保留該終端，再回原終端重試原啟動指令。不要在已有 owner 時另開一個 gateway，也不要加 `--replace`。
+
+   ```bash
+   "${hermes_cmd[@]}" gateway run
+   ```
+
+3. **Gateway 已就緒但 CLI 仍失敗：** 先重試原指令一次，保留同一 profile 與錯誤輸出。若有 `HERMES_TUI_GATEWAY_URL`，核對是否為原本要連的目標；只在確認設定錯誤後更正，不盲目清除它以切換成本機 gateway。`status` 顯示執行中仍不等於 WebSocket／原 CLI 路徑已通過；持續失敗就繼續蒐集遮敏後的診斷，不反覆重啟。
+
+4. **已確認 owner 異常且安排好維護窗口時，才考慮受控重啟：** 先保留紀錄，確認受影響工作均已結束；multiplexer 可能服務多個 profiles。在維護終端執行下列命令並尊重活動工作／owner 的拒絕提示，**不加 `--force`／`--all`**。手動 gateway 可能轉為前景執行，請保留該終端，另開終端以同一 venv／profile 查狀態與重試原指令。
+
+   ```bash
+   "${hermes_cmd[@]}" gateway restart
+   ```
+
+以上是環境校正、服務啟動與受控復原的操作指引，**並未在這次診斷中執行啟動／重啟，也不是對本次錯誤已驗證的修復**。若仍失敗，請附原啟動指令、`gateway status --deep` 與已遮敏的近期 gateway log；不要刪鎖檔、改用 local fallback 或忽略服務拒絕訊息。
+
+### Pi 2B: Gateway connection failure (English; cause not confirmed)
+
+The following error was reported on Pi 2B with `0.22.5.post3`:
+
+```text
+Error: Gateway connection failed; no local fallback
+```
+
+**The original failure has not been reproduced and its root cause is unconfirmed. No fix has been verified.** The user confirmed the active venv was `~/.venvs/hermes-iot-0.22.5`. Later read-only checks found the existing gateway `ready`, its local API TCP port reachable, and one WebSocket handshake successful. That only verifies that particular connection, not the original CLI command, selected profile, cold start, or long-lived connection. The diagnostic made no model requests, created no conversation sessions, and did not restart services or change configuration.
+
+The message means the CLI did not complete its gateway connection and did not fall back to local execution. **It does not, by itself, prove that the gateway is stopped or the venv is broken.** Preserve the error before trying recovery; do not force a local fallback, delete PID/lock files, reinstall packages, or repeatedly restart services to bypass it.
+
+Collect these read-only details:
+
+```bash
+printf 'VIRTUAL_ENV=%s\n' "${VIRTUAL_ENV:-<not activated>}"
+command -v hermes
+python -c 'import sys; from importlib.metadata import version; print(sys.executable); print(version("hermes-agent-iot"))'
+```
+
+Also provide the **exact failing launch command and error output**, including any `-p` profile arguments. Keep the same profile and `HERMES_HOME`; do not mix old and new venvs. If `HERMES_TUI_GATEWAY_URL` was configured, report whether it is set and a credential-redacted target. Never post `.env`, API keys, tokens, or credential-bearing URLs. A later successful handshake does not establish why the original command failed.
+
+#### Conditional recovery, not a confirmed root-cause fix
+
+Preserve the original error and profile selection first. If the command resolves to an old environment, reactivate the intended venv and clear the shell's command cache instead of reinstalling:
+
+```bash
+source ~/.venvs/hermes-iot-0.22.5/bin/activate
+hash -r
+command -v hermes
+
+hermes_cmd=(hermes)  # Default profile ONLY if the original command had no -p.
+# Otherwise use: hermes_cmd=(hermes -p your-original-profile)
+# Preserve the original HERMES_HOME; do not redirect it to another home.
+"${hermes_cmd[@]}" gateway status --deep
+```
+
+1. **Gateway confirmed stopped, with a matching service already installed:** Start that service and check status again. If ownership/profile checks refuse the operation, inspect the reported owner rather than adding `--force` or `--all`.
+
+   ```bash
+   "${hermes_cmd[@]}" gateway start
+   "${hermes_cmd[@]}" gateway status --deep
+   ```
+
+2. **Gateway confirmed stopped, with no installed service or existing owner:** In another terminal, repeat the same venv/profile selection above, then run the gateway in the foreground. Keep that terminal open and retry the original launch command from the first terminal. Do not start a second owner or add `--replace`.
+
+   ```bash
+   "${hermes_cmd[@]}" gateway run
+   ```
+
+3. **Gateway ready, but the CLI still fails:** Retry the original command once, retaining the same profile and error output. If `HERMES_TUI_GATEWAY_URL` is set, verify that it names the intended target; correct it only after confirming a configuration mistake. Do not blindly unset it to switch to a local gateway. A running process/status is not proof that the WebSocket or original CLI path works. If the error persists, collect redacted diagnostics instead of restarting repeatedly.
+
+4. **Owner confirmed unhealthy, with an agreed maintenance window:** Preserve logs and finish all affected work before a controlled restart. A multiplexer may serve several profiles. Run the following in a maintenance terminal, respect active-work/ownership refusals, and **do not add `--force` or `--all`**. A manually managed gateway may remain in the foreground; keep its terminal open and use another terminal with the same venv/profile to check status and retry the original command.
+
+   ```bash
+   "${hermes_cmd[@]}" gateway restart
+   ```
+
+These are environment correction, startup, and controlled-recovery instructions. **No startup/restart actions were performed during this diagnostic, and none is a verified repair for this incident.** If it persists, provide the exact launch command, `gateway status --deep` output, and recent credential-redacted gateway logs. Do not delete locks, enable a local fallback, or bypass service refusals.
+
 ### Source checkout
 
 Use the maintained `pi2-lite` branch when you need the complete repository assets:
