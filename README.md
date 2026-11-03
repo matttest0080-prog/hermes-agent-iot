@@ -71,6 +71,44 @@ python -c 'import sys; from importlib.metadata import version; print(sys.executa
 
 另附**實際觸發錯誤的完整啟動指令與錯誤輸出**；若有 `-p` 等 profile 參數，請保留同一 profile 排查，不要任意切換 `HERMES_HOME` 或混用新舊 venv。若設定過 `HERMES_TUI_GATEWAY_URL`，只回報是否設定及已遮蔽憑證的目標；請勿貼出 `.env`、API key、token 或含憑證的 URL。單次握手成功不能取代原指令的重現與根因分析。
 
+#### 復原方式：依狀態擇一，不是已證實的根因修復
+
+先保留原錯誤輸出，確認使用同一 venv／profile。若命令指向舊環境，可重新啟用新版並清除 shell 的命令快取；不需要先重裝：
+
+```bash
+source ~/.venvs/hermes-iot-0.22.5/bin/activate
+hash -r
+command -v hermes
+
+hermes_cmd=(hermes)  # 僅適用於原本沒有 -p 的 default profile
+# 若原指令有 -p，改用：hermes_cmd=(hermes -p your-original-profile)
+# 保留原有 HERMES_HOME，不要重設到另一個 home。
+"${hermes_cmd[@]}" gateway status --deep
+```
+
+1. **Gateway 確定未執行，且已安裝對應服務：** 啟動該服務，再查狀態。若 owner／profile 被拒絕，先核對 CLI 提示的實際 owner，不加 `--force` 或 `--all`。
+
+   ```bash
+   "${hermes_cmd[@]}" gateway start
+   "${hermes_cmd[@]}" gateway status --deep
+   ```
+
+2. **Gateway 確定未執行，且沒有安裝服務：** 在另一個終端重做上述 venv／profile 選擇後，前景啟動 gateway；保留該終端，再回原終端重試原啟動指令。不要在已有 owner 時另開一個 gateway，也不要加 `--replace`。
+
+   ```bash
+   "${hermes_cmd[@]}" gateway run
+   ```
+
+3. **Gateway 已就緒但 CLI 仍失敗：** 先重試原指令一次，保留同一 profile 與錯誤輸出。若有 `HERMES_TUI_GATEWAY_URL`，核對是否為原本要連的目標；只在確認設定錯誤後更正，不盲目清除它以切換成本機 gateway。`status` 顯示執行中仍不等於 WebSocket／原 CLI 路徑已通過；持續失敗就繼續蒐集遮敏後的診斷，不反覆重啟。
+
+4. **已確認 owner 異常且安排好維護窗口時，才考慮受控重啟：** 先保留紀錄，確認受影響工作均已結束；multiplexer 可能服務多個 profiles。在維護終端執行下列命令並尊重活動工作／owner 的拒絕提示，**不加 `--force`／`--all`**。手動 gateway 可能轉為前景執行，請保留該終端，另開終端以同一 venv／profile 查狀態與重試原指令。
+
+   ```bash
+   "${hermes_cmd[@]}" gateway restart
+   ```
+
+以上是環境校正、服務啟動與受控復原的操作指引，**並未在這次診斷中執行啟動／重啟，也不是對本次錯誤已驗證的修復**。若仍失敗，請附原啟動指令、`gateway status --deep` 與已遮敏的近期 gateway log；不要刪鎖檔、改用 local fallback 或忽略服務拒絕訊息。
+
 ### Source checkout
 
 Use the maintained `pi2-lite` branch when you need the complete repository assets:
