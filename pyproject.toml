@@ -930,6 +930,10 @@ hermes_cli = [
   "observability/schemas/*.json",
   "data/*.json",
   "local_runtime/*.json",
+  # fork: the Pi2/IoT profile configs must ship inside the wheel — the release
+  # smoke test asserts they are present and `hermes-iot setup --profile` reads
+  # them at runtime.
+  "resources/profiles/*.yaml",
   "process_supervisor.sh",
 ]
 # gateway/assets/ ships status_phrases.yaml and the Telegram BotFather
