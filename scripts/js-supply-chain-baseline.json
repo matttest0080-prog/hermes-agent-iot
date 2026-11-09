@@ -6,14 +6,14 @@
   ],
   "lifecycle": [
     "@whiskeysockets/baileys@7.0.0-rc13",
-    "core-js@3.49.0",
+    "core-js@3.50.0",
     "electron-winstaller@5.4.0",
     "electron@44.9.3",
-    "esbuild@0.28.1",
+    "esbuild@0.28.2",
     "fsevents@2.3.2",
     "fsevents@2.3.3",
     "get-windows@9.3.0",
-    "lefthook@2.1.14",
+    "lefthook@2.2.1",
     "node-pty@1.1.0",
     "protobufjs@7.6.6",
     "unicode-animations@1.0.3"

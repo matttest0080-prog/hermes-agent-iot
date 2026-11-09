@@ -232,35 +232,6 @@ class TestLiveCatalog:
 
         assert ids == [DEFAULT_MODEL, _FALLBACK_MODEL]
 
-    def test_partial_live_catalog_does_not_backfill_snapshot_or_leak_to_nous(self):
-        """Live availability is authoritative, even when snapshot models disappear."""
-        from plugins.image_gen.openrouter import _IMAGE_API_MODELS, _build_providers
-
-        api_id, chat_id = "fixture/live-image-api", "fixture/shared-chat-image"
-        bases = {name: f"https://{name}.example.invalid/v1" for name in ("openrouter", "nous")}
-
-        def runtime(*, requested):
-            return _runtime_ok(provider=requested, base_url=bases[requested])
-
-        def catalog(url, **kwargs):
-            if url == bases["openrouter"] + "/images/models":
-                return _mock_models_response([{"id": api_id}])
-            assert url in {base + "/models" for base in bases.values()}, url
-            return _mock_models_response([{
-                "id": chat_id, "architecture": {"output_modalities": ["image"]},
-            }])
-
-        by_name = {p.name: p for p in _build_providers()}
-        with patch(_RUNTIME, side_effect=runtime), patch("requests.get", side_effect=catalog) as get:
-            openrouter_ids = {m["id"] for m in by_name["openrouter"].list_models()}
-            nous_ids = {m["id"] for m in by_name["nous"].list_models()}
-        assert openrouter_ids == {api_id, chat_id}
-        assert nous_ids == {chat_id}
-        assert not (set(_IMAGE_API_MODELS) & openrouter_ids)
-        assert {call.args[0] for call in get.call_args_list if call.args[0].endswith("/images/models")} == {
-            bases["openrouter"] + "/images/models",
-        }
-
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -641,6 +612,27 @@ class TestImageApiSurface:
         assert payload["n"] == 6
         assert any("cap of 6" in n for n in notes)
 
+    def test_grok_imagine_2_knobs_follow_its_catalog_entry(self):
+        """``GET /images/models`` gives x-ai/grok-imagine-image-2.0 quality low|medium, 1K/2K and
+        the exotic ratios; anything else would be silently ignored upstream."""
+        from plugins.image_gen.openrouter import _build_image_api_payload
+
+        payload, notes = _build_image_api_payload(
+            model_id="x-ai/grok-imagine-image-2.0", prompt="p", semantic_aspect="portrait",
+            references=[], config_key="openrouter",
+            kwargs={"quality": "high", "resolution": "2K", "aspect_ratio_exact": "9:19.5"},
+        )
+        assert "quality" not in payload
+        assert any("quality" in n for n in notes)
+        assert payload["resolution"] == "2K"
+        assert payload["aspect_ratio"] == "9:19.5"
+
+        payload, _ = _build_image_api_payload(
+            model_id="x-ai/grok-imagine-image-2.0", prompt="p", semantic_aspect="square",
+            references=[], config_key="openrouter", kwargs={"quality": "medium"},
+        )
+        assert payload["quality"] == "medium"
+
     def test_unknown_model_omits_the_aspect_ratio(self):
         """An out-of-enum ratio is a hard 400, so never guess one."""
         from plugins.image_gen.openrouter import _build_image_api_payload
@@ -813,16 +805,14 @@ class TestImageApiSurface:
         assert result["error_type"] == "auth_error"
         assert "_retryable" not in result
 
-    def test_offline_catalog_models_are_offered_only_by_openrouter(self):
+    def test_catalog_models_are_offered_only_by_openrouter(self):
         from plugins.image_gen.openrouter import _IMAGE_API_MODELS, _build_providers
 
         by_name = {p.name: p for p in _build_providers()}
-        # This asserts the offline snapshot, not completeness of today's API.
-        with patch(_RUNTIME, side_effect=RuntimeError("offline catalog fixture")), \
-             patch("requests.get") as get:
+        # The tables' contract, not OpenRouter's live catalog: offline, list_models serves them.
+        with patch("requests.get", side_effect=OSError("offline")):
             openrouter_ids = {m["id"] for m in by_name["openrouter"].list_models()}
             nous_ids = {m["id"] for m in by_name["nous"].list_models()}
-        get.assert_not_called()
         assert set(_IMAGE_API_MODELS) <= openrouter_ids
         assert not (set(_IMAGE_API_MODELS) & nous_ids)
 

@@ -336,7 +336,7 @@ in
 
     # importNpmLock reads hashes from the lockfile itself — rebuild every
     # npm package to verify the new lockfile resolves offline.
-    nix build .#tui .#web .#desktop
+    nix build .#tui .#web .#webapp .#desktop
     echo "Lockfile updated and all npm packages built."
   '';
 

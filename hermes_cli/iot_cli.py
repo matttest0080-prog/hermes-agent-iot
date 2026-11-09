@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import stat
 import sys
 import tempfile
 from importlib import metadata, resources
@@ -12,6 +13,8 @@ from pathlib import Path
 
 from packaging.markers import default_environment
 from packaging.requirements import Requirement
+
+from hermes_cli import config_backend
 
 DISTRIBUTION = "hermes-agent-iot"
 PROFILE_TEMPLATES = {
@@ -84,6 +87,20 @@ def _missing_requirements(profile: str) -> list[str]:
         if requirement.specifier and not requirement.specifier.contains(installed, prereleases=True):
             missing.append(f"{requirement} (installed {installed})")
     return missing
+
+
+def _broad_local_mode(path: Path) -> bool:
+    """True when the local entry at *path* is a regular file with bits beyond 0600.
+
+    ``lstat`` is deliberate: it reports the entry itself, so a symlink is never
+    followed into whatever it points at, and there is no window between an
+    existence check and the mode read.
+    """
+    try:
+        info = path.lstat()
+    except OSError:
+        return False
+    return stat.S_ISREG(info.st_mode) and bool(stat.S_IMODE(info.st_mode) & 0o077)
 
 
 def _fsync_parent(path: Path) -> None:
@@ -167,7 +184,9 @@ def setup_profile(profile: str) -> int:
         print(f"Existing {config} left untouched")
         print(f"Compare it with packaged template: {template}")
         print("Install-profile record left untouched because the active config was not created by this command")
-        if config.is_file() and not config.is_symlink() and (config.stat().st_mode & 0o077):
+        # Permission audit of the concrete local file only: a backend that does not
+        # support file tooling has no local file whose mode this command could report.
+        if config_backend.get_config_backend().supports_file_tooling() and _broad_local_mode(config):
             print(f"Warning: {config} permissions are broader than 0600", file=sys.stderr)
         _ensure_private_env(home)
         return 0
