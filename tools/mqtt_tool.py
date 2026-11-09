@@ -521,7 +521,7 @@ def _handle_mqtt_device_command(args: dict, **kw) -> str:
 
 MQTT_PUBLISH_SCHEMA = {
     "name": "mqtt_publish",
-    "description": "Publish a payload to an MQTT topic for IoT sensors, actuators, or device commands.",
+    "description": "Publish a payload to an MQTT topic for IoT devices. Suits sensors, actuators, and device commands.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -536,7 +536,7 @@ MQTT_PUBLISH_SCHEMA = {
 
 MQTT_SUBSCRIBE_RECENT_SCHEMA = {
     "name": "mqtt_subscribe_recent",
-    "description": "Listen briefly to an MQTT topic/filter and return retained or newly published sensor messages.",
+    "description": "Listen briefly to an MQTT topic/filter. Returns retained or newly published sensor messages.",
     "parameters": {
         "type": "object",
         "properties": {
@@ -551,7 +551,7 @@ MQTT_SUBSCRIBE_RECENT_SCHEMA = {
 
 MQTT_DEVICE_COMMAND_SCHEMA = {
     "name": "mqtt_device_command",
-    "description": "Publish an MQTT device command and optionally wait briefly for state/ack messages.",
+    "description": "Publish an MQTT device command. Optionally waits briefly for state/ack messages.",
     "parameters": {
         "type": "object",
         "properties": {

@@ -8,7 +8,13 @@ import react, { reactCompilerPreset } from "@vitejs/plugin-react";
  *  module — which made the babel pass parse the whole codebase. */
 function compilerPreset() {
   const preset = reactCompilerPreset();
-  preset.rolldown.filter.code = /\/>|<\/|from\s*['"][^'"]*react/;
+  // fork: @rolldown/plugin-babel 0.2.4 types `filter` as optional, so a direct
+  // `.filter.code` write fails `tsc -b` (TS18048) even though the preset always
+  // carries one at runtime. Guard instead of asserting, so a preset without a
+  // filter is left untouched rather than crashing.
+  if (preset.rolldown?.filter) {
+    preset.rolldown.filter.code = /\/>|<\/|from\s*['"][^'"]*react/;
+  }
   return preset;
 }
 import tailwindcss from "@tailwindcss/vite";
