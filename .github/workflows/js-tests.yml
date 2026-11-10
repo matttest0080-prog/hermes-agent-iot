@@ -21,7 +21,14 @@ jobs:
     # their own worker pool from the core count.
     # IoT fork: no ubuntu-latest-32-core larger runner on this repo.
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    # fork: standard-runner budget — on this 2-vCPU runner the v0.22.5 job took
+    # 27m32s (job 125120888785), already close to upstream's 30-minute cap. The
+    # v0.23.0 merge adds work to the same job (Electron runtime prep, the
+    # WhatsApp bridge suites, a longer `web` check), and the run was cancelled
+    # at 30m mid `test:ui` with every check finished so far green (job
+    # 129069097905). Raise only the wall-clock budget; no check is skipped,
+    # filtered or loosened.
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
         with:
