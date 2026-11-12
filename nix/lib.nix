@@ -81,32 +81,44 @@ let
   workspacePatterns =
     let
       start = lib.lists.findFirstIndex (line: line == "packages:") (builtins.length workspaceYamlLines) workspaceYamlLines;
-      block = lib.drop (start + 1) workspaceYamlLines;
+      # Inline comments inside the block are documentation, not list items;
+      # drop them before measuring the block so a comment cannot look like
+      # the end of the list.
+      isComment = line: builtins.match " *\t*#.*" line != null;
+      block = builtins.filter (line: !(isComment line)) (lib.drop (start + 1) workspaceYamlLines);
       count = lib.lists.findFirstIndex (line: !lib.hasPrefix "  - " line) (builtins.length block) block;
       items = lib.take count block;
       next = builtins.head (lib.drop count block ++ [ "" ]);
       patterns = map (lib.removePrefix "  - ") items;
-      supported = pattern: builtins.match "[A-Za-z0-9._-]+(/[A-Za-z0-9._-]+)*(/\\*)?" pattern != null;
+      supported = pattern: builtins.match "[A-Za-z0-9._*-]+(/[A-Za-z0-9._*-]+)*" pattern != null;
     in
     if items == [ ] || lib.hasPrefix " " next || lib.hasPrefix "-" next || !(lib.all supported patterns) then
       throw "nix/lib.nix: pnpm-workspace.yaml `packages:` is no longer a block of unquoted `  - <dir>` or `  - <dir>/*` lines; update the parser"
     else
       patterns;
 
-  # Expand a workspace glob (e.g. "apps/*") into concrete member dirs
-  # relative to the repo root.  Only trailing "*" globs are supported —
-  # that's all pnpm-workspace.yaml uses here.  Literal patterns (e.g.
-  # "ui-tui") pass through unchanged.
+  # Expand a workspace glob into concrete member dirs relative to the repo
+  # root.  Both `dir/*` (whole directory) and `dir/prefix-*` (name prefix)
+  # globs are supported.  Literal patterns (e.g. "ui-tui") pass through
+  # unchanged.
   expandWorkspace =
     pattern:
     let
       parts = lib.splitString "/" pattern;
+      parent = lib.concatStringsSep "/" (lib.init parts);
+      lastPart = lib.last parts;
     in
-    if lib.last parts == "*" then
+    if lastPart == "*" then
       let
-        parent = lib.concatStringsSep "/" (lib.init parts);
         entries = builtins.readDir (repoRoot + "/${parent}");
         dirs = lib.filterAttrs (_: t: t == "directory") entries;
+      in
+      map (d: "${parent}/${d}") (builtins.attrNames dirs)
+    else if lib.hasSuffix "*" lastPart then
+      let
+        prefix = lib.removeSuffix "*" lastPart;
+        entries = builtins.readDir (repoRoot + "/${parent}");
+        dirs = lib.filterAttrs (n: t: t == "directory" && lib.hasPrefix prefix n) entries;
       in
       map (d: "${parent}/${d}") (builtins.attrNames dirs)
     else
