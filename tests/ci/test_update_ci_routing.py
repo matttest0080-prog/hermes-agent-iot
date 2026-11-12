@@ -124,11 +124,14 @@ def _inputs_for(called: str, given: dict[str, Any]) -> dict[str, Any]:
     return {name: given.get(name, spec.get("default")) for name, spec in declared.items()}
 
 
-def _run_workflow(rel: str, *, inputs: dict[str, Any], detect: dict[str, Any] | None = None) -> dict:
+def _run_workflow(rel: str, *, inputs: dict[str, Any], detect: dict[str, Any] | None = None,
+                  repo_vars: dict[str, str] | None = None) -> dict:
     """Which jobs of ``rel`` run on a pull request, recursing into called workflows.
 
     Returns ``{job: {"inputs": ..., "jobs": <child result>}}`` for every job that runs.
-    ``detect`` (ci.yaml only) is the replayed ``detect`` job's outputs.
+    ``detect`` (ci.yaml only) is the replayed ``detect`` job's outputs. ``repo_vars`` is the
+    repository-variable context (``vars.*``); the IoT fork gates its upstream E2E suites on
+    ``vars.IOT_RUN_UPSTREAM_E2E``, so a replay must state the value it is replaying.
     """
     jobs = _yaml(rel)["jobs"]
     ran: dict[str, dict] = {}
@@ -152,6 +155,7 @@ def _run_workflow(rel: str, *, inputs: dict[str, Any], detect: dict[str, Any] | 
             ctx = {
                 "inputs": inputs,
                 "github": {"event_name": "pull_request", "ref_type": "branch"},
+                "vars": dict(repo_vars or {}),
                 "needs": {n: {"outputs": (ran.get(n) or {}).get("outputs", {}),
                               "result": "success" if n in ran else "skipped"} for n in needs},
                 "__status__": {"always": True, "success": all_ran, "failure": False, "cancelled": False},
@@ -172,14 +176,25 @@ def _run_workflow(rel: str, *, inputs: dict[str, Any], detect: dict[str, Any] | 
                 called = uses[2:]
                 given = {k: gha.render(v, ctx) for k, v in (body.get("with") or {}).items()}
                 entry["inputs"] = _inputs_for(called, given)
-                entry["jobs"] = _run_workflow(called, inputs=entry["inputs"])
+                entry["jobs"] = _run_workflow(called, inputs=entry["inputs"], repo_vars=repo_vars)
             ran[name] = entry
         assert progressed, f"{rel}: unresolvable needs among {pending}"
     return ran
 
 
-def _ci_run(lanes: dict[str, bool]) -> dict:
-    return _run_workflow(".github/workflows/ci.yaml", inputs={}, detect=_detect_outputs(lanes))
+_FORK_E2E_ON = {"IOT_RUN_UPSTREAM_E2E": "true"}
+
+
+def _ci_run(lanes: dict[str, bool], *, repo_vars: dict[str, str] | None = _FORK_E2E_ON) -> dict:
+    """Replay ci.yaml for ``lanes`` under an explicit repository-variable context.
+
+    The IoT fork gates every upstream E2E job behind ``vars.IOT_RUN_UPSTREAM_E2E`` (see
+    tests.yml / e2e-desktop-core.yml). The dispatch-coverage tests below assert the routing
+    that runs when an operator turns that flag on; ``test_fork_e2e_flag_default_off_*``
+    pins the other mode, so both behaviours are covered instead of assumed.
+    """
+    return _run_workflow(".github/workflows/ci.yaml", inputs={},
+                         detect=_detect_outputs(lanes), repo_vars=repo_vars)
 
 
 def _reached(run: dict, *path: str) -> dict | None:
@@ -255,6 +270,41 @@ def _consumers_reached(run: dict, lane: str) -> dict[str, bool]:
 
 
 _GATED = ("python", "desktop_updater", "e2e", "e2e_upgrade", "e2e_desktop_update")
+
+
+def test_fork_e2e_flag_default_off_suppresses_upstream_e2e_lanes():
+    """Fork policy: with ``IOT_RUN_UPSTREAM_E2E`` unset, every upstream E2E job is skipped.
+
+    The fork's CI runs on hosted 2-vCPU runners, so upstream's E2E suites are opt-in by
+    repository variable (tests.yml, e2e-desktop-core.yml). This pins the off mode — the
+    dispatch tests above pin the on mode — and proves the suppression is a job-level ``if``
+    on a job that still exists, so setting the variable alone restores the routing without a
+    code change.
+    """
+    off = _ci_run(cc.classify([]), repo_vars={})
+    # Gated consumers: every one of these is an upstream E2E job the fork put behind the flag.
+    gated = {
+        ("e2e", "tests/e2e"),
+        ("e2e_upgrade", "tests/e2e-upgrade"),
+    }
+    for lane, consumer in sorted(gated):
+        assert not _consumers_reached(off, lane).get(consumer), f"{lane}/{consumer} ran without the flag"
+    # The upgrade plan job still runs (it only computes shards); no suite executes without the flag.
+    # Consumers the fork did not gate keep running: the Windows E2E lanes publish their own
+    # review status and never needed the larger runner upstream's gate exists for.
+    assert _consumers_reached(off, "e2e").get("tests-os/e2e-windows")
+
+    for rel, job in (
+        (".github/workflows/tests.yml", "e2e"),
+        (".github/workflows/tests.yml", "e2e-upgrade"),
+        (".github/workflows/e2e-desktop-core.yml", "core"),
+    ):
+        gate = str(_yaml(rel)["jobs"][job].get("if"))
+        assert "IOT_RUN_UPSTREAM_E2E" in gate, (rel, job, gate)
+
+    on = _ci_run(cc.classify([]), repo_vars=_FORK_E2E_ON)
+    for lane in ("e2e", "e2e_upgrade", "e2e_desktop_update"):
+        assert all(_consumers_reached(on, lane).values()), lane
 
 
 def test_replay_evaluator_follows_actions_semantics():
@@ -816,7 +866,7 @@ def test_strict_acceptance_dispatch_reaches_every_e2e_suite(value):
     """`gh workflow run ci.yaml -f strict_acceptance=upd-txn` (the batch's acceptance run)."""
     lanes = cc.classify([])  # a dispatch has no diff: every lane on
     run = _run_workflow(".github/workflows/ci.yaml", inputs={"release": False, "strict_acceptance": value},
-                        detect=_detect_outputs(lanes))
+                        detect=_detect_outputs(lanes), repo_vars=_FORK_E2E_ON)
     for path, rel, job, step in _STRICT_STEPS:
         assert _strict_env(run, path, rel, job, step) == value, "/".join(path)
 
