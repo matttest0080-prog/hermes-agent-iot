@@ -118,6 +118,11 @@ def test_only_unmapped_human_emails_fail_the_contributor_check(repo, step):
     assert step.run(repo, "check_contributor_emails.py").returncode == 0
     assert step.artifact("contributor-check") == []
 
+    # The mailbox local part stays exact, but the domain is case-insensitive.
+    commit(repo, {"contributors/emails/agent@agents-Mac-mini.local": "momomojo\n"})
+    commit(repo, {"case-domain": "1"}, author=("Agent", "agent@Agents-Mac-mini.local"))
+    assert step.run(repo, "check_contributor_emails.py").returncode == 0
+
     commit(repo, {"u": "1"}, author=("Zoë New", "zoe@example.net"))
     failed = step.run(repo, "check_contributor_emails.py")
     assert failed.returncode == 1

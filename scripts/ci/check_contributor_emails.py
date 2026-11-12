@@ -74,8 +74,19 @@ def is_mapped(email: str, legacy_map: str) -> bool:
         return True
     if GITHUB_NOREPLY.search(email):
         return True
-    if Path("contributors/emails", email).is_file():
+    mapping_dir = Path("contributors/emails")
+    if (mapping_dir / email).is_file():
         return True
+    # Email domains are case-insensitive. Keep the local part exact, but allow a
+    # mapping file whose domain differs only by case (common with machine-local
+    # addresses such as Agents-Mac-mini.local).
+    local_part, separator, domain = email.partition("@")
+    if separator and mapping_dir.is_dir():
+        for mapping in mapping_dir.iterdir():
+            mapped_local, mapped_separator, mapped_domain = mapping.name.partition("@")
+            if (mapping.is_file() and mapped_separator and mapped_local == local_part
+                    and mapped_domain.casefold() == domain.casefold()):
+                return True
     return f'"{email}"' in legacy_map
 
 

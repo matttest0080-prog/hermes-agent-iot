@@ -783,12 +783,14 @@ from hermes_cli.old_updater_main import (
     _windows_shim_in_process_chain,
     _write_web_ui_build_stamp,
 )
+from hermes_cli.iot_install import _is_iot_install
 from hermes_cli.main_install_repair import _cleanup_quarantined_exes, _recover_update_debts_on_startup
 from hermes_cli.main_install_repair import (  # frozen updater surface: update_cmd*.py resolve these via _m()
     _UPDATE_REEXEC_ENV,
     _clear_lazy_refresh_incomplete_marker,
     _clear_marker_file,
     _clear_update_incomplete_marker,
+    _default_update_branch,
     _is_termux_env,
     _is_windows,
     _is_windows_npm_path,
