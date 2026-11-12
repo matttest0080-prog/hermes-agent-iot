@@ -83,7 +83,7 @@ jobs:
   # never weakened.
   mode:
     name: Resolve release phase and affected areas
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ${{ github.repository_owner == 'NousResearch' && 'blacksmith-4vcpu-ubuntu-2404' || 'ubuntu-24.04' }}
     timeout-minutes: 10
     outputs:
       phase: ${{ steps.resolve.outputs.phase }}
