@@ -1,13 +1,32 @@
 import { execFileSync, spawnSync } from 'node:child_process'
-import { mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { describe, expect, it } from 'vitest'
 
 import { freezeLock, freezeManifest, prepare } from '../scripts/nix/freeze-npm-graph.mjs'
 
 const save = (path, value) => writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`)
+
+// The suite runs under pnpm in CI, where `npm_execpath` points at pnpm's own launcher (a native
+// binary, and even pnpm's JS entry point is not npm). Only npm's CLI — `<...>/npm/bin/npm-cli.js` —
+// may be run as `node <path>`; otherwise resolve the CLI shipped with the running Node, then PATH.
+export function resolveNpmCli(env = process.env) {
+  const execpath = env.npm_execpath
+  if (execpath && /[\\/]npm[\\/].*npm-cli\.c?js$/.test(execpath) && existsSync(execpath)) {
+    return { command: process.execPath, prefix: [execpath], path: execpath }
+  }
+  const fromNode = join(dirname(process.execPath), '..', 'lib', 'node_modules', 'npm', 'bin', 'npm-cli.js')
+  if (existsSync(fromNode)) {
+    return { command: process.execPath, prefix: [fromNode], path: fromNode }
+  }
+  const probe = spawnSync('npm', ['--version'], { encoding: 'utf8', timeout: 20_000 })
+  if (probe.status !== 0) {
+    throw new Error(`no npm CLI: npm_execpath=${execpath ?? '<unset>'} and \`npm --version\` failed: ${probe.stderr}`)
+  }
+  return { command: 'npm', prefix: [], path: 'npm' }
+}
 
 describe('integrity-pinned Nix npm graph', () => {
   it('freezes overridden edges using nearest installed packages without changing artifacts or peers', () => {
@@ -50,6 +69,16 @@ describe('integrity-pinned Nix npm graph', () => {
     expect(readFileSync(join(root, 'package.json'))).toEqual(before)
   })
 
+  it('ignores a pnpm launcher in npm_execpath and still resolves a usable npm CLI', () => {
+    for (const fake of ['/fake/pnpm.cjs', '/fake/pnpm', '/fake/yarn.js']) {
+      const resolved = resolveNpmCli({ ...process.env, npm_execpath: fake })
+      expect(resolved.path).not.toBe(fake)
+      const probe = spawnSync(resolved.command, [...resolved.prefix, '--version'], { encoding: 'utf8' })
+      expect(probe.status, probe.stderr).toBe(0)
+      expect(probe.stdout.trim()).toMatch(/^\d+\.\d+\.\d+/)
+    }
+  })
+
   it.each(['edge-b', '@fixture/edge-b-compat'])('installs overridden %s offline and restores the workspace manifest', (realName) => {
     const root = mkdtempSync(join(tmpdir(), 'hermes-nix-offline-'))
     const app = join(root, 'app')
@@ -65,9 +94,8 @@ describe('integrity-pinned Nix npm graph', () => {
     for (const key of Object.keys(env)) {
       if (/^npm_config_(workspace|workspaces|include_workspace_root)$/i.test(key)) delete env[key]
     }
-    const npmCli = process.env.npm_execpath
-    if (!npmCli) throw new Error('Run the suite through npm so its pinned CLI is available')
-    const npm = (args, cwd = app) => spawnSync(process.execPath, [npmCli, ...args], {
+    const npmCli = resolveNpmCli()
+    const npm = (args, cwd = app) => spawnSync(npmCli.command, [...npmCli.prefix, ...args], {
       cwd, env, encoding: 'utf8', timeout: 20_000
     })
     const pack = (name, version, dependencies = {}, packageName = name) => {

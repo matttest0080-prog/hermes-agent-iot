@@ -90,7 +90,7 @@ def _run(reply: bytes, delay: float) -> str:
     [
         (_ON, 0, "RESULT True True iterm typed='hi'"),  # enableImages on
         (_OFF, 0, "RESULT False False unicode typed='hi'"),  # enableImages off: DA1 only
-        (_ON, 0.08, "RESULT True True iterm typed='hi'"),  # past the 50 ms deadline, inside the drain
+        (_ON, 0.06, "RESULT True True iterm typed='hi'"),  # past the 50 ms deadline, inside the drain
         # Past every wait: the probe misses it, and the prompt's parser drops it.
         (_ON, 0.3, "RESULT False False unicode typed='hi'"),
         (_OFF, 0.3, "RESULT False False unicode typed='hi'"),

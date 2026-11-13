@@ -45,7 +45,7 @@ def test_admit_can_read_the_claim_draft():
 
 def test_release_reuses_whole_ci_and_docker_before_publication():
     jobs = workflow("stable-release.yml")["jobs"]
-    assert jobs["ci"]["uses"] == "./.github/workflows/ci.yaml"
+    assert jobs["ci"]["uses"] == "./.github/workflows/ci.yml"
     assert jobs["ci"]["with"]["release"] == "true"
     assert "secrets" not in jobs["ci"]
     assert jobs["docker"]["uses"] == jobs["publish-docker"]["uses"]
