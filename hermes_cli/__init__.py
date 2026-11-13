@@ -2,7 +2,7 @@
 
 import sys
 
-__release_date__ = "2026.9.24"
+__release_date__ = "2026.11.9"
 # The annotation (not a literal) is what the frozen old-updater surface audit resolves:
 # `tests/test_old_updater_compat_surface.py` reads the AST, so the name must be declared even
 # though the value is served lazily by __getattr__ below.
@@ -11,7 +11,7 @@ __version__: str
 # version equals pyproject's, and Pi2 devices install the wheel with plain pip -- no install
 # stamp is written, so upstream's "0.0.0" placeholder would regress `hermes --version` there.
 # The stamp still wins whenever this tree has one (upstream's old-updater contract).
-_FALLBACK_VERSION = "0.22.5.post3"
+_FALLBACK_VERSION = "0.23.0.post1"
 
 
 def __getattr__(name: str) -> str:
@@ -33,7 +33,7 @@ def __getattr__(name: str) -> str:
     try:
         from pm.paths import repo_root
     except ModuleNotFoundError as exc:
-        if exc.name != "pm" and not (exc.name or "").startswith("pm."):
+        if exc.name != "pm.paths" and not "pm.paths".startswith(f"{exc.name}."):
             raise
         # The old editable finder may not know the new pm package yet.
         import json

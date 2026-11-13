@@ -1,0 +1,38 @@
+{
+  "license": "BlueOak-1.0.0",
+  "engines": {
+    "node": "18 || 20 || >=22",
+    "npm": "npm is refused here: run pnpm install --frozen-lockfile at the repository root"
+  },
+  "author": "Isaac Z. Schlueter <i@izs.me> (http://blog.izs.me)",
+  "name": "minimatch",
+  "version": "10.2.6",
+  "private": true,
+  "description": "minimatch 10.2.6 runtime with upstream 11.0.1's GHSA-g3hv-75wg-m249 bounds backported (Hermes IoT fork vendor copy)",
+  "main": "./compat/index.cjs",
+  "module": "./compat/index.mjs",
+  "types": "./compat/index.d.cts",
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./compat/index.d.ts",
+        "default": "./compat/index.mjs"
+      },
+      "require": {
+        "types": "./compat/index.d.cts",
+        "default": "./compat/index.cjs"
+      }
+    }
+  },
+  "files": [
+    "dist",
+    "compat",
+    "PROVENANCE.md",
+    "LICENSE",
+    "README.md"
+  ],
+  "dependencies": {
+    "brace-expansion": "5.0.12"
+  }
+}

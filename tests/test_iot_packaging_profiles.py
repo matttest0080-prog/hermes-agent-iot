@@ -25,7 +25,7 @@ def test_distribution_version_scripts_and_aggregate_extras():
     project = metadata()["project"]
     assert project["name"] == "hermes-agent-iot"
     assert __version__ == project["version"]
-    assert __release_date__ == "2026.9.24"
+    assert __release_date__ == "2026.11.9"
     assert project["scripts"]["hermes-iot"] == "hermes_cli.iot_cli:main"
     assert {"hermes", "hermes-agent", "hermes-acp"} <= project["scripts"].keys()
     extras = project["optional-dependencies"]
@@ -42,7 +42,7 @@ def test_distribution_version_scripts_and_aggregate_extras():
     dev_group = metadata()["dependency-groups"]["dev"]
     assert "pytest==9.1.1" in dev_group
     assert {"build==1.3.0", "twine==6.2.0"} <= set(dev_group)
-    assert extras["vercel"] == ["vercel==0.7.2"]
+    assert extras["vercel"] == ["vercel==0.12.0"]
     # Upstream retired tools.lazy_deps for production code (pm.ensure_import is the only
     # lazy-install surface), so the vercel pin is asserted where it now lives: the extra itself.
     assert metadata()["tool"]["uv"]["exclude-newer-package"]["vercel"] is False

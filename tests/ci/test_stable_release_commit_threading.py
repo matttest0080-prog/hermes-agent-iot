@@ -128,6 +128,11 @@ CONTROLLER_REFERENCES = (
     ("key: visual-baselines-${{ github.ref_name }}", "restores main's baselines and never writes them for a stable run"),
     ("inputs.ref == github.sha", "saves candidates only for the triggering commit, so a stable claim never writes"),
     ("inputs.channel-build != '' && inputs.controller-sha", "smoke tests the staged artifact with the dispatched ref's scripts"),
+    ("cancel-in-progress: ${{ inputs.release != true &&", "only decides whether a side-branch dispatch supersedes its predecessor; a stable run short-circuits on inputs.release"),
+    # The install/update lane samples OLD baselines; its own tag must be excluded from that sample.
+    # The value never selects the commit under test -- `test_exclude_ref_only_excludes_a_baseline`
+    # pins that it reaches nothing but `--exclude-ref` and the self-baseline guard.
+    ("EXCLUDE_REF: ${{ inputs.exclude-ref ||", "baseline exclusion only (see test_exclude_ref_only_excludes_a_baseline)"),
 )
 FALLBACK = re.compile(r"inputs\.(commit|ref|sha) \|\|")
 REFERENCE = re.compile(r"GITHUB_SHA|github\.sha|github\.ref_name|github\.ref\b|GITHUB_REF")
@@ -145,3 +150,39 @@ def test_no_lane_uses_the_controller_commit_as_the_commit_under_test():
                 continue
             assert any(allowed in text for allowed, _reason in CONTROLLER_REFERENCES), \
                 f"{name}:{number} uses the triggering ref or SHA: {text}"
+
+
+def test_exclude_ref_only_excludes_a_baseline():
+    """`EXCLUDE_REF` may remove one OLD baseline tag from the sample, nothing else.
+
+    The invariant above only knows "a lane must not use the triggering ref"; the install/update
+    lane legitimately derives an exclusion from its own tag. This test pins the narrow shape of
+    that exception: the value must never become the commit under test, a checkout ref, or the
+    commit the lane claims to have tested.
+    """
+    name = "install-e2e.yml"
+    lines = (WORKFLOWS / name).read_text(encoding="utf-8").splitlines()
+    # Anchored shapes, not a generic "contains EXCLUDE_REF": the exception must stay narrow.
+    allowed = (
+        # the environment assignment that derives the exclusion
+        re.compile(r'^EXCLUDE_REF: \$\{\{ inputs\.exclude-ref \|\|'),
+        # refusing to sample the candidate as its own baseline
+        re.compile(r'^\[ "\$INSTALL_REF" != "\$EXCLUDE_REF" \] \|\| '),
+        # passing the value to the tag picker, and the optional pre-built argv
+        re.compile(r'^tags="\$\(python3 -m scripts\.releases\.pick_tags .*--exclude-ref "\$EXCLUDE_REF"\)"$'),
+        re.compile(r'^if \[ -n "\$EXCLUDE_REF" \]; then args\+=\(--exclude-ref "\$EXCLUDE_REF"\); fi$'),
+    )
+    forbidden = ("HERMES_TESTED_COMMIT", "ref:", "checkout", "INSTALL_REF=", "COMMIT_UNDER_TEST")
+
+    usages = [(number, line.strip()) for number, line in enumerate(lines, 1) if "EXCLUDE_REF" in line]
+    assert usages, f"{name}: EXCLUDE_REF disappeared; the baseline exclusion regressed"
+
+    for number, text in usages:
+        if text.startswith("#"):
+            continue
+        assert any(pattern.match(text) for pattern in allowed), (
+            f"{name}:{number} unexpected EXCLUDE_REF use: {text}"
+        )
+        assert not any(token in text for token in forbidden), (
+            f"{name}:{number} lets EXCLUDE_REF reach the commit under test: {text}"
+        )
