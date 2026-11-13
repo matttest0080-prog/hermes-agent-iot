@@ -58,6 +58,80 @@ def _run(script_text: str, tmp_path: Path, cwd: Path, env: dict) -> subprocess.C
         stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=120, check=False)
 
 
+_UPSTREAM_REPOSITORY = "https://github.com/NousResearch/hermes-agent.git"
+_VERSION_TAG_SCRIPT = ROOT / "scripts/ci/fetch_upstream_version_tag.py"
+
+
+def _release_fixture(tmp_path: Path, *, separate_checkout: bool = False) -> tuple[Path, Path]:
+    upstream = tmp_path / "upstream"
+    upstream.mkdir()
+    _git(upstream, "init", "-q")
+    (upstream / "release.txt").write_text("release\n", encoding="utf-8")
+    _commit(upstream, "release source")
+    _git(upstream, "tag", "-a", "v1.2.3", "-m", "release")
+
+    checkout = tmp_path / "checkout"
+    if separate_checkout:
+        checkout.mkdir()
+        _git(checkout, "init", "-q")
+        (checkout / "independent.txt").write_text("not from upstream\n", encoding="utf-8")
+    else:
+        subprocess.run(
+            ["git", "clone", "--no-tags", str(upstream), str(checkout)],
+            check=True, capture_output=True, text=True,
+        )
+    (checkout / "pyproject.toml").write_text(
+        '[project]\nname = "fixture"\nversion = "1.2.3.post1"\n', encoding="utf-8")
+    _commit(checkout, "code sync")
+    return upstream, checkout
+
+
+def _run_upstream_tag_step(tmp_path: Path, upstream: Path, checkout: Path) -> subprocess.CompletedProcess:
+    command = _step("Fetch matching upstream release tag")
+    command = command.replace("$GITHUB_WORKSPACE/scripts/ci/fetch_upstream_version_tag.py", str(_VERSION_TAG_SCRIPT))
+    command = command.replace(_UPSTREAM_REPOSITORY, str(upstream))
+    env = {
+        **os.environ,
+        "GITHUB_WORKSPACE": str(checkout),
+        "HERMES_PYTHON": sys.executable,
+    }
+    return _run(command, tmp_path, checkout, env)
+
+
+def test_catalog_ci_fetches_the_matching_ancestor_release_tag(tmp_path):
+    upstream, checkout = _release_fixture(tmp_path)
+    assert _git(checkout, "tag", "--list") == ""
+
+    result = _run_upstream_tag_step(tmp_path, upstream, checkout)
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "upstream release tag v1.2.3 is reachable from HEAD" in result.stdout
+    assert _git(checkout, "rev-parse", "v1.2.3^{commit}") == _git(upstream, "rev-parse", "v1.2.3^{commit}")
+    assert _git(checkout, "describe", "--tags", "--long", "--match", "v[0-9]*", "HEAD").startswith("v1.2.3-")
+
+
+def test_catalog_ci_does_not_promote_an_unmerged_upstream_release_tag(tmp_path):
+    upstream, checkout = _release_fixture(tmp_path, separate_checkout=True)
+
+    result = _run_upstream_tag_step(tmp_path, upstream, checkout)
+
+    assert result.returncode != 0
+    assert "upstream release tag v1.2.3 is not an ancestor of HEAD" in result.stderr
+    assert _git(checkout, "tag", "--list") == ""
+
+
+def test_catalog_ci_refuses_a_conflicting_fork_release_tag(tmp_path):
+    upstream, checkout = _release_fixture(tmp_path)
+    _git(checkout, "tag", "-a", "v1.2.3", "-m", "conflicting fork tag")
+    original = _git(checkout, "rev-parse", "v1.2.3^{commit}")
+
+    result = _run_upstream_tag_step(tmp_path, upstream, checkout)
+
+    assert result.returncode != 0
+    assert "local v1.2.3 conflicts with the upstream release tag" in result.stderr
+    assert _git(checkout, "rev-parse", "v1.2.3^{commit}") == original
+
+
 # ── pinned-source step ────────────────────────────────────────────────────────
 
 @pytest.fixture
