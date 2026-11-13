@@ -84,7 +84,7 @@ jobs:
       # order: the slowest jsdom suites all start cold together and starve the
       # rest past their 15s timeout. Drop it so each run orders from scratch.
       - name: Drop vitest run history from the restored tree
-        run: rm -rf node_modules/.vite/vitest apps/*/node_modules/.vite/vitest ui-tui/node_modules/.vite/vitest ui-tui/packages/*/node_modules/.vite/vitest tests-js/node_modules/.vite/vitest web/node_modules/.vite/vitest
+        run: rm -rf node_modules/.vite/vitest apps/*/node_modules/.vite/vitest ui-tui/node_modules/.vite/vitest ui-tui/packages/*/node_modules/.vite/vitest tests-js/node_modules/.vite/vitest web/node_modules/.vite/vitest vendor/*/node_modules/.vite/vitest
 
       # No --trust-lockfile: this install is the gate that checks every locked
       # version against pnpm-workspace.yaml's release-age policy.
