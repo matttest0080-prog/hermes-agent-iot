@@ -18,9 +18,6 @@ adapter, and ``_session_key_profile`` resolves the namespace as
 adapter keys into its own namespace even before the runner stamps the source.
 """
 
-import asyncio
-from unittest.mock import AsyncMock
-
 import pytest
 
 from gateway.config import Platform, PlatformConfig
@@ -222,33 +219,26 @@ class TestSiblingIngressKeying:
 
         assert key.startswith("agent:medicina:"), key
 
-    @pytest.mark.asyncio
-    async def test_yuanbao_dispatch_uses_adapter_owner_profile(self):
-        from plugins.platforms.yuanbao.adapter import DispatchMiddleware, InboundContext, YuanbaoAdapter
+    def test_telegram_text_batch_uses_adapter_owner_profile(self):
+        """Telegram batches at ingress before the runner stamps source.profile."""
+        from plugins.platforms.telegram.adapter import TelegramAdapter
 
-        adapter = object.__new__(YuanbaoAdapter)
+        adapter = object.__new__(TelegramAdapter)
         adapter.config = PlatformConfig(extra={})
         adapter._session_store = _Store(active="default")
         adapter.set_owner_profile("medicina")
-        adapter._processing_msg_ids = {}
-        adapter._processing_msg_texts = {}
-        adapter._msg_content_cache = {}
-        adapter._inbound_tasks = set()
-        adapter.handle_message = AsyncMock()
         source = SessionSource(
-            platform=Platform.YUANBAO,
+            platform=Platform.TELEGRAM,
             chat_id=UID,
             chat_type="dm",
             user_id=UID,
         )
-        ctx = InboundContext(adapter=adapter)
-        ctx.source = source
-        ctx.chat_type = "dm"
-        ctx.raw_text = "hello"
-        ctx.msg_id = "msg-1"
+        event = MessageEvent(
+            text="hello",
+            message_type=MessageType.TEXT,
+            source=source,
+        )
 
-        await DispatchMiddleware().handle(ctx, AsyncMock())
-        await asyncio.gather(*adapter._inbound_tasks)
+        key = adapter._text_batch_key(event)
 
-        expected = build_session_key(source, profile="medicina")
-        assert adapter._processing_msg_ids == {expected: "msg-1"}
+        assert key.startswith("agent:medicina:"), key

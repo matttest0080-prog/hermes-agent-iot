@@ -15,7 +15,9 @@ from types import SimpleNamespace
 
 from agent.redact import redact_sensitive_text
 from plugins.platforms.telegram.telegram_markdown import _MD_CODE_RE
-from plugins.platforms.telegram.telegram_send_errors import SAME_REQUEST_ATTEMPTS, is_entity_parse_error
+from plugins.platforms.telegram.telegram_send_errors import (
+    LOCAL, SAME_REQUEST_ATTEMPTS, is_entity_parse_error, send_error_kind,
+)
 from pm import install_hint
 
 logger = logging.getLogger(__name__)
@@ -43,6 +45,17 @@ def _sanitize_error_text(text) -> str:
 
 def _error(message: str) -> dict:
     return {"error": _sanitize_error_text(message)}
+
+
+def _sanitized_exc_info(exc: Exception):
+    """Keep the traceback for diagnosis without logging a provider's raw error text."""
+    safe_error = RuntimeError(_sanitize_error_text(f"{type(exc).__name__}: {exc}"))
+    return type(safe_error), safe_error, exc.__traceback__
+
+
+def _is_expected_send_error(exc: Exception) -> bool:
+    """Only turn known transport/library/input failures into delivery results."""
+    return isinstance(exc, (OSError, TypeError, ValueError)) or send_error_kind(exc) != LOCAL
 
 
 def _success(chat_id, warnings=None, **fields) -> dict:
@@ -325,6 +338,55 @@ def _telegram_mdv2(text, *, max_units=None):
     return None if max_units is not None and utf16_len(formatted) > max_units else formatted
 
 
+async def _send_telegram_media_files(
+    bot, int_chat_id, chat_id, media_files, force_document, extra, thread_id, notify, tg_caption,
+    last_msg, warnings, send_parse_mode, has_html, thread_kwargs, text_kwargs,
+):
+    from plugins.platforms.telegram.telegram_outbound import send_album_standalone
+
+    if album := _telegram_album_paths(media_files, force_document, tg_caption):
+        result = await send_album_standalone(bot, extra or {}, chat_id, album, thread_id=thread_id, notify=notify)
+        detail = result.raw_response or {}
+        warnings += [_sanitize_error_text(f"Failed to send Telegram photo {path}: {err}")
+                     for path, err in detail.get("failed", ())]
+        if detail.get("ambiguous"):
+            warnings.append("Telegram never confirmed a photo album; it may already be in the chat, so it was not resent")
+        if not result.success and not detail.get("failed") and not detail.get("refused"):
+            warnings.append(_sanitize_error_text(f"Failed to send Telegram photo album: {result.error}"))
+        # A refused album goes photo by photo below (topic fallback, a warning per failure).
+        media_files = [(path, False) for path in detail.get("refused", ())]
+        last_msg = last_msg or (SimpleNamespace(message_id=None) if result.success else None)
+    for media_path, is_voice in media_files:
+        if not await asyncio.to_thread(os.path.exists, media_path):
+            warnings.append(f"Media file not found, skipping: {media_path}")
+            logger.warning(warnings[-1])
+            # Caption mode suppressed the text send; the file is gone, so deliver the words alone.
+            if tg_caption is not None and last_msg is None:
+                try:
+                    last_msg = await _send_telegram_message_with_retry(
+                        bot, chat_id=int_chat_id, text=tg_caption, parse_mode=send_parse_mode, **text_kwargs)
+                    tg_caption = None  # delivered — don't re-caption a later file
+                except Exception as cap_err:
+                    if not _is_expected_send_error(cap_err):
+                        raise
+                    logger.warning(
+                        "Telegram caption-fallback send failed for missing media: %s",
+                        _sanitize_error_text(cap_err),
+                        exc_info=_sanitized_exc_info(cap_err),
+                    )
+            continue
+        try:
+            last_msg = await _telegram_send_one_media(
+                bot, int_chat_id, media_path, is_voice, caption=tg_caption, parse_mode=send_parse_mode,
+                has_html=has_html, thread_kwargs=thread_kwargs, force_document=force_document)
+        except Exception as exc:
+            if not _is_expected_send_error(exc):
+                raise
+            warnings.append(_sanitize_error_text(f"Failed to send media {media_path}: {exc}"))
+            logger.error(warnings[-1], exc_info=_sanitized_exc_info(exc))
+    return last_msg, warnings
+
+
 async def _send_telegram(token, chat_id, message, media_files=None, thread_id=None, disable_link_previews=False,
                          force_document=False, extra=None, notify=None):
     """One-shot Telegram Bot API send over the platform's ``extra`` (base_url, proxy, fallback IPs,
@@ -338,8 +400,7 @@ async def _send_telegram(token, chat_id, message, media_files=None, thread_id=No
                       "through a cron job while the gateway is running.")
     try:
         from plugins.platforms.telegram.telegram_outbound import (
-            is_visually_empty, notification_kwargs, resolve_notifications_mode, send_album_standalone,
-            send_rich_standalone)
+            is_visually_empty, notification_kwargs, resolve_notifications_mode, send_rich_standalone)
         if is_visually_empty(message):
             message = ""  # invisible-only text would land as an empty bubble
         formatted, send_parse_mode, _has_html = _telegram_format(message)
@@ -378,39 +439,10 @@ async def _send_telegram(token, chat_id, message, media_files=None, thread_id=No
             ]
         for chunk in chunks:
             last_msg = await _telegram_send_text_chunk(bot, int_chat_id, chunk, send_parse_mode, _has_html, text_kwargs)
-        if album := _telegram_album_paths(media_files, force_document, _tg_caption):
-            result = await send_album_standalone(bot, extra or {}, chat_id, album, thread_id=thread_id, notify=notify)
-            detail = result.raw_response or {}
-            warnings += [_sanitize_error_text(f"Failed to send Telegram photo {path}: {err}")
-                         for path, err in detail.get("failed", ())]
-            if detail.get("ambiguous"):
-                warnings.append("Telegram never confirmed a photo album; it may already be in the chat, so it was not resent")
-            if not result.success and not detail.get("failed") and not detail.get("refused"):
-                warnings.append(_sanitize_error_text(f"Failed to send Telegram photo album: {result.error}"))
-            # A refused album goes photo by photo below (topic fallback, a warning per failure).
-            media_files = [(path, False) for path in detail.get("refused", ())]
-            last_msg = last_msg or (SimpleNamespace(message_id=None) if result.success else None)
-        for media_path, is_voice in media_files:
-            if not os.path.exists(media_path):
-                warnings.append(f"Media file not found, skipping: {media_path}")
-                logger.warning(warnings[-1])
-                # Caption mode suppressed the text send; the file is gone, so deliver the words alone.
-                if _tg_caption is not None and last_msg is None:
-                    try:
-                        last_msg = await _send_telegram_message_with_retry(
-                            bot, chat_id=int_chat_id, text=_tg_caption, parse_mode=send_parse_mode, **text_kwargs)
-                        _tg_caption = None  # delivered — don't re-caption a later file
-                    except Exception as _cap_err:
-                        logger.warning("Telegram caption-fallback send failed for missing media: %s",
-                                       _sanitize_error_text(_cap_err))
-                continue
-            try:
-                last_msg = await _telegram_send_one_media(
-                    bot, int_chat_id, media_path, is_voice, caption=_tg_caption, parse_mode=send_parse_mode,
-                    has_html=_has_html, thread_kwargs=thread_kwargs, force_document=force_document)
-            except Exception as e:
-                warnings.append(_sanitize_error_text(f"Failed to send media {media_path}: {e}"))
-                logger.error(warnings[-1])
+        last_msg, warnings = await _send_telegram_media_files(
+            bot, int_chat_id, chat_id, media_files, force_document, extra, thread_id, notify, _tg_caption,
+            last_msg, warnings, send_parse_mode, _has_html, thread_kwargs, text_kwargs,
+        )
         if last_msg is None:
             return {"error": _NO_DELIVERABLE, **({"warnings": warnings} if warnings else {})}
         return _success(chat_id, warnings, **({"message_id": str(last_msg.message_id)}
@@ -419,6 +451,9 @@ async def _send_telegram(token, chat_id, message, media_files=None, thread_id=No
         return {"error": "python-telegram-bot not installed. Run: "
                 f"{install_hint('telegram')}"}
     except Exception as e:
+        if not _is_expected_send_error(e):
+            raise
+        logger.error("Telegram send failed", exc_info=_sanitized_exc_info(e))
         return _error(f"Telegram send failed: {e}")
 
 

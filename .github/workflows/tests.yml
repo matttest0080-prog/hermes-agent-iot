@@ -80,6 +80,12 @@ jobs:
           test-environment: 'true'
           prune-python-cache: true
 
+      - name: Install vendored minimatch runtime dependency
+        # The Python guard loads both vendored entry points with Node. Install the
+        # vendor workspace project explicitly; this lane provisions Python tooling
+        # only, so pnpm otherwise never links brace-expansion into this package.
+        run: pnpm install --frozen-lockfile --filter ./vendor/minimatch-compat-10.2.6
+
       - name: Check SQLite runs WAL
         # Hermes picks DELETE journal mode on a SQLite with the WAL-reset
         # bug. If the PM-pinned interpreter links one, every WAL test silently

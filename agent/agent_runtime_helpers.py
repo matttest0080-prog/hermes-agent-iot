@@ -2094,21 +2094,68 @@ _MISSING = object()
 
 
 def _snapshot_switch_state(agent) -> dict[str, Any]:
-    """Snapshot every field the swap+rebuild mutates so a failed rebuild rolls back atomically
-    (else a new model name + OLD client 400s next turn). The sentinel distinguishes unset from
-    None: tests build bare agents via ``__new__`` without all fields."""
-    snapshot = {name: getattr(agent, name, _MISSING) for name in _SWITCH_SNAPSHOT_FIELDS}
-    # Shallow-copy the dict so mutating the live one doesn't poison the rollback target.
-    snapshot["_client_kwargs"] = dict(getattr(agent, "_client_kwargs", {}) or {})
-    return snapshot
+    """Capture the live agent state so any failed switch can roll back atomically.
+
+    Keep original object identities for clients and runtime collaborators, but retain
+    shallow contents for containers that switch setup mutates in place. The agent is
+    synchronous during a switch, so restoring its attribute map cannot race an await.
+    """
+    state = dict(getattr(agent, "__dict__", {}))
+    mutable_contents = {}
+    for name, value in state.items():
+        if isinstance(value, (dict, list, set)):
+            mutable_contents[name] = (value, value.copy() if not isinstance(value, list) else list(value))
+    compressor = state.get("context_compressor")
+    compressor_state = dict(getattr(compressor, "__dict__", {})) if compressor is not None else None
+    return {
+        "agent_state": state,
+        "mutable_contents": mutable_contents,
+        "compressor": compressor,
+        "compressor_state": compressor_state,
+        "slot_state": {name: getattr(agent, name, _MISSING) for name in _SWITCH_SNAPSHOT_FIELDS},
+    }
 
 
 def _restore_switch_snapshot(agent, snapshot: dict[str, Any]) -> None:
-    for name, value in snapshot.items():
-        if value is _MISSING:
-            continue  # attribute did not exist before the swap; don't fabricate it
+    """Restore the pre-switch agent and in-place collaborator state; retire new clients."""
+    state = snapshot["agent_state"]
+    original_clients = {id(state.get(name)) for name in ("client", "_anthropic_client")}
+    closed_clients = set()
+    for name in ("client", "_anthropic_client"):
+        client = getattr(agent, name, None)
+        if client is not None and id(client) not in original_clients and id(client) not in closed_clients:
+            closed_clients.add(id(client))
+            with contextlib.suppress(Exception):
+                client.close()
+
+    for name, (original, contents) in snapshot["mutable_contents"].items():
         with contextlib.suppress(Exception):
-            setattr(agent, name, value)
+            if isinstance(original, dict):
+                original.clear()
+                original.update(contents)
+            elif isinstance(original, list):
+                original[:] = contents
+            else:
+                original.clear()
+                original.update(contents)
+
+    compressor = snapshot["compressor"]
+    if compressor is not None and snapshot["compressor_state"] is not None:
+        with contextlib.suppress(Exception):
+            compressor.__dict__.clear()
+            compressor.__dict__.update(snapshot["compressor_state"])
+
+    if hasattr(agent, "__dict__"):
+        agent.__dict__.clear()
+        agent.__dict__.update(state)
+    else:
+        for name, value in snapshot["slot_state"].items():
+            if value is _MISSING:
+                with contextlib.suppress(AttributeError):
+                    delattr(agent, name)
+            else:
+                with contextlib.suppress(Exception):
+                    setattr(agent, name, value)
 
 
 def _resolve_switch_destination(agent, new_model, new_provider, base_url, api_mode, capabilities, old_norm, new_norm):
@@ -2327,6 +2374,10 @@ def _update_switch_compressor(agent, custom_providers, effective_context_length,
             agent.model, base_url=agent.base_url, api_key=ctx_api_key, provider=agent.provider,
             config_context_length=effective_context_length, custom_providers=custom_providers,
         )
+        from agent.model_metadata import get_minimum_tool_context_length, validate_tool_context_length
+        validate_tool_context_length(
+            agent.model, new_context_length, get_minimum_tool_context_length(agent)
+        )
         agent.context_compressor.update_model(
             model=agent.model,
             context_length=new_context_length,
@@ -2409,46 +2460,46 @@ def switch_model(
         _swap_switch_runtime(
             agent, new_model, new_provider, api_key, base_url, api_mode, old_provider, old_norm, new_norm
         )
+        custom_providers, effective_context_length = _resolve_switch_context_length(agent, snapshot)
+        # Refresh the custom-provider snapshot from the config just loaded so the prompt_caching lookup
+        # sees flags added to config.yaml after session start.
+        if custom_providers is not None:
+            agent._custom_providers = custom_providers
+        agent._use_prompt_caching, agent._use_native_cache_layout = agent._anthropic_prompt_cache_policy(
+            provider=new_provider, base_url=agent.base_url, api_mode=api_mode, model=new_model
+        )
+        if hasattr(agent, "context_compressor") and agent.context_compressor:
+            _update_switch_compressor(agent, custom_providers, effective_context_length, snapshot)
+        # Re-read the per-model reasoning_effort override so it applies immediately (per-model > global;
+        # YAML False = disabled).
+        try:
+            from hermes_constants import resolve_reasoning_config
+            from hermes_cli.config import load_config as _sm_load_config
+            agent.reasoning_config = resolve_reasoning_config(_sm_load_config() or {}, agent.model)
+            logger.info(
+                "switch_model: reasoning_config resolved for %s: %s", agent.model, agent.reasoning_config
+            )
+        except Exception as _reasoning_err:
+            logger.debug("switch_model: could not re-resolve reasoning_config: %s", _reasoning_err)
+        # Invalidate the cached system prompt so it rebuilds next turn.
+        agent._cached_system_prompt = None
+        # Publish the destination capability map only after every runtime setup above has succeeded.
+        # Failed switches must leave the old map intact.
+        agent.runtime_capabilities = destination_capabilities
+        # Reset the cross-turn stale-call circuit breaker; otherwise the latched streak keeps
+        # short-circuiting the freshly selected healthy provider.
+        from agent.chat_completion_helpers import _reset_stale_streak
+        _reset_stale_streak(agent)
+        agent._primary_runtime = _build_primary_runtime_snapshot(agent, agent.api_mode)
+        _finish_switch(agent, new_provider, old_norm, new_norm)
+        logger.info(
+            "Model switched in-place: %s (%s) -> %s (%s)",
+            old_model, old_provider, new_model, new_provider,
+        )
+        _persist_switch_billing_route(agent)
     except Exception:
         _restore_switch_snapshot(agent, snapshot)
         raise
-    custom_providers, effective_context_length = _resolve_switch_context_length(agent, snapshot)
-    # Refresh the custom-provider snapshot from the config just loaded so the prompt_caching lookup
-    # sees flags added to config.yaml after session start.
-    if custom_providers is not None:
-        agent._custom_providers = custom_providers
-    agent._use_prompt_caching, agent._use_native_cache_layout = agent._anthropic_prompt_cache_policy(
-        provider=new_provider, base_url=agent.base_url, api_mode=api_mode, model=new_model
-    )
-    if hasattr(agent, "context_compressor") and agent.context_compressor:
-        _update_switch_compressor(agent, custom_providers, effective_context_length, snapshot)
-    # Re-read the per-model reasoning_effort override so it applies immediately (per-model > global;
-    # YAML False = disabled).
-    try:
-        from hermes_constants import resolve_reasoning_config
-        from hermes_cli.config import load_config as _sm_load_config
-        agent.reasoning_config = resolve_reasoning_config(_sm_load_config() or {}, agent.model)
-        logger.info(
-            "switch_model: reasoning_config resolved for %s: %s", agent.model, agent.reasoning_config
-        )
-    except Exception as _reasoning_err:
-        logger.debug("switch_model: could not re-resolve reasoning_config: %s", _reasoning_err)
-    # Invalidate the cached system prompt so it rebuilds next turn.
-    agent._cached_system_prompt = None
-    # Publish the destination capability map only after every runtime setup above has succeeded.
-    # Failed switches must leave the old map intact.
-    agent.runtime_capabilities = destination_capabilities
-    # Reset the cross-turn stale-call circuit breaker; otherwise the latched streak keeps
-    # short-circuiting the freshly selected healthy provider.
-    from agent.chat_completion_helpers import _reset_stale_streak
-    _reset_stale_streak(agent)
-    agent._primary_runtime = _build_primary_runtime_snapshot(agent, api_mode)
-    _finish_switch(agent, new_provider, old_norm, new_norm)
-    logger.info(
-        "Model switched in-place: %s (%s) -> %s (%s)",
-        old_model, old_provider, new_model, new_provider,
-    )
-    _persist_switch_billing_route(agent)
 
 
 def _pre_tool_block_message(agent, function_name, function_args, effective_task_id, tool_call_id, middleware_trace):

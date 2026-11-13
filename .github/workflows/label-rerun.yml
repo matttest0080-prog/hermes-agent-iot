@@ -37,9 +37,8 @@ jobs:
           PR: ${{ github.event.pull_request.number }}
         run: |
           set -uo pipefail
-          # The CI workflow's file is ``ci.yml``; asking for ``ci.yaml`` matched
-          # nothing, so the rerun silently skipped CI. Consult it by its real
-          # file name.
+          # The fork's CI workflow path is ``ci.yml``. Keep using that
+          # base-branch path so label reruns find the required workflow.
           for workflow in ci.yml docker.yml nix.yml; do
             RUN_ID=$(gh run list --repo "$REPO" --commit "$HEAD_SHA" --workflow "$workflow" \
               --event pull_request --limit 1 --json databaseId --jq '.[0].databaseId // empty' || true)

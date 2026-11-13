@@ -18,10 +18,29 @@ name: OSV-Scanner
 #
 # Uses Google's officially-recommended reusable workflow, pinned by SHA.
 # Findings land in the repo's Security tab (Code Scanning > OSV-Scanner).
-# fail-on-vuln is disabled so the job does not block merges on pre-existing
-# vulnerabilities in pinned deps that we may need to patch deliberately.
+# Keep the security baseline clean: findings are reported through SARIF and a
+# newly discovered vulnerability fails CI before vulnerable lockfiles land.
+#
+# The reusable workflow can't emit custom outputs, so a wrapper job
+# downloads the SARIF result and summarizes the vulnerability count into
+# a review_status for the unified PR comment.
 
 on:
+  workflow_call:
+  # Keep narrow direct triggers for maintained low-resource/sync branches so
+  # branch-scoped Code Scanning alerts close after lockfile-only fixes.
+  push:
+    branches:
+      - pi2-lite
+      - "sync/**"
+    paths:
+      - uv.lock
+      - pnpm-lock.yaml
+      - package-lock.json
+      - website/package-lock.json
+      - plugins/platforms/photon/sidecar/package-lock.json
+      - scripts/whatsapp-bridge/package-lock.json
+      - .github/workflows/osv-scanner.yml
   schedule:
     # Weekly scan against main — catches CVEs published after merge for
     # deps that haven't changed since.
@@ -47,5 +66,67 @@ jobs:
         --lockfile=website/package-lock.json
         --lockfile=plugins/platforms/photon/sidecar/package-lock.json
         --lockfile=scripts/whatsapp-bridge/package-lock.json
+      # The upstream reusable workflow uploads this exact file under its
+      # fixed artifact name, which the wrapper downloads below.
       results-file-name: osv-results.sarif
-      fail-on-vuln: false
+      # Fail closed: known vulnerabilities must not land in the fork.
+      fail-on-vuln: true
+
+  emit-status:
+    name: Emit review status
+    runs-on: ubuntu-latest
+    # Downloads one small SARIF artifact and runs two inline python snippets —
+    # minutes of work. Bound it so a wedged artifact download can't hold a
+    # runner for GitHub's 6-hour default.
+    timeout-minutes: 10
+    needs: scan
+    if: always()
+    outputs:
+      review_status: ${{ steps.emit.outputs.review_status }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@f548e57e544e1ff5a4c46bf1e1b8685f8e4a348a # v7.0.1
+
+      - name: Download SARIF result
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: OSV Scanner SARIF file
+          path: /tmp/osv-results
+
+      - name: Emit review_status
+        id: emit
+        run: |
+          set -euo pipefail
+          STATUS="[]"
+
+          SARIF=/tmp/osv-results/osv-results.sarif
+          if [ ! -f "$SARIF" ]; then
+            echo "::error::OSV SARIF result is missing; refusing to report a clean scan"
+            exit 1
+          fi
+
+          # Validate the SARIF schema subset required by this workflow before
+          # counting. Missing version/runs/results must fail closed instead of
+          # being translated into a zero-vulnerability status.
+          VULN_COUNT=$(python3 scripts/osv_sarif_summary.py "$SARIF")
+
+          VULN_DETAIL=""
+          if [ "$VULN_COUNT" -gt 0 ] 2>/dev/null; then
+            VULN_PLURAL=$([ "$VULN_COUNT" -eq 1 ] && echo "y" || echo "ies")
+            VULN_DETAIL=$(python3 scripts/osv_sarif_summary.py --details-json "$SARIF")
+            STATUS="[{\"source\":\"osv scan\",\"results\":[{\"kind\":\"warning\",\"title\":\"OSV vulnerability scan\",\"summary\":\"${VULN_COUNT} known vulnerabilit${VULN_PLURAL} found in pinned dependencies.\",\"detail\":${VULN_DETAIL},\"how_to_fix\":\"Review the findings in the [Security tab](../../security/code-scanning). Update the affected dependencies if a patched version is available.\"}]}]"
+          fi
+
+          echo "review_status=${STATUS}" >> "$GITHUB_OUTPUT"
+          echo "review_status=${STATUS}" > review-status.json
+
+      - name: Upload review status artifact
+        if: always() && steps.emit.outcome != 'skipped'
+        continue-on-error: true
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: review-status-osv-scanner
+          path: review-status.json
+          retention-days: 1
+          overwrite: true
+          if-no-files-found: ignore

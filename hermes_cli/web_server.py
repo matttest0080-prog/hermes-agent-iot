@@ -1465,8 +1465,8 @@ def _start_server_runtime(
         from hermes_cli.nous_auth_keepalive import start_nous_auth_keepalive
 
         start_nous_auth_keepalive()
-    except Exception as exc:
-        _log.debug("Nous auth keepalive did not start: %s", exc)
+    except (ImportError, OSError, RuntimeError, ValueError):
+        _log.debug("Nous auth keepalive did not start", exc_info=True)
 
     _configure_auth_gate(host, allow_public, ssh_session_token, ssh_owner_nonce)
 
@@ -1487,8 +1487,8 @@ def _start_server_runtime(
         from tui_gateway.server import install_exit_flush_signal_handlers
 
         install_exit_flush_signal_handlers()
-    except Exception as exc:
-        _log.debug("exit-flush signal handlers not installed: %s", exc)
+    except (ImportError, OSError, RuntimeError, ValueError):
+        _log.debug("exit-flush signal handlers not installed", exc_info=True)
 
     # #93608: uvicorn's bind_socket() would exit 1 with a bare ERROR line,
     # indistinguishable from "backend broken". Probe first so a conflict
@@ -1507,12 +1507,11 @@ def _start_server_runtime(
     # ``.env`` to rebuild from (systemd ``Environment=``, ``op run``, Compose): anything injected or
     # rotated by a later boot step would otherwise be invisible for the process lifetime. No-op on a
     # single-profile host; `gateway.multiplex_profiles: false` is retired and no longer skips it.
-    try:
-        from tui_gateway.launch_profile_policy import activate_multi_profile_hosting_eagerly
+    from tui_gateway.launch_profile_policy import activate_multi_profile_hosting_eagerly
 
-        activate_multi_profile_hosting_eagerly()
-    except Exception:
-        _log.warning("eager multi-profile activation failed", exc_info=True)
+    # This flips credential isolation to fail-closed for secondary profiles; a failure must abort
+    # startup rather than leave the host running with launch-profile credentials exposed.
+    activate_multi_profile_hosting_eagerly()
 
     async def _serve():
         # startup split from main_loop so the bound (ephemeral) port is readable.
