@@ -124,10 +124,10 @@ def test_report_steps_that_finish_before_collection_are_not_gate_time(monkeypatc
     assert [step["name"] for step in closed["steps"]] == ["Set up job", "Evaluate job results"]
 
 
-def test_ci_yaml_cuts_the_gate_at_a_step_it_runs_before_the_report(monkeypatch, tmp_path):
+def test_ci_yml_cuts_the_gate_at_a_step_it_runs_before_the_report(monkeypatch, tmp_path):
     """The cut lapses silently (every finished step counts again) if the flag names no step of the
-    gate, or never reaches collect_timings: run main() with the argv ci.yaml uses."""
-    ci = YAML(typ="base").load((ROOT / ".github/workflows/ci.yaml").read_text(encoding="utf-8"))
+    gate, or never reaches collect_timings: run main() with the argv ci.yml uses."""
+    ci = YAML(typ="base").load((ROOT / ".github/workflows/ci.yml").read_text(encoding="utf-8"))
     steps = ci["jobs"]["all-checks-pass"]["steps"]
     report = next(i for i, step in enumerate(steps) if "--own-job-last-step" in step.get("run", ""))
     argv = shlex.split(steps[report]["run"].replace("\\\n", " "))

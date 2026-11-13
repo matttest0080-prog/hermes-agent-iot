@@ -24,7 +24,7 @@ permissions:
 # called workflow only sees them when the caller inherits AND the called job
 # declares the environment: the job-level `environment:` alone attaches the
 # deployment and exposes `vars`, but leaves `secrets.*` empty
-# (actions/runner#1490). ci.yaml is deliberately excluded — it runs
+# (actions/runner#1490). The CI workflow is deliberately excluded — it runs
 # PR-controlled code and must stay secret-free.
 concurrency:
   group: stable-release
@@ -76,7 +76,7 @@ jobs:
       pull-requests: write
       actions: read
       security-events: write
-    uses: ./.github/workflows/ci.yaml
+    uses: ./.github/workflows/ci.yml
     with:
       commit: ${{ needs.admit.outputs.commit }}
       release: true

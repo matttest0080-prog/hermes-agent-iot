@@ -1,4 +1,4 @@
-"""Which ci.yaml runs a newer run on the same group may cancel.
+"""Which ci.yml runs a newer run on the same group may cancel.
 
 The real ``concurrency`` block is evaluated with the repo's Actions-expression
 evaluator for each way the workflow starts. A re-dispatch on a fix/debug branch
@@ -12,7 +12,7 @@ from ruamel.yaml import YAML
 
 from tests.ci import _gha_expr as gha
 
-CI = Path(__file__).resolve().parents[2] / ".github/workflows/ci.yaml"
+CI = Path(__file__).resolve().parents[2] / ".github/workflows/ci.yml"
 
 
 def _cancels(event: str, ref: str, release: bool = False) -> bool:

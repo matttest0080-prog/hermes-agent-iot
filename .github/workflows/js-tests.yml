@@ -74,7 +74,8 @@ jobs:
             ui-tui/packages/*/node_modules
             tests-js/node_modules
             web/node_modules
-          key: node-modules-scripts-${{ runner.os }}-${{ runner.arch }}-node${{ steps.node.outputs.node-version }}-pnpm${{ steps.node.outputs.pnpm-version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
+            vendor/*/node_modules
+          key: node-modules-scripts-v2-${{ runner.os }}-${{ runner.arch }}-node${{ steps.node.outputs.node-version }}-pnpm${{ steps.node.outputs.pnpm-version }}-${{ hashFiles('pnpm-lock.yaml', 'pnpm-workspace.yaml') }}
 
       # Vitest records each file's duration and result under
       # node_modules/.vite/vitest and orders the next run from it, longest first.

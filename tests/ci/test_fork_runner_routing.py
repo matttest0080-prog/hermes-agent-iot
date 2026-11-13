@@ -8,7 +8,7 @@ from tests.ci import _gha_expr as gha
 
 ROOT = Path(__file__).resolve().parents[2]
 _RUNNER_JOBS = (
-    (".github/workflows/ci.yaml", "detect"),
+    (".github/workflows/ci.yml", "detect"),
     (".github/workflows/docker.yml", "mode"),
     (".github/workflows/nix.yml", "pnpm-deps-hash"),
     (".github/workflows/lint.yml", "lint"),
