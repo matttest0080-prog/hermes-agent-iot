@@ -127,6 +127,25 @@ request or gateway run was performed, so this validates the source installer
 and `minimal` CLI entrypoint only—not a model round-trip, gateway, or other
 profiles. The current public PyPI release remains `0.22.5.post3`.
 
+### Unreleased `0.23.1` wheel-candidate test (2026-11-16)
+
+A sanitized candidate wheel was built from package-version commit
+`22678bc6d5175d0e8a59853ef2f4e940c3abb8ba`:
+`hermes_agent_iot-0.23.1-py3-none-any.whl`, SHA-256
+`a54c171f419ee41c5215d0a2be9dcbcdf9a9cc6e50891cfe5f6ab7f153dac33a`.
+It was installed on a physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`,
+32-bit, 921 MiB RAM, Raspbian 13 Trixie, Python 3.13.5) in a fresh isolated
+venv. Dependencies came from `requirements/pi2/minimal.lock` with hash checking;
+the candidate wheel was installed with `--no-deps`. The installed distribution
+reported `0.23.1`, and its `direct_url.json` SHA-256 matched the wheel. `pip
+check`, `minimal` profile setup, core CLI imports, and `hermes --help` passed.
+The profile setup wrote only to a separate `HERMES_HOME`.
+
+At test time the candidate had not been tagged or published. This validates the
+locally built wheel and `minimal` profile setup, not the source installer or the
+final PyPI artifact. No model request or gateway run was performed; other
+profiles and model round-trips remain unverified.
+
 The release is wheel-only; no source distribution is published. Its public
 PyPI provenance identifies `matttest0080-prog/hermes-agent-iot`, workflow
 `publish-pypi.yml`, and environment `pypi`.
