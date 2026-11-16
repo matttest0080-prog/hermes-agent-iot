@@ -15,7 +15,7 @@
 
 Hermes Agent IoT is an IoT/robotics-focused fork of [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent). The maintained `pi2-lite` branch focuses on constrained Raspberry Pi and edge deployments while preserving the upstream Hermes Agent runtime and ecosystem.
 
-> **版本與升級注意事項：** [`0.22.5.post3` 已正式發布 PyPI](https://pypi.org/project/hermes-agent-iot/0.22.5.post3/)，使用保留 MIT 署名的獨立 `browser-harness-hermes-compat` 與 Pillow 13 修補；[正式產物與驗收紀錄](docs/release-v0.22.5.post3.md)已核對真正 tag CI／匿名 PyPI bytes。舊 `0.22.2.post1` 不含這輪安全修補。升級建議使用**全新 venv**，不要混裝官方／獨立 browser distributions；見 [相容性與遷移說明](docs/browser-harness-compat.md) 及 [同步驗證紀錄](docs/upstream-review-v0.22.5.md)。
+> **版本與升級注意事項：** [`0.23.1` 已正式發布 PyPI](https://pypi.org/project/hermes-agent-iot/0.23.1/)，release tag 為 [`iot-v0.23.1`](https://github.com/matttest0080-prog/hermes-agent-iot/tree/iot-v0.23.1)；[正式產物與驗收紀錄](docs/release-v0.23.1.md)列出 tag CI、wheel 雜湊與 Pi 2 驗收範圍。此 fork 保留獨立 `browser-harness-hermes-compat` 與 Pillow 13 修補。升級建議使用**全新 venv**，不要混裝官方／獨立 browser distributions；見 [相容性與遷移說明](docs/browser-harness-compat.md)。
 
 ## 相關影片
 
@@ -35,10 +35,10 @@ Hermes Agent IoT requires Python `>=3.11,<3.15`. Install it in a virtual environ
 
 ```bash
 python3 --version
-python3 -m venv ~/.venvs/hermes-iot-0.22.5
-source ~/.venvs/hermes-iot-0.22.5/bin/activate
+python3 -m venv ~/.venvs/hermes-iot-0.23.1
+source ~/.venvs/hermes-iot-0.23.1/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.22.5.post3'
+python -m pip install 'hermes-agent-iot[minimal]==0.23.1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -185,6 +185,18 @@ hermes
 
 > Keep the clone directory. The source installer uses an editable Python installation, so moving or deleting the checkout can break the environment.
 
+### Pi 2B 源碼實機驗收（未發布候選）
+
+2026-11-13 在實體 Raspberry Pi 2 Model B Rev 1.1（`armv7l`、921 MiB、Raspbian 13 Trixie、Python 3.13.5）以來源 commit `690dc97c4bf4342d626a1cf3c7025f634aa7d262` 驗收 `0.23.0.post1` 的 `minimal` profile。全新隔離 venv 安裝完成，`pip check`、核心 CLI imports 與 `hermes --help` 通過。測試使用獨立 `HERMES_HOME`；**此版本未發布到 PyPI，亦未建立 release tag**。本次沒有呼叫模型或 gateway，因此不代表模型回合或其他 profiles 已驗收。詳見 [Pi 2 驗收紀錄](README_PI2.md#unreleased-source-candidate-hardware-test-0230post1)。
+
+### Pi 2B source hardware validation (unreleased candidate)
+
+On 2026-11-13, source commit `690dc97c4bf4342d626a1cf3c7025f634aa7d262` (`0.23.0.post1`) passed a fresh isolated `minimal` install on a physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`, 921 MiB, Raspbian 13 Trixie, Python 3.13.5). The installer, `pip check`, core CLI imports, and `hermes --help` passed with a separate `HERMES_HOME`. This candidate is **not published to PyPI and has no release tag**. No model request or gateway run was made; this does not validate a model round-trip or other profiles. See the [detailed Pi 2 test record](README_PI2.md#unreleased-source-candidate-hardware-test-0230post1).
+
+### Pi 2B pre-release wheel-candidate test for `0.23.1`
+
+On 2026-11-16, before publication, the sanitized local candidate wheel built from commit `22678bc6d5175d0e8a59853ef2f4e940c3abb8ba` (`hermes_agent_iot-0.23.1-py3-none-any.whl`, SHA-256 `a54c171f419ee41c5215d0a2be9dcbcdf9a9cc6e50891cfe5f6ab7f153dac33a`) was installed on a physical Pi 2 Model B Rev 1.1 (`armv7l`, 921 MiB, Raspbian 13 Trixie, Python 3.13.5). Hash-locked `minimal` dependencies, wheel metadata/version, `pip check`, isolated `minimal` profile setup, core imports, and `hermes --help` passed. The candidate was not the final PyPI wheel (published SHA-256 `ad2516e3b3eddc39e04bc7324a317be6f4f8520c8313140850520079b8729df9`); the final artifact passed tag CI clean-wheel smoke but was not installed on Pi 2. No model request or gateway run was made. See the [detailed Pi 2 test record](README_PI2.md#pre-release-wheel-candidate-hardware-test-0231-2026-11-16) and [release record](docs/release-v0.23.1.md).
+
 ## Install Profiles
 
 | Profile | Intended target |
@@ -198,7 +210,7 @@ hermes
 Keep the PyPI extra and setup profile aligned. For example:
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.22.5.post3'
+python -m pip install 'hermes-agent-iot[iot]==0.23.1'
 hermes-iot setup --profile iot
 ```
 

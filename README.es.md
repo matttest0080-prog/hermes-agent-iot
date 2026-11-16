@@ -38,7 +38,7 @@ python3 --version
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.22.2.post1'
+python -m pip install 'hermes-agent-iot[minimal]==0.23.1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -78,7 +78,7 @@ hermes
 Mantén alineados el extra de PyPI y el perfil de setup. Por ejemplo:
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.22.2.post1'
+python -m pip install 'hermes-agent-iot[iot]==0.23.1'
 hermes-iot setup --profile iot
 ```
 
@@ -124,9 +124,9 @@ hermes-iot setup --profile iot
 
 Este fork puede quedarse intencionalmente atrás del `main` upstream mientras se revisan y validan los cambios de dependencias, los parches IoT y la compatibilidad ARMv7. Para un uso general de escritorio/servidor, prefiere el proyecto upstream.
 
-## Versión verificada
+## Versión publicada y validación histórica en Pi 2
 
-Línea base verificada actual:
+La versión actual publicada en PyPI es [`0.23.1`](https://pypi.org/project/hermes-agent-iot/0.23.1/); consulta el [registro de publicación](docs/release-v0.23.1.md). El siguiente registro corresponde a la validación histórica de `0.22.2.post1`, no a la versión actual de PyPI:
 
 - PyPI: [`hermes-agent-iot 0.22.2.post1`](https://pypi.org/project/hermes-agent-iot/0.22.2.post1/)
 - Tag: `iot-v0.22.2.post1`
@@ -137,7 +137,15 @@ Línea base verificada actual:
 - Python: `>=3.11,<3.15`
 - Validación física: Raspberry Pi 2 Model B Rev 1.1, ARMv7 de 32 bits, 921 MiB RAM, Python 3.13.5
 
-La línea base del wheel `minimal` se instaló en limpio desde PyPI público en hardware físico Raspberry Pi 2 el 2026-10-20: `pip check` limpio, `hermes --version` = 0.22.2.post1, SHA-256 del wheel coincidente y un turno one-shot real devolvió `PI2-OK` en 81,6 s usando un modelo remoto por SSH. Esto valida la ruta cliente/runtime del Pi 2, no la inferencia local. Los extras opcionales más pesados requieren hardware acorde a su conjunto de dependencias.
+El wheel `minimal` se instaló en limpio desde PyPI público en una Raspberry Pi 2 física el 2026-10-20: `pip check` limpio, `hermes --version` = 0.22.2.post1, SHA-256 coincidente y un turno one-shot real devolvió `PI2-OK` en 81,6 s con un modelo remoto por SSH. Esto valida la ruta cliente/runtime de Pi 2, no la inferencia local. Los extras opcionales más pesados requieren hardware acorde a sus dependencias.
+
+### Prueba física del candidato fuente no publicado (2026-11-13)
+
+En una Raspberry Pi 2 Model B Rev 1.1 física (`armv7l`, 921 MiB, Raspbian 13 Trixie, Python 3.13.5) se probó la instalación fuente `minimal` de `0.23.0.post1`, commit `690dc97c4bf4342d626a1cf3c7025f634aa7d262`. La instalación en un venv aislado terminó correctamente; `pip check`, las importaciones principales del CLI y `hermes --help` pasaron. Se utilizó un `HERMES_HOME` independiente, sin leer la configuración existente. Este candidato aún no se publicó en PyPI ni tiene tag de release. No se envió ninguna solicitud a un modelo ni se ejecutó el gateway; la prueba no valida una conversación real ni otros perfiles. Consulta el [registro detallado de hardware Pi 2](README_PI2.md#unreleased-source-candidate-hardware-test-0230post1).
+
+### Validación física en Pi 2 del wheel candidato previo al lanzamiento `0.23.1`
+
+El 2026-11-16 se instaló en una Raspberry Pi 2 Model B Rev 1.1 física (`armv7l`, 921 MiB, Raspbian 13 Trixie, Python 3.13.5) el wheel candidato local saneado, construido desde el commit `22678bc6d5175d0e8a59853ef2f4e940c3abb8ba` (SHA-256: `a54c171f419ee41c5215d0a2be9dcbcdf9a9cc6e50891cfe5f6ab7f153dac33a`). Las dependencias `minimal` se instalaron con hashes desde `requirements/pi2/minimal.lock`, y el candidato con `--no-deps`; pasaron la versión, `pip check`, la configuración del perfil `minimal` aislado, las importaciones principales del CLI y `hermes --help`. Se usaron un venv y `HERMES_HOME` independientes. No es el wheel final de PyPI (SHA-256 `ad2516e3b3eddc39e04bc7324a317be6f4f8520c8313140850520079b8729df9`), que sí pasó el clean-wheel smoke de tag CI, pero no se instaló en Pi 2. No hubo llamadas a modelos ni ejecución del gateway. Consulta el [registro detallado de la prueba Pi 2](README_PI2.md#pre-release-wheel-candidate-hardware-test-0231-2026-11-16) y el [registro de publicación](docs/release-v0.23.1.md).
 
 ## Actualizar una instalación de código fuente en Pi2
 
