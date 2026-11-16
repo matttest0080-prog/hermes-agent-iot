@@ -148,9 +148,9 @@ tag CI's clean-wheel smoke but was not installed on Pi 2. No model request or
 gateway run was performed; other profiles and model round-trips remain
 unverified. See the [0.23.1 release record](docs/release-v0.23.1.md).
 
-The release is wheel-only; no source distribution is published. Its public
-PyPI provenance identifies `matttest0080-prog/hermes-agent-iot`, workflow
-`publish-pypi.yml`, and environment `pypi`.
+The `0.23.1` PyPI release is wheel-only; no source distribution is published.
+Its public PyPI provenance identifies `matttest0080-prog/hermes-agent-iot`,
+workflow `publish-pypi.yml`, and environment `pypi`. See the [GitHub Release](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.23.1).
 
 Use the native-compatible installer:
 
