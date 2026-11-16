@@ -3,7 +3,7 @@
 ## Published artifact
 
 - Package: [`hermes-agent-iot 0.23.1`](https://pypi.org/project/hermes-agent-iot/0.23.1/).
-- Annotated tag: [`iot-v0.23.1`](https://github.com/matttest0080-prog/hermes-agent-iot/tree/iot-v0.23.1), targeting merge commit `5693c5a4ff0ab2158c5e2973bd2d7c40ae1a20c5` (PR #61).
+- Annotated tag: [`iot-v0.23.1`](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.23.1), targeting merge commit `5693c5a4ff0ab2158c5e2973bd2d7c40ae1a20c5` (PR #61).
 - Tag publisher: [GitHub Actions run 43794424621](https://github.com/matttest0080-prog/hermes-agent-iot/actions/runs/43794424621), succeeded on 2026-11-16.
 - Published file: `hermes_agent_iot-0.23.1-py3-none-any.whl` (wheel-only; no sdist).
 - PyPI upload time: `2026-11-16T02:55:10.733505Z`.

@@ -126,7 +126,7 @@ Este fork puede quedarse intencionalmente atrás del `main` upstream mientras se
 
 ## Versión publicada y validación histórica en Pi 2
 
-La versión actual publicada en PyPI es [`0.23.1`](https://pypi.org/project/hermes-agent-iot/0.23.1/); consulta el [registro de publicación](docs/release-v0.23.1.md). El siguiente registro corresponde a la validación histórica de `0.22.2.post1`, no a la versión actual de PyPI:
+La versión actual publicada en PyPI es [`0.23.1`](https://pypi.org/project/hermes-agent-iot/0.23.1/), con [GitHub Release](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.23.1); consulta el [registro de publicación](docs/release-v0.23.1.md). El siguiente registro corresponde a la validación histórica de `0.22.2.post1`, no a la versión actual de PyPI:
 
 - PyPI: [`hermes-agent-iot 0.22.2.post1`](https://pypi.org/project/hermes-agent-iot/0.22.2.post1/)
 - Tag: `iot-v0.22.2.post1`

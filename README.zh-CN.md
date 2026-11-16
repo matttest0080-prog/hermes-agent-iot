@@ -126,7 +126,7 @@ hermes-iot setup --profile iot
 
 ## 已发布版本与历史 Pi 2 硬件验证
 
-当前公开 PyPI 版本为 [`0.23.1`](https://pypi.org/project/hermes-agent-iot/0.23.1/)，详见[正式发布记录](docs/release-v0.23.1.md)。以下是 `0.22.2.post1` 的历史硬件记录，不代表当前 PyPI 版本：
+当前公开 PyPI 版本为 [`0.23.1`](https://pypi.org/project/hermes-agent-iot/0.23.1/)，[GitHub Release](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.23.1)，详见[正式发布记录](docs/release-v0.23.1.md)。以下是 `0.22.2.post1` 的历史硬件记录，不代表当前 PyPI 版本：
 
 - PyPI: [`hermes-agent-iot 0.22.2.post1`](https://pypi.org/project/hermes-agent-iot/0.22.2.post1/)
 - Tag: `iot-v0.22.2.post1`

@@ -15,7 +15,7 @@
 
 Hermes Agent IoT is an IoT/robotics-focused fork of [NousResearch/hermes-agent](https://github.com/NousResearch/hermes-agent). The maintained `pi2-lite` branch focuses on constrained Raspberry Pi and edge deployments while preserving the upstream Hermes Agent runtime and ecosystem.
 
-> **版本與升級注意事項：** [`0.23.1` 已正式發布 PyPI](https://pypi.org/project/hermes-agent-iot/0.23.1/)，release tag 為 [`iot-v0.23.1`](https://github.com/matttest0080-prog/hermes-agent-iot/tree/iot-v0.23.1)；[正式產物與驗收紀錄](docs/release-v0.23.1.md)列出 tag CI、wheel 雜湊與 Pi 2 驗收範圍。此 fork 保留獨立 `browser-harness-hermes-compat` 與 Pillow 13 修補。升級建議使用**全新 venv**，不要混裝官方／獨立 browser distributions；見 [相容性與遷移說明](docs/browser-harness-compat.md)。
+> **版本與升級注意事項：** [`0.23.1` 已正式發布 PyPI](https://pypi.org/project/hermes-agent-iot/0.23.1/)，release tag 為 [`iot-v0.23.1`](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.23.1)；[正式產物與驗收紀錄](docs/release-v0.23.1.md)列出 tag CI、wheel 雜湊與 Pi 2 驗收範圍。此 fork 保留獨立 `browser-harness-hermes-compat` 與 Pillow 13 修補。升級建議使用**全新 venv**，不要混裝官方／獨立 browser distributions；見 [相容性與遷移說明](docs/browser-harness-compat.md)。
 
 ## 相關影片
 
@@ -258,10 +258,19 @@ This fork may intentionally lag upstream `main` while dependency changes, IoT pa
 
 ## 發行與驗證紀錄
 
-- 本版 package／tag 識別：`hermes-agent-iot 0.22.5.post3`／`iot-v0.22.5.post3`。
-- [PyPI 對應版本與正式檔案雜湊](https://pypi.org/project/hermes-agent-iot/0.22.5.post3/#files)／[GitHub release 與 tag](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.22.5.post3)。正式 wheel SHA256：`46ae064a902296cb744a16ead141cf4707456b38b8a93d98f510da07b738422a`；[發布與驗收範圍](docs/release-v0.22.5.post3.md)。
-- Pi 2B 正式 registry 實測：Rev 1.1、ARMv7、921 MiB RAM、Python 3.13.5；**本版正式 wheel** 在新隔離目錄完成五 profiles hash dry-run、正常 minimal 安裝與 `pip check`、10 項 smoke、12 項 SQLite deadline／逐 byte回滾控制，整體 exit 0，installed bytes 匹配正式 PyPI wheel。**實際只安裝 minimal**；localhost fixture 不是實際模型、MQTT／HA／GPIO／CDP 或長期負載驗收，未修改既有服務。
-- 從舊版升級請使用前述新 venv，保留舊環境與服務供回復。`pip install --upgrade` 不一定移除舊 orphan `browser-harness`，混裝會造成 Pillow 要求衝突或同名模組互相覆寫。
+### 目前 PyPI 發行版：`0.23.1`
+
+- Package／tag：`hermes-agent-iot 0.23.1`／[`iot-v0.23.1`](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.23.1)。
+- [PyPI wheel 與正式 SHA-256](https://pypi.org/project/hermes-agent-iot/0.23.1/#files)：`hermes_agent_iot-0.23.1-py3-none-any.whl`，`ad2516e3b3eddc39e04bc7324a317be6f4f8520c8313140850520079b8729df9`；[發布與驗收紀錄](docs/release-v0.23.1.md)。
+- Pi 2 測試使用發布前本機候選 wheel，並非上述 PyPI wheel；只驗收 `minimal` 安裝/profile、依賴一致性與 CLI，沒有模型請求或 gateway 測試。詳見 [Pi 2 驗收範圍](README_PI2.md#pre-release-wheel-candidate-hardware-test-0231-2026-11-16)。
+- 升級建議使用**全新 venv**，保留舊環境與服務供回復。`pip install --upgrade` 不一定移除舊 orphan `browser-harness`，混裝會造成 Pillow 要求衝突或同名模組互相覆寫。
+
+### 歷史已發布驗證：`0.22.5.post3`
+
+以下驗收只對應 `0.22.5.post3`，不是目前版本 `0.23.1`：
+
+- [PyPI 版本與正式檔案雜湊](https://pypi.org/project/hermes-agent-iot/0.22.5.post3/#files)／[GitHub release](https://github.com/matttest0080-prog/hermes-agent-iot/releases/tag/iot-v0.22.5.post3)。Wheel SHA-256：`46ae064a902296cb744a16ead141cf4707456b38b8a93d98f510da07b738422a`；[舊版發布與驗收範圍](docs/release-v0.22.5.post3.md)。
+- Pi 2B Rev 1.1（ARMv7、921 MiB RAM、Python 3.13.5）實測：該版正式 wheel 完成五 profiles hash dry-run、minimal 安裝與 `pip check`、10 項 smoke、12 項 SQLite deadline／逐 byte 回滾控制，整體 exit 0，installed bytes 匹配該版 PyPI wheel。**實際只安裝 minimal**；localhost fixture 不是實際模型、MQTT／HA／GPIO／CDP 或長期負載驗收，未修改既有服務。
 
 ### 歷史已發布驗證：0.22.2.post1
 
