@@ -52,8 +52,7 @@ with a packaged default config; the latter isolate running Hermes instances.
 
 PyPI users install exactly one public extra into a virtual environment, then
 apply its config without invoking pip. The current published PyPI release is
-`0.22.5.post3`; the unreleased source-candidate test below is not a PyPI
-release:
+[`0.23.1`](https://pypi.org/project/hermes-agent-iot/0.23.1/); see the [release record](docs/release-v0.23.1.md). Earlier source and wheel-candidate tests below record their exact versions and scope:
 
 ```bash
 python3 --version  # must be >=3.11,<3.15
@@ -61,7 +60,7 @@ python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.22.5.post3'
+python -m pip install 'hermes-agent-iot[minimal]==0.23.1'
 hermes-iot setup --profile minimal
 hermes-iot profile show
 python -m pip check
@@ -125,9 +124,9 @@ test home. The hardware run exposed stale hashed Pi2 profile locks; commit
 `690dc97` regenerates all profile locks and adds a regression test. No model
 request or gateway run was performed, so this validates the source installer
 and `minimal` CLI entrypoint only—not a model round-trip, gateway, or other
-profiles. The current public PyPI release remains `0.22.5.post3`.
+profiles. At the time of this 2026-11-13 test, the current public PyPI release was `0.22.5.post3`; `0.23.1` has since been released.
 
-### Unreleased `0.23.1` wheel-candidate test (2026-11-16)
+### Pre-release wheel-candidate hardware test: `0.23.1` (2026-11-16)
 
 A sanitized candidate wheel was built from package-version commit
 `22678bc6d5175d0e8a59853ef2f4e940c3abb8ba`:
@@ -141,10 +140,13 @@ reported `0.23.1`, and its `direct_url.json` SHA-256 matched the wheel. `pip
 check`, `minimal` profile setup, core CLI imports, and `hermes --help` passed.
 The profile setup wrote only to a separate `HERMES_HOME`.
 
-At test time the candidate had not been tagged or published. This validates the
-locally built wheel and `minimal` profile setup, not the source installer or the
-final PyPI artifact. No model request or gateway run was performed; other
-profiles and model round-trips remain unverified.
+At test time the candidate had not been tagged or published. It validates the
+locally built candidate wheel and `minimal` profile setup, not the source
+installer or the final PyPI artifact. The later published wheel has SHA-256
+`ad2516e3b3eddc39e04bc7324a317be6f4f8520c8313140850520079b8729df9`; it passed
+tag CI's clean-wheel smoke but was not installed on Pi 2. No model request or
+gateway run was performed; other profiles and model round-trips remain
+unverified. See the [0.23.1 release record](docs/release-v0.23.1.md).
 
 The release is wheel-only; no source distribution is published. Its public
 PyPI provenance identifies `matttest0080-prog/hermes-agent-iot`, workflow

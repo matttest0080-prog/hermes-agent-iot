@@ -38,7 +38,7 @@ python3 --version
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.22.5.post3'
+python -m pip install 'hermes-agent-iot[minimal]==0.23.1'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -78,7 +78,7 @@ hermes
 让 PyPI extra 与 setup profile 保持一致。例如：
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.22.5.post3'
+python -m pip install 'hermes-agent-iot[iot]==0.23.1'
 hermes-iot setup --profile iot
 ```
 
@@ -126,7 +126,7 @@ hermes-iot setup --profile iot
 
 ## 已发布版本与历史 Pi 2 硬件验证
 
-当前公开 PyPI 版本为 `0.22.5.post3`。以下是 `0.22.2.post1` 的历史硬件记录，不代表当前 PyPI 版本：
+当前公开 PyPI 版本为 [`0.23.1`](https://pypi.org/project/hermes-agent-iot/0.23.1/)，详见[正式发布记录](docs/release-v0.23.1.md)。以下是 `0.22.2.post1` 的历史硬件记录，不代表当前 PyPI 版本：
 
 - PyPI: [`hermes-agent-iot 0.22.2.post1`](https://pypi.org/project/hermes-agent-iot/0.22.2.post1/)
 - Tag: `iot-v0.22.2.post1`
@@ -143,9 +143,9 @@ hermes-iot setup --profile iot
 
 实体 Raspberry Pi 2 Model B Rev 1.1（`armv7l`、921 MiB、Raspbian 13 Trixie、Python 3.13.5）以来源 commit `690dc97c4bf4342d626a1cf3c7025f634aa7d262` 测试了 `0.23.0.post1` 的 `minimal` 源码安装。全新隔离 venv 安装完成，`pip check`、核心 CLI 导入及 `hermes --help` 均通过；使用独立 `HERMES_HOME`，没有读取现有用户配置。该候选尚未发布到 PyPI，也没有 release tag。测试没有发送模型请求或启动 gateway，不代表模型回合、gateway 或其他 profiles 已验收。详见 [Pi 2 实机测试记录](README_PI2.md#unreleased-source-candidate-hardware-test-0230post1)。
 
-### Pi 2B 实体硬件验证（未发布的 `0.23.1` wheel 候选）
+### Pi 2B `0.23.1` 发布前 wheel 候选实机验收
 
-2026-11-16，在实体 Pi 2 Model B Rev 1.1（`armv7l`、921 MiB、Raspbian 13 Trixie、Python 3.13.5）安装了由 commit `22678bc6d5175d0e8a59853ef2f4e940c3abb8ba` 构建并经过 sanitizer 的 wheel（SHA-256：`a54c171f419ee41c5215d0a2be9dcbcdf9a9cc6e50891cfe5f6ab7f153dac33a`）。使用 `requirements/pi2/minimal.lock` 哈希安装依赖，再以 `--no-deps` 安装候选 wheel；版号、`pip check`、隔离 `minimal` profile 设置、核心 CLI 导入和 `hermes --help` 均通过。测试使用独立 venv／`HERMES_HOME`。这是本地 wheel 候选，不是最终 PyPI 产物；没有调用模型或启动 gateway。详见 [Pi 2 实机验收记录](README_PI2.md#unreleased-0231-wheel-candidate-test-2026-11-16)。
+2026-11-16，在实体 Pi 2 Model B Rev 1.1（`armv7l`、921 MiB、Raspbian 13 Trixie、Python 3.13.5）测试了由 commit `22678bc6d5175d0e8a59853ef2f4e940c3abb8ba` 构建并经过 sanitizer 的本地候选 wheel（SHA-256：`a54c171f419ee41c5215d0a2be9dcbcdf9a9cc6e50891cfe5f6ab7f153dac33a`）。使用 `requirements/pi2/minimal.lock` 哈希安装依赖，再以 `--no-deps` 安装候选 wheel；版号、`pip check`、隔离 `minimal` profile 设置、核心 CLI 导入和 `hermes --help` 均通过。测试使用独立 venv／`HERMES_HOME`。该候选 wheel 不是最终 PyPI 产物；已发布 wheel SHA-256 为 `ad2516e3b3eddc39e04bc7324a317be6f4f8520c8313140850520079b8729df9`，通过 tag CI clean-wheel smoke，但未在 Pi 2 安装。没有调用模型或启动 gateway。详见 [Pi 2 实机验收记录](README_PI2.md#pre-release-wheel-candidate-hardware-test-0231-2026-11-16) 与[正式发布记录](docs/release-v0.23.1.md)。
 
 ## 更新 Pi2 源码安装
 
