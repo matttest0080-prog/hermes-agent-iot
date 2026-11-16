@@ -1,10 +1,17 @@
 """Pi2 lock generation keeps profile scope and refreshes reviewed dependency closures."""
 from __future__ import annotations
 
+import tomllib
+from pathlib import Path
+
 import pytest
+from packaging.markers import default_environment
+from packaging.requirements import Requirement
 
 from scripts.regen_pi2_locks import (
+    PROFILES,
     add_piwheels_hashes,
+    canonicalize,
     expand_profile,
     linux_armv7_requirements,
     old_constraints,
@@ -112,3 +119,54 @@ def test_hash_merge_is_idempotent_and_keeps_the_original_digest(tmp_path):
     assert lock.read_text(encoding="utf-8") == first
     assert first.count("--hash=sha256:") == 2
     assert "a" * 64 in first and "b" * 64 in first
+
+
+def test_checked_in_pi2_locks_match_exact_project_pins_for_supported_armv7_python():
+    repo = Path(__file__).resolve().parents[2]
+    metadata = tomllib.loads((repo / "pyproject.toml").read_text(encoding="utf-8-sig"))
+    targets = []
+    for version in ("3.11", "3.12", "3.13"):
+        targets.append({
+            **default_environment(),
+            "sys_platform": "linux",
+            "platform_system": "Linux",
+            "platform_machine": "armv7l",
+            "python_version": version,
+            "python_full_version": f"{version}.0",
+        })
+
+    for profile in PROFILES:
+        requirements = linux_armv7_requirements(expand_profile(metadata, profile))
+        lock_path = repo / "requirements" / "pi2" / f"{profile}.lock"
+        locked = []
+        for line in lock_path.read_text(encoding="utf-8-sig").splitlines():
+            requirement_line = line.rstrip().removesuffix("\\").strip()
+            if not requirement_line or requirement_line.startswith("#"):
+                continue
+            try:
+                locked.append(Requirement(requirement_line))
+            except Exception:
+                continue
+
+        for raw in requirements:
+            expected = Requirement(raw)
+            if canonicalize(expected.name) == "hermes-agent-iot":
+                continue
+            exact = [
+                item.version for item in expected.specifier
+                if item.operator in ("==", "===") and "*" not in item.version
+            ]
+            if not exact:
+                continue
+            for target in targets:
+                if expected.marker and not expected.marker.evaluate(target):
+                    continue
+                matches = [
+                    item for item in locked
+                    if canonicalize(item.name) == canonicalize(expected.name)
+                    and (item.marker is None or item.marker.evaluate(target))
+                ]
+                assert exact[0] in {specifier.version for item in matches for specifier in item.specifier}, (
+                    f"{profile}.lock is stale for {expected.name}=={exact[0]} on "
+                    f"Python {target['python_version']} ARMv7"
+                )

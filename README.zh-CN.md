@@ -38,7 +38,7 @@ python3 --version
 python3 -m venv ~/.venvs/hermes-iot
 source ~/.venvs/hermes-iot/bin/activate
 python -m pip install --upgrade pip
-python -m pip install 'hermes-agent-iot[minimal]==0.22.2.post1'
+python -m pip install 'hermes-agent-iot[minimal]==0.22.5.post3'
 python -m pip check
 
 hermes-iot setup --profile minimal
@@ -78,7 +78,7 @@ hermes
 让 PyPI extra 与 setup profile 保持一致。例如：
 
 ```bash
-python -m pip install 'hermes-agent-iot[iot]==0.22.2.post1'
+python -m pip install 'hermes-agent-iot[iot]==0.22.5.post3'
 hermes-iot setup --profile iot
 ```
 
@@ -124,9 +124,9 @@ hermes-iot setup --profile iot
 
 在依赖变更、IoT 补丁与 ARMv7 兼容性经过评审与验证期间，此 fork 可能有意落后于上游 `main`。对于通用桌面/服务器 Hermes Agent 用途，请优先使用上游项目。
 
-## 已验证版本
+## 已发布版本与历史 Pi 2 硬件验证
 
-当前已验证基线：
+当前公开 PyPI 版本为 `0.22.5.post3`。以下是 `0.22.2.post1` 的历史硬件记录，不代表当前 PyPI 版本：
 
 - PyPI: [`hermes-agent-iot 0.22.2.post1`](https://pypi.org/project/hermes-agent-iot/0.22.2.post1/)
 - Tag: `iot-v0.22.2.post1`
@@ -137,7 +137,11 @@ hermes-iot setup --profile iot
 - Python: `>=3.11,<3.15`
 - 物理验证：Raspberry Pi 2 Model B Rev 1.1，32-bit ARMv7，921 MiB RAM，Python 3.13.5
 
-`minimal` wheel 基线已于 2026-10-20 在实体 Raspberry Pi 2 上从公开 PyPI clean-install：`pip check` 干净、`hermes --version` = 0.22.2.post1、wheel SHA-256 一致，并以远程模型通过 SSH 完成一次真实 one-shot 回合（`PI2-OK`，81.6 秒）。这验证的是 Pi 2 客户端/runtime 路径，不包含 Pi 本地推論。更重的可选 extras 需要与其依赖集相匹配的硬件。
+`minimal` wheel 已于 2026-10-20 在实体 Raspberry Pi 2 上从公开 PyPI clean-install：`pip check` 干净、`hermes --version` = 0.22.2.post1、wheel SHA-256 一致，并以远程模型通过 SSH 完成一次真实 one-shot 回合（`PI2-OK`，81.6 秒）。这验证的是 Pi 2 客户端/runtime 路径，不包含 Pi 本地推理。更重的可选 extras 需要与其依赖集相匹配的硬件。
+
+### 未发布源码候选的 Pi 2 实机测试（2026-11-13）
+
+实体 Raspberry Pi 2 Model B Rev 1.1（`armv7l`、921 MiB、Raspbian 13 Trixie、Python 3.13.5）以来源 commit `690dc97c4bf4342d626a1cf3c7025f634aa7d262` 测试了 `0.23.0.post1` 的 `minimal` 源码安装。全新隔离 venv 安装完成，`pip check`、核心 CLI 导入及 `hermes --help` 均通过；使用独立 `HERMES_HOME`，没有读取现有用户配置。该候选尚未发布到 PyPI，也没有 release tag。测试没有发送模型请求或启动 gateway，不代表模型回合、gateway 或其他 profiles 已验收。详见 [Pi 2 实机测试记录](README_PI2.md#unreleased-source-candidate-hardware-test-0230post1)。
 
 ## 更新 Pi2 源码安装
 
