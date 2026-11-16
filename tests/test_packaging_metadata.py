@@ -64,12 +64,17 @@ def test_osv_cve_2026_126360_and_126347_fixes_remain_locked():
         assert Version(pins[0].version) >= Version("1.45.2")
 
     packages = {row["name"]: Version(row["version"]) for row in lock["package"]}
-    for package in (
-        "opentelemetry-api",
-        "opentelemetry-sdk",
-        "opentelemetry-exporter-otlp-proto-http",
-    ):
-        assert packages[package] >= Version("1.45.2"), (package, packages[package])
+    minimum_versions = {
+        "opentelemetry-api": "1.45.2",
+        "opentelemetry-sdk": "1.45.2",
+        "opentelemetry-exporter-otlp-proto-http": "1.45.2",
+        "opentelemetry-instrumentation": "0.66b2",
+        "opentelemetry-instrumentation-aiohttp-client": "0.66b2",
+        "opentelemetry-semantic-conventions": "0.66b2",
+        "opentelemetry-util-http": "0.66b2",
+    }
+    for package, minimum in minimum_versions.items():
+        assert packages[package] >= Version(minimum), (package, packages[package])
     assert packages["tornado"] >= Version("6.6.1")
 
     age_exemptions = metadata["tool"]["uv"]["exclude-newer-package"]
