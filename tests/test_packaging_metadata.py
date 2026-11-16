@@ -53,6 +53,48 @@ def test_starlette_server_pins_and_lock_exclude_cve_2026_48710():
     assert versions and all(version >= floor for version in versions)
 
 
+def test_osv_cve_2026_126360_and_126347_fixes_remain_locked():
+    metadata = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    lock = tomllib.loads((REPO_ROOT / "uv.lock").read_text(encoding="utf-8"))
+    extras = metadata["project"]["optional-dependencies"]
+    otlp = {Requirement(dep).name: Requirement(dep) for dep in extras["otlp"]}
+    for name in ("opentelemetry-sdk", "opentelemetry-exporter-otlp-proto-http"):
+        pins = list(otlp[name].specifier)
+        assert len(pins) == 1 and pins[0].operator == "=="
+        assert Version(pins[0].version) >= Version("1.45.2")
+
+    packages = {row["name"]: Version(row["version"]) for row in lock["package"]}
+    for package in (
+        "opentelemetry-api",
+        "opentelemetry-sdk",
+        "opentelemetry-exporter-otlp-proto-http",
+    ):
+        assert packages[package] >= Version("1.45.2"), (package, packages[package])
+    assert packages["tornado"] >= Version("6.6.1")
+
+    age_exemptions = metadata["tool"]["uv"]["exclude-newer-package"]
+    tornado = next(row for row in lock["package"] if row["name"] == "tornado")
+    latest_upload = max(
+        [tornado["sdist"]["upload-time"]]
+        + [wheel["upload-time"] for wheel in tornado["wheels"]]
+    )
+    assert age_exemptions["tornado"] == latest_upload
+    assert not {
+        "opentelemetry-api",
+        "opentelemetry-sdk",
+        "opentelemetry-exporter-otlp-proto-http",
+    } & age_exemptions.keys()
+
+    for profile in ("minimal", "iot", "rag", "full", "dev"):
+        text = (REPO_ROOT / f"requirements/pi2/{profile}.lock").read_text(encoding="utf-8")
+        pins = [
+            line.split("==", 1)[1].split()[0]
+            for line in text.splitlines()
+            if line.startswith("opentelemetry-api==")
+        ]
+        assert pins and all(Version(pin) >= Version("1.45.2") for pin in pins), (profile, pins)
+
+
 def test_every_dependency_is_held_to_one_fourteen_day_release_age():
     """The fork holds deps to a 14-day release age, with per-package exemptions.
 

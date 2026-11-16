@@ -493,8 +493,8 @@ mistral = ["mistralai==2.10.1"]
 # PM on first use; never a core dependency and deliberately
 # NOT in [all].
 otlp = [
-  "opentelemetry-sdk==1.45.1",
-  "opentelemetry-exporter-otlp-proto-http==1.45.1",
+  "opentelemetry-sdk==1.45.2",
+  "opentelemetry-exporter-otlp-proto-http==1.45.2",
 ]
 bedrock = ["boto3==1.43.115"]
 vertex = ["google-auth==2.62.0"]
@@ -791,8 +791,8 @@ brotlicffi = false
 # Reviewed fixes newer than the 14-day window; do not exempt unrelated packages.
 filelock = false
 msgpack = false
-opentelemetry-api = false
-tornado = false
+# CVE-2026-126347: permit Tornado 6.6.1 artifacts only; later releases keep the 14-day age gate.
+tornado = "2026-11-09T21:09:22.71Z"
 # Reviewed compatibility post-release for critical GHSA-8g5g-8vmr-9782.
 # Registry artifact hashes, source and identity-only runtime changes are
 # recorded in docs/browser-harness-compat.md; do not exempt unrelated packages.
@@ -850,8 +850,6 @@ oauthlib = false
 onnxruntime = false
 openai = false
 openwakeword = false
-opentelemetry-exporter-otlp-proto-http = false
-opentelemetry-sdk = false
 packaging = false
 paho-mqtt = false
 parallel-web = false
