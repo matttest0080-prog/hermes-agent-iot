@@ -143,6 +143,10 @@ El wheel `minimal` se instaló en limpio desde PyPI público en una Raspberry Pi
 
 En una Raspberry Pi 2 Model B Rev 1.1 física (`armv7l`, 921 MiB, Raspbian 13 Trixie, Python 3.13.5) se probó la instalación fuente `minimal` de `0.23.0.post1`, commit `690dc97c4bf4342d626a1cf3c7025f634aa7d262`. La instalación en un venv aislado terminó correctamente; `pip check`, las importaciones principales del CLI y `hermes --help` pasaron. Se utilizó un `HERMES_HOME` independiente, sin leer la configuración existente. Este candidato aún no se publicó en PyPI ni tiene tag de release. No se envió ninguna solicitud a un modelo ni se ejecutó el gateway; la prueba no valida una conversación real ni otros perfiles. Consulta el [registro detallado de hardware Pi 2](README_PI2.md#unreleased-source-candidate-hardware-test-0230post1).
 
+### Validación física en Pi 2 (candidato wheel `0.23.1` no publicado)
+
+El 2026-11-16 se instaló en una Raspberry Pi 2 Model B Rev 1.1 física (`armv7l`, 921 MiB, Raspbian 13 Trixie, Python 3.13.5) el wheel saneado construido desde el commit `22678bc6d5175d0e8a59853ef2f4e940c3abb8ba` (SHA-256: `a54c171f419ee41c5215d0a2be9dcbcdf9a9cc6e50891cfe5f6ab7f153dac33a`). Las dependencias `minimal` se instalaron con hashes desde `requirements/pi2/minimal.lock`, y el candidato con `--no-deps`; pasaron la versión, `pip check`, la configuración del perfil `minimal` aislado, las importaciones principales del CLI y `hermes --help`. Se usaron un venv y `HERMES_HOME` independientes. Es un wheel candidato local, no el artefacto final de PyPI; no hubo llamadas a modelos ni ejecución del gateway. Consulta el [registro detallado de la prueba Pi 2](README_PI2.md#unreleased-0231-wheel-candidate-test-2026-11-16).
+
 ## Actualizar una instalación de código fuente en Pi2
 
 Mantén siempre las actualizaciones ancladas a la rama `pi2-lite`:

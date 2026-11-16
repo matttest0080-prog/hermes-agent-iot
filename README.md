@@ -193,6 +193,10 @@ hermes
 
 On 2026-11-13, source commit `690dc97c4bf4342d626a1cf3c7025f634aa7d262` (`0.23.0.post1`) passed a fresh isolated `minimal` install on a physical Raspberry Pi 2 Model B Rev 1.1 (`armv7l`, 921 MiB, Raspbian 13 Trixie, Python 3.13.5). The installer, `pip check`, core CLI imports, and `hermes --help` passed with a separate `HERMES_HOME`. This candidate is **not published to PyPI and has no release tag**. No model request or gateway run was made; this does not validate a model round-trip or other profiles. See the [detailed Pi 2 test record](README_PI2.md#unreleased-source-candidate-hardware-test-0230post1).
 
+### Pi 2B wheel validation (unreleased `0.23.1` candidate)
+
+On 2026-11-16, the sanitized wheel built from commit `22678bc6d5175d0e8a59853ef2f4e940c3abb8ba` (`hermes_agent_iot-0.23.1-py3-none-any.whl`, SHA-256 `a54c171f419ee41c5215d0a2be9dcbcdf9a9cc6e50891cfe5f6ab7f153dac33a`) was installed on a physical Pi 2 Model B Rev 1.1 (`armv7l`, 921 MiB, Raspbian 13 Trixie, Python 3.13.5). Hash-locked `minimal` dependencies, wheel metadata/version, `pip check`, isolated `minimal` profile setup, core imports, and `hermes --help` passed. This was a local wheel candidate, not the final PyPI artifact; no model request or gateway run was made. See the [detailed Pi 2 test record](README_PI2.md#unreleased-0231-wheel-candidate-test-2026-11-16).
+
 ## Install Profiles
 
 | Profile | Intended target |
